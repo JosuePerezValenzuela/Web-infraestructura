@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import 'leaflet/dist/leaflet.css';
+import { AppSidebar } from "@/components/app-sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,7 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body>
-        {children}
+        <div className="flex min-h-screen">
+          <AppSidebar />
+          <main className="flex-1 bg-slate-50 p-6">{children}</main>
+        </div>
         {/* Sonner toaster global */}
         <Toaster richColors position="top-right" closeButton expand />
       </body>
