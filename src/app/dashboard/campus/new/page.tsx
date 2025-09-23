@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { any } from "zod";
 
 const MapPicker = dynamic(() => import('@/features/campus/MapPicker'), { ssr: false });
 
