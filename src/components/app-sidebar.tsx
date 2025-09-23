@@ -1,107 +1,77 @@
-'use client'
+"use client";
 
 import Link from "next/link";
-import { GraduationCap, Building2, Landmark } from "lucide-react";
+import Image from "next/Image";
+import { ChevronDown } from "lucide-react";
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import Image from 'next/Image'
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import {
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
+import { NAV_GROUPS } from "@/config/nav";
 
 export default function AppSidebar() {
-    return (
-        <Sidebar>
+  return (
+    <Sidebar className="bg-slate-900 text-slate-100">
+      <SidebarHeader>
+        <div className="flex items-center gap-3 px-3 py-3">
+          <Image src="/umss-logo.png" alt="UMSS" width={32} height={32} />
+          <div className="leading-tight">
+            <div className="font-semibold">Universidad Mayor</div>
+            <div className="text-slate-300 text-xs">de San Simón</div>
+          </div>
+        </div>
+      </SidebarHeader>
 
-            <SidebarHeader className="border-b">
-              <div className="flex items-center gap-3 px-3 py-2">
-                <Image
-                  src='/logo_UMSS.png'
-                  alt="UMSS"
-                  width={28}
-                  height={28}
-                  priority
-                />
-
-                {/* Ocular el texto cuando el sidebar esta colapsado */}
-                <div className="leading-tight group-data-[collapsible=icon]:hidden">
-                    <div className="font-semibold">
-                        <p>Universidad Mayor</p>
-                        <p>de San Simón</p>
-                    </div>
-                </div>
+      <SidebarContent>
+        {NAV_GROUPS.map((group) => (
+          <SidebarGroup key={group.label} className="px-2">
+            <Collapsible defaultOpen>
+              <div className="flex items-center justify-between">
+                <SidebarGroupLabel className="flex items-center gap-2">
+                  {group.icon ? <group.icon className="size-5" /> : null}
+                  {group.label}
+                </SidebarGroupLabel>
+                <CollapsibleTrigger className="text-slate-300 hover:text-white">
+                  <svg className="size-4" viewBox="0 0 24 24">
+                    <path d="M7 10l5 5 5-5" />
+                  </svg>
+                </CollapsibleTrigger>
               </div>
 
-              {/* Subtitulo del menu*/}
-              <div className="px-3 pb-2 text-xs font-medium tracking-wide uppercase text-muted-foreground">
-                Menu de navegación
-              </div>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => (
+                      <SidebarMenuItem key={item.label}>
+                        <SidebarMenuButton asChild>
+                          <a href={item.href ?? "#"}>{item.label}</a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
 
-            </SidebarHeader>
-
-            <SidebarContent>
-                
-                {/*Seccion Campus */}
-                <SidebarGroup>
-                    <SidebarGroupLabel className="flex items-center gap-2">
-                        <GraduationCap className="size-4" />
-                        Campus
-                    </SidebarGroupLabel>
-
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-
-                            
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                    <Link href="#campus-registrar">Registrar</Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                    <Link href="#campus-listar">Listar</Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {/*Seccion Facultades */}
-                <SidebarGroup>
-                    <SidebarGroupLabel className="flex items-center gap-2">
-                        <Building2 className="size-4" />
-                        Facultades
-                    </SidebarGroupLabel>
-
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-
-                        <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                                <Link href="#facultades - registrar">Registrar</Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-
-                        <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                                <Link href='#facultades - listar'>Listar</Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-
-                </SidebarGroup>
-
-            </SidebarContent>
-        </Sidebar>
-    );
+      <SidebarFooter className="text-xs text-slate-400 px-3 py-3">
+        © UMSS
+      </SidebarFooter>
+    </Sidebar>
+  );
 }
