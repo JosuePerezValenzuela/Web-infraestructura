@@ -8,14 +8,43 @@ import {
     SidebarGroup,
     SidebarGroupContent,
     SidebarGroupLabel,
+    SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import Image from 'next/Image'
 
 export default function AppSidebar() {
     return (
         <Sidebar>
+
+            <SidebarHeader className="border-b">
+              <div className="flex items-center gap-3 px-3 py-2">
+                <Image
+                  src='/logo_UMSS.png'
+                  alt="UMSS"
+                  width={28}
+                  height={28}
+                  priority
+                />
+
+                {/* Ocular el texto cuando el sidebar esta colapsado */}
+                <div className="leading-tight group-data-[collapsible=icon]:hidden">
+                    <div className="font-semibold">
+                        <p>Universidad Mayor</p>
+                        <p>de San Simón</p>
+                    </div>
+                </div>
+              </div>
+
+              {/* Subtitulo del menu*/}
+              <div className="px-3 pb-2 text-xs font-medium tracking-wide uppercase text-muted-foreground">
+                Menu de navegación
+              </div>
+
+            </SidebarHeader>
+
             <SidebarContent>
                 
                 {/*Seccion Campus */}
