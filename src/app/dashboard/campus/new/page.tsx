@@ -72,7 +72,7 @@ export default function CampusCreatePage() {
                         name='nombre'
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Nombre</FormLabel>
+                                <FormLabel>Nombre del campus</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Campus Central" {...field} />
                                 </FormControl>
@@ -86,6 +86,7 @@ export default function CampusCreatePage() {
                         name='direccion'
                         render={({ field }) => (
                             <FormItem>
+                                <FormLabel>Direccion del campus</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Av Sucre entre Belzu y Oquendo" {...field} />
                                 </FormControl>
@@ -103,8 +104,14 @@ export default function CampusCreatePage() {
                                 <FormItem>
                                     <FormLabel>Latitud</FormLabel>
                                     <FormControl>
-                                        <Input type="number" step='any' {...field} />
+                                        <Input 
+                                          type="number" 
+                                          step='any' 
+                                          value={field.value ?? ''}
+                                          onChange={(e) => field.onChange(e.target.value === '' ? '' : e.target.valueAsNumber)}
+                                        />
                                     </FormControl>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -116,7 +123,12 @@ export default function CampusCreatePage() {
                                 <FormItem>
                                     <FormLabel>Longitud</FormLabel>
                                     <FormControl>
-                                        <Input type="number" step='any' {...field} />
+                                        <Input 
+                                          type="number" 
+                                          step='any' 
+                                          value={field.value ?? ''}
+                                          onChange={(e) => field.onChange(e.target.value === '' ? '' : e.target.valueAsNumber)}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
