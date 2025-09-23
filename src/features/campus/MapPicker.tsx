@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { markerIcon } from './markerIcon';
 
@@ -22,6 +22,12 @@ function ClickHandler({ onChange }: { onChange: Props['onChange'] }){
     return null;
 }
 
+function ResizeFix() {
+    const map = useMap();
+    useEffect(() => { setTimeout(() => map.invalidateSize(), 0);}, [map]);
+    return null;
+}
+
 export default function MapPicker({ lat, lng, onChange }: Props) {
     const Recenter = () => {
         const map = useMapEvents({
@@ -38,8 +44,9 @@ export default function MapPicker({ lat, lng, onChange }: Props) {
               center={[lat, lng]}
               zoom={15}
               scrollWheelZoom
-              style={{ height: '100%', width: '100%' }}
-            >
+              className='h-full w-full'
+            ><ResizeFix></ResizeFix><MapContainer/>
+            
               <TileLayer
                 url = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
