@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/Image";
-import { ChevronDown } from "lucide-react";
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -20,40 +18,57 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { ChevronDown } from "lucide-react";
 import { NAV_GROUPS } from "@/config/nav";
 
 export default function AppSidebar() {
   return (
     <Sidebar className="bg-slate-900 text-slate-100">
-      <SidebarHeader>
+      {/* Header del sidebar */}
+      <SidebarHeader className="bg-slate-900 text-slate-100">
         <div className="flex items-center gap-3 px-3 py-3">
-          <Image src="/umss-logo.png" alt="UMSS" width={32} height={32} />
+          <Image src="/logo_UMSS.png" alt="UMSS" width={32} height={32} />
           <div className="leading-tight">
-            <div className="font-semibold">Universidad Mayor</div>
-            <div className="text-slate-300 text-xs">de San Simón</div>
+            <div className="font-semibold">
+              <p>Universidad Mayor</p>
+              <p>de San Simón</p>
+            </div>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      {/* Contenido del sidebar */}
+      <SidebarContent className='bg-slate-900 text-slate-100'>
         {NAV_GROUPS.map((group) => (
-          <SidebarGroup key={group.label} className="px-2">
+          <SidebarGroup key={group.label} className="px-4">
             <Collapsible defaultOpen>
-              <div className="flex items-center justify-between">
-                <SidebarGroupLabel className="flex items-center gap-2">
-                  {group.icon ? <group.icon className="size-5" /> : null}
-                  {group.label}
-                </SidebarGroupLabel>
-                <CollapsibleTrigger className="text-slate-300 hover:text-white">
-                  <svg className="size-4" viewBox="0 0 24 24">
-                    <path d="M7 10l5 5 5-5" />
-                  </svg>
-                </CollapsibleTrigger>
-              </div>
+              {/* 👉 Todo este botón es el trigger */}
+              <CollapsibleTrigger asChild>
+                <button
+                  className="
+                    group w-full flex items-center justify-between
+                    px-3 py-2 rounded-lg
+                    hover:bg-accent/50
+                    focus:outline-none focus:ring-2 focus:ring-ring
+                    "
+                >
+                  <span className="flex items-center gap-2">
+                    {group.icon ? <group.icon className="size-5" /> : null}
+                    <span className="text-lg">{group.label}</span>
+                  </span>
 
-              <CollapsibleContent>
-                <SidebarGroupContent>
-                  <SidebarMenu>
+                  <ChevronDown
+                    className="
+                      size-4 transition-transform duration-200
+                      group-data-[state=open]:rotate-180
+                      "
+                  />
+                </button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="mt-2">
+                <SidebarGroupContent className="pl-6">
+                  <SidebarMenu className="space-y-1">
                     {group.items.map((item) => (
                       <SidebarMenuItem key={item.label}>
                         <SidebarMenuButton asChild>
@@ -69,7 +84,8 @@ export default function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="text-xs text-slate-400 px-3 py-3">
+      {/* Footer del sidebar */}
+      <SidebarFooter className=" bg-slate-900 text-slate-100 text-xs px-3 py-3">
         © UMSS
       </SidebarFooter>
     </Sidebar>
