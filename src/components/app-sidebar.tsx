@@ -23,7 +23,7 @@ import { NAV_GROUPS } from "@/config/nav";
 
 export default function AppSidebar() {
   return (
-    <Sidebar className="bg-slate-900 text-slate-100">
+    <Sidebar className=" relative z-[1000] bg-slate-900 text-slate-100">
       {/* Header del sidebar */}
       <SidebarHeader className="bg-slate-900 text-slate-100">
         <div className="flex items-center gap-3 px-3 py-3">

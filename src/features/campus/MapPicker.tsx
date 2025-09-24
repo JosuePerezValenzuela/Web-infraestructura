@@ -39,13 +39,14 @@ export default function MapPicker({ lat, lng, onChange }: Props) {
     };
 
     return (
-        <div style={{ height: 360, width: '100%' }}>
+        <div className='relative z-0 h-[420px] w-full rounded-lg overflow-hidden'>
             <MapContainer
               center={[lat, lng]}
               zoom={15}
               scrollWheelZoom
               className='h-full w-full'
-            ><ResizeFix></ResizeFix><MapContainer/>
+            >
+              <ResizeFix></ResizeFix>
             
               <TileLayer
                 url = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
