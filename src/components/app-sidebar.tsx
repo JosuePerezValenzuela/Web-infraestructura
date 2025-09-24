@@ -23,13 +23,13 @@ import { NAV_GROUPS } from "@/config/nav";
 
 export default function AppSidebar() {
   return (
-    <Sidebar className=" relative z-[1000] bg-slate-900 text-slate-100">
+    <Sidebar className=" relative z-[1000] bg-sidebar-primary">
       {/* Header del sidebar */}
-      <SidebarHeader className="bg-slate-900 text-slate-100">
+      <SidebarHeader className="bg-sidebar-primary">
         <div className="flex items-center gap-3 px-3 py-3">
           <Image src="/logo_UMSS.png" alt="UMSS" width={32} height={32} />
           <div className="leading-tight">
-            <div className="font-semibold">
+            <div className="font-semibold text-primary-foreground">
               <p>Universidad Mayor</p>
               <p>de San Simón</p>
             </div>
@@ -38,9 +38,9 @@ export default function AppSidebar() {
       </SidebarHeader>
 
       {/* Contenido del sidebar */}
-      <SidebarContent className='bg-slate-900 text-slate-100'>
+      <SidebarContent className='bg-sidebar-primary text-primary-foreground'>
         {NAV_GROUPS.map((group) => (
-          <SidebarGroup key={group.label} className="px-4">
+          <SidebarGroup key={group.label} className="px-4 text-primary-foreground">
             <Collapsible defaultOpen>
               {/* 👉 Todo este botón es el trigger */}
               <CollapsibleTrigger asChild>
@@ -70,7 +70,7 @@ export default function AppSidebar() {
                 <SidebarGroupContent className="pl-6">
                   <SidebarMenu className="space-y-1">
                     {group.items.map((item) => (
-                      <SidebarMenuItem key={item.label}>
+                      <SidebarMenuItem className="text-primary-foreground" key={item.label}>
                         <SidebarMenuButton asChild>
                           <a href={item.href ?? "#"}>{item.label}</a>
                         </SidebarMenuButton>
@@ -85,7 +85,7 @@ export default function AppSidebar() {
       </SidebarContent>
 
       {/* Footer del sidebar */}
-      <SidebarFooter className=" bg-slate-900 text-slate-100 text-xs px-3 py-3">
+      <SidebarFooter className="bg-sidebar-primary text-primary-foreground text-xs px-3 py-3">
         © UMSS
       </SidebarFooter>
     </Sidebar>

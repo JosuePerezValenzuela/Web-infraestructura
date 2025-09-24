@@ -83,7 +83,7 @@ export default function CampusCreatePage() {
   }
 
   return (
-    <div className="px-6 py-8">
+    <div className="px-6 py-8 bg-background">
       <h1 className="text-3xl font-semibold text-center">Registrar campus</h1>
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
