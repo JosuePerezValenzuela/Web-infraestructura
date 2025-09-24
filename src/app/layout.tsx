@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-white px-4">
+          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 bg-primary-foreground px-4">
             <SidebarTrigger />
             <h1 className="text-sm font-semibold">Menu de navegacion</h1>
           </header>

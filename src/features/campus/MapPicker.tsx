@@ -47,7 +47,8 @@ export default function MapPicker({ lat, lng, onChange }: Props) {
               className='h-full w-full'
             >
               <ResizeFix></ResizeFix>
-            
+              
+              
               <TileLayer
                 url = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
