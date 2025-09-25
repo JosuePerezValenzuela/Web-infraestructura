@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const numbreFromInput = z.coerce.number().refine(Number.isFinite, { message: 'Debe ser numerico'});
+
 export const campusCreateSchema = z.object({
   nombre: z.string({ error: "Ingrese el nombre del campus" })
            .min(1, { error: "Ingrese el nombre del campus" })
@@ -7,12 +9,8 @@ export const campusCreateSchema = z.object({
   direccion: z.string({ error: "Ingrese la dirección del campus" })
               .min(1, { error: "Ingrese la dirección del campus" })
               .max(256, { error: "Máximo 256 caracteres" }),
-  lat: z.number({ error: "La latitud debe ser numérica" })
-        .min(-90, { error: "Latitud inválida" })
-        .max(90, { error: "Latitud inválida" }),
-  lng: z.number({ error: "La longitud debe ser numérica" })
-        .min(-180, { error: "Longitud inválida" })
-        .max(180, { error: "Longitud inválida" }),
+  lat: numbreFromInput.min(-90, {message: 'Latitud invalida'}).max(90, {message: 'Latitud invalida'}),
+  lng: numbreFromInput.min(-180, {message: 'Longitud invalida'}).max(180, {message: 'Longitud invalida'}),
 });
 
 export type CampusCreateInput = z.output<typeof campusCreateSchema>;

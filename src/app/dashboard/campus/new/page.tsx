@@ -22,6 +22,10 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import Link from "next/link";
+import { z } from 'zod';
+
+type CampusCreateIn = z.input<typeof campusCreateSchema>;
+type CampusCreateOut = z.input<typeof campusCreateSchema>;
 
 const INITIAL_POS = { lat: -17.3939, lng: -66.1570}
 
@@ -30,7 +34,7 @@ const MapPicker = dynamic(() => import("@/features/campus/MapPicker"), {
 });
 
 export default function CampusCreatePage() {
-  const form = useForm<CampusCreateInput>({
+  const form = useForm<CampusCreateIn>({
     resolver: zodResolver(campusCreateSchema),
     mode: "onTouched",
     defaultValues: {
@@ -43,7 +47,8 @@ export default function CampusCreatePage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  async function onSumbit(values: CampusCreateInput) {
+  async function onSumbit(values: CampusCreateIn) {
+    const data: CampusCreateOut = campusCreateSchema.parse(values);  
     try {
       setSubmitting(true);
 
@@ -52,8 +57,8 @@ export default function CampusCreatePage() {
         json: values,
       });
 
-      toast.success("campus creado", {
-        description: "Se registor correctamente.",
+      toast.success("Campus creado", {
+        description: "Se registro correctamente.",
       });
 
       form.reset({
@@ -133,7 +138,10 @@ export default function CampusCreatePage() {
                       <FormItem>
                         <FormLabel>Latitud</FormLabel>
                         <FormControl>
-                          <Input type="number" step="any" {...field} />
+                          <Input type="number" step="any" 
+                          value={field.value === undefined || field.value === null ? '' : String(field.value)} 
+                          onChange={(e) => field.onChange(e.target.value)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -146,7 +154,10 @@ export default function CampusCreatePage() {
                       <FormItem>
                         <FormLabel>Longitud</FormLabel>
                         <FormControl>
-                          <Input type="number" step="any" {...field} />
+                          <Input type="number" step="any" 
+                          value={field.value === undefined || field.value === null ? '' : String(field.value)} 
+                          onChange={(e) => field.onChange(e.target.value)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -169,11 +180,11 @@ export default function CampusCreatePage() {
         <div className="rounded-xl border bg-muted/30 p-2">
           <div className="h-full overflow-hidden rounded-lg">
             <MapPicker
-              lat={form.watch("lat")}
-              lng={form.watch("lng")}
+              lat={Number(form.watch("lat")) ?? INITIAL_POS.lat}
+              lng={Number(form.watch("lng")) ?? INITIAL_POS.lng}
               onChange={(pos) => {
-                form.setValue("lat", pos.lat, { shouldValidate: true });
-                form.setValue("lng", pos.lng, { shouldValidate: true });
+                form.setValue("lat", String(pos.lat), { shouldValidate: true });
+                form.setValue("lng", String(pos.lng), { shouldValidate: true });
               }}
             />
           </div>
