@@ -22,29 +22,37 @@ export default function CampusListPage() {
     const controller = new AbortController();
 
     (async () => {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(TAKE),
-        ...(query ? { search: query } : {}),
-      });
-
-      const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
-      const res = await fetch(`${base}/campus?${params.toString()}`, {
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        console.error('Error cargando campus');
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(TAKE),
+          ...(query ? { search: query } : {}),
+        });
+      
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/campus?${params.toString()}`,
+          { signal: controller.signal }
+        );
+        
+        if (!res.ok) {
+          console.error('Error cargando campus');
         return;
+        }
+
+        const data = await res.json() as {
+          items: CampusRow[];
+          meta: { page: number; take: number; pages: number; total: number };
+        }
+
+        setItems(data.items);
+        setPage(data.meta.page);
+        setPages(data.meta.pages);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return;
+        }
+        console.error('Error cargando campus', err);
       }
-
-      const data: {
-        items: CampusRow[];
-        meta: { page: number; take: number; pages: number; total: number };
-      } = await res.json();
-
-      setItems(data.items);
-      setPage(data.meta.page);
-      setPages(data.meta.pages);
     })();
 
     return () => controller.abort();
