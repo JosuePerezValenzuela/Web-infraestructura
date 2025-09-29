@@ -3,6 +3,9 @@ import { z } from "zod";
 const numbreFromInput = z.coerce.number().refine(Number.isFinite, { message: 'Debe ser numerico'});
 
 export const campusCreateSchema = z.object({
+  codigo: z.string({ error: "Ingrese el codigo del campus"})
+           .min(1, { error: "Ingrese el codigo del campus" })
+            .max(16, { error: "Máximo 16 caracteres" }),
   nombre: z.string({ error: "Ingrese el nombre del campus" })
            .min(1, { error: "Ingrese el nombre del campus" })
            .max(128, { error: "Máximo 128 caracteres" }),

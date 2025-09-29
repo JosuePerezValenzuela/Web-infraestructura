@@ -12,7 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog';
+import CampusForm from '@/features/campus/CampusForm';
+import { X } from 'lucide-react';
 
 const TAKE = 10;
 
@@ -22,6 +25,14 @@ export default function CampusListPage() {
   const [pages, setPages] = useState<number>(1);
   const [search, setSearch] = useState<string>('');
   const [open, setOpen] = useState(false);
+
+  async function fetchData() {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(TAKE),
+      ...(search.trim() ? { search: search.trim() } : {}),
+    });
+  }
 
   const query = useMemo(() => search.trim(), [search]);
 
@@ -35,15 +46,15 @@ export default function CampusListPage() {
           limit: String(TAKE),
           ...(query ? { search: query } : {}),
         });
-      
+
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/campus?${params.toString()}`,
           { signal: controller.signal }
         );
-        
+
         if (!res.ok) {
           console.error('Error cargando campus');
-        return;
+          return;
         }
 
         const data = await res.json() as {
@@ -82,8 +93,8 @@ export default function CampusListPage() {
           />
 
           <Button onClick={() => setOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo campus
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo campus
           </Button>
         </div>
       </div>
@@ -98,17 +109,26 @@ export default function CampusListPage() {
 
       {/* Modal para crear un campus*/}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear nuevo campus</DialogTitle>
-            <DialogDescription>
-              Complete los capos y guarde para registrar un nuevo campus.
-            </DialogDescription>
+            <DialogClose
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background 
+                   transition-opacity hover:opacity-100 focus:outline-none 
+                   focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Cerrar</span>
+            </DialogClose>
           </DialogHeader>
 
-          <div className="mt-4">
-            <p>Hola</p>
-          </div>
+          <CampusForm
+            submitLabel='Crear campus'
+            onSubmitSuccess={async () => {
+              await fetchData();
+              setOpen(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>
