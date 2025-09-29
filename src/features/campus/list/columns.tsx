@@ -34,8 +34,8 @@ export const campusColumns: ColumnDef<CampusRow>[] = [
             );
         },
     },
-    { accessorKey: 'activo', header: 'Activo', 
+    { accessorKey: 'activo', header: 'Estado', 
         cell: ({ getValue }) =>  (getValue<boolean>() ? 'Activo' : 'Inactivo')
     },
-    { accessorKey: 'creado_en', header: 'Creado En' },
+    { accessorKey: 'creado_en', header: 'Creado en' },
 ];
