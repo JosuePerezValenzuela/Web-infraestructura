@@ -7,6 +7,13 @@ import { DataTable } from '@/components/data-table';
 import { campusColumns, type CampusRow } from '@/features/campus/list/columns';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const TAKE = 10;
 
