@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/data-table';
 import { campusColumns, type CampusRow } from '@/features/campus/list/columns';
 import { Plus } from 'lucide-react';
-import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +21,7 @@ export default function CampusListPage() {
   const [page, setPage] = useState<number>(1);
   const [pages, setPages] = useState<number>(1);
   const [search, setSearch] = useState<string>('');
+  const [open, setOpen] = useState(false);
 
   const query = useMemo(() => search.trim(), [search]);
 
@@ -81,11 +81,9 @@ export default function CampusListPage() {
             className="max-w-sm"
           />
 
-          <Button asChild>
-            <Link href="/dashboard/campus/new">
+          <Button onClick={() => setOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Agregar
-            </Link>
+              Nuevo campus
           </Button>
         </div>
       </div>
@@ -97,6 +95,22 @@ export default function CampusListPage() {
         pages={pages}
         onPageChange={setPage}
       />
+
+      {/* Modal para crear un campus*/}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Crear nuevo campus</DialogTitle>
+            <DialogDescription>
+              Complete los capos y guarde para registrar un nuevo campus.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <p>Hola</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
