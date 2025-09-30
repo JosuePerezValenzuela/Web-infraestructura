@@ -39,7 +39,7 @@ export default function MapPicker({ lat, lng, onChange }: Props) {
     };
 
     return (
-        <div className='relative z-0 h-[420px] w-full rounded-lg overflow-hidden'>
+        <div className='relative z-0 h-[250px] w-full rounded-lg overflow-hidden mb-0'>
             <MapContainer
               center={[lat, lng]}
               zoom={15}

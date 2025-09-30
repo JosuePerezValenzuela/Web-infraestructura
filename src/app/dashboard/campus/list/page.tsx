@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog';
 import CampusForm from '@/features/campus/CampusForm';
@@ -109,7 +108,7 @@ export default function CampusListPage() {
 
       {/* Modal para crear un campus*/}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] max-w-full overflow-auto pb-2">
           <DialogHeader>
             <DialogTitle>Crear nuevo campus</DialogTitle>
             <DialogClose

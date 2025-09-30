@@ -136,7 +136,7 @@ export default function CampusForm({
                         </FormItem>
                     )}
                 />
-                <div className="h-64 rounded-md overflow-hidden">
+                <div className="h-64 rounded-md overflow-hidden mb-0">
                     <MapPicker
                         lat={Number(form.watch('lat'))}
                         lng={Number(form.watch('lng'))}
@@ -147,7 +147,7 @@ export default function CampusForm({
                     />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-2">
                     <Button type="submit" disabled={submitting}>
                         {submitting ? 'Guardando…' : submitLabel}
                     </Button>
