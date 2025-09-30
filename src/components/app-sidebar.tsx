@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -39,38 +39,18 @@ export default function AppSidebar() {
       <SidebarContent className="flex-1 overflow-y-auto bg-sidebar-primary px-3 pb-6 text-primary-foreground">
         {NAV_GROUPS.map((group) => {
           const Icon = group.icon;
-
           return (
             <SidebarGroup key={group.label} className="px-1">
               <SidebarGroupLabel className="sr-only">{group.label}</SidebarGroupLabel>
-              <Collapsible defaultOpen>
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
+                  <Link 
+                    href={group.href}
                     className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent/60 focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <span className="flex items-center gap-2">
                       {Icon ? <Icon className="size-5" /> : null}
                       <span>{group.label}</span>
                     </span>
-                    <ChevronDown className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                  </button>
-                </CollapsibleTrigger>
-
-                <CollapsibleContent className="mt-1">
-                  <SidebarGroupContent className="pl-6">
-                    <SidebarMenu className="space-y-1">
-                      {group.items.map((item) => (
-                        <SidebarMenuItem key={item.label}>
-                          <SidebarMenuButton asChild>
-                            <Link href={item.href ?? "#"}>{item.label}</Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </Collapsible>
+                  </Link>
             </SidebarGroup>
           );
         })}

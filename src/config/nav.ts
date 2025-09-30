@@ -4,24 +4,17 @@ import {
     Layers2
 } from 'lucide-react'
 
-export type NavItem = { label: string; href?: string }
-export type NavGroup = { label: string; icon?: LucideIcon; items: NavItem[] }
+export type NavGroup = { label: string; icon?: LucideIcon; href: string }
 
 export const NAV_GROUPS: NavGroup[] = [
     {
         label: "Campus",
         icon: Layers3,
-        items: [
-            { label: 'Registrar', href: '/dashboard/campus/new' },
-            { label: 'Listar', href: '/dashboard/campus/listar'},
-        ],
+        href: `/dashboard/campus/list`,
     },
     {
         label: 'Facultades',
         icon: Layers2,
-        items: [
-            { label: 'Registrar', href: '/dashboard/facultades/new' },
-            { label: 'Listar', href: '/dashboard/facultades/listar'},
-        ]
+        href: `/dashboard/facultades/list`    
     }
 ]
