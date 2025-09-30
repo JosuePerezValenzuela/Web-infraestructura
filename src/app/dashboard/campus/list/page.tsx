@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import CampusForm from '@/features/campus/CampusForm';
 import { X } from 'lucide-react';
+import { set } from 'zod';
 
 const TAKE = 10;
 
@@ -25,55 +26,54 @@ export default function CampusListPage() {
   const [search, setSearch] = useState<string>('');
   const [open, setOpen] = useState(false);
 
-  async function fetchData() {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(TAKE),
-      ...(search.trim() ? { search: search.trim() } : {}),
-    });
-  }
-
   const query = useMemo(() => search.trim(), [search]);
+
+  async function fetchData(signal?: AbortSignal) {
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(TAKE),
+        ...(query ? { search: query } : {}),
+      });
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/campus?${params.toString()}`,
+        { signal }
+      );
+
+      if (!res.ok) {
+        console.error('Error cargando campus');
+        return;
+      }
+
+      const data = await res.json() as {
+        items: CampusRow[];
+        meta: { page: number; take: number; pages: number; total: number };
+      };
+
+      setItems(data.items);
+      setPage(data.meta.page);
+      setPages(data.meta.pages);
+    } catch (err) {
+      if(err instanceof DOMException && err.name === 'AbortError'){
+        return;
+      }
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
-
-    (async () => {
-      try {
-        const params = new URLSearchParams({
-          page: String(page),
-          limit: String(TAKE),
-          ...(query ? { search: query } : {}),
-        });
-
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/campus?${params.toString()}`,
-          { signal: controller.signal }
-        );
-
-        if (!res.ok) {
-          console.error('Error cargando campus');
-          return;
-        }
-
-        const data = await res.json() as {
-          items: CampusRow[];
-          meta: { page: number; take: number; pages: number; total: number };
-        }
-
-        setItems(data.items);
-        setPage(data.meta.page);
-        setPages(data.meta.pages);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') {
-          return;
-        }
-        console.error('Error cargando campus', err);
-      }
-    })();
-
+    void fetchData(controller.signal);
     return () => controller.abort();
   }, [page, query]);
+
+  function handleEdit(row: CampusRow) {
+    console.log('Editando', row.codigo);
+  }
+
+  async function handleDelete(row: CampusRow) {
+    console.log('Eliminando', row.codigo);
+  }
 
   return (
     <div className="space-y-4">
@@ -99,7 +99,7 @@ export default function CampusListPage() {
       </div>
 
       <DataTable
-        columns={campusColumns}
+        columns={campusColumns(handleEdit, handleDelete)}
         data={items}
         page={page}
         pages={pages}
