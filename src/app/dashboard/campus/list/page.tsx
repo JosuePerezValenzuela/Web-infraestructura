@@ -82,7 +82,7 @@ export default function CampusListPage() {
 
         <div className="flex gap-2 w-full sm:w-auto">
           <Input
-            placeholder="Buscar por nombre o direccion"
+            placeholder="Buscar por cod, nom o dir"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);

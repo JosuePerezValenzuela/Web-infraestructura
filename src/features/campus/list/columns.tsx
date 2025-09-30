@@ -37,5 +37,19 @@ export const campusColumns: ColumnDef<CampusRow>[] = [
     { accessorKey: 'activo', header: 'Estado', 
         cell: ({ getValue }) =>  (getValue<boolean>() ? 'Activo' : 'Inactivo')
     },
-    { accessorKey: 'creado_en', header: 'Creado en' },
+    { 
+        accessorKey: 'creado_en', 
+        header: 'Creado el',
+        accessorFn: (row) => row.creado_en,
+        cell: ({ row }) => {
+            const iso = row.original.creado_en as string;
+            const d = new Date(iso);
+            const texto = isNaN(d.getTime()) ? '-' : d.toLocaleString(
+                'es-BO', {
+                    day: '2-digit', month: '2-digit', year: 'numeric'
+                }
+            );
+            return texto;
+        }
+    },
 ];
