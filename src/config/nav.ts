@@ -36,10 +36,10 @@ export const NAV_GROUPS: NavGroup[] = [
     }
 ]
 
-export type NavGroupClasificatorsContent = { label: string; href: string }
-export type NavGroupClasificators = { label: string; icon?: LucideIcon; content: NavGroupClasificatorsContent[] }
+export type NavGroupWithContentIntern = { label: string; href: string }
+export type NavGroupWithContent = { label: string; icon?: LucideIcon; content: NavGroupWithContentIntern[] }
 
-export const NAV_GROUPS_CLASIFICATORS: NavGroupClasificators[] = [
+export const NAV_GROUPS_CLASIFICATORS: NavGroupWithContent[] = [
     {
         label: 'Clasificadores',
         icon: Shapes,
