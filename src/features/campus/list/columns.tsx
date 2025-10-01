@@ -26,21 +26,6 @@ export function campusColumns(
         { accessorKey: 'nombre', header: 'Nombre' },
         { accessorKey: 'direccion', header: 'Dirección' },
         {
-            id: 'ubicacion',
-            header: 'Ubicación',
-            accessorFn: (row) => `${row.lat}, ${row.lng}`,
-            cell: ({ row }) => {
-                const { lat, lng } = row.original;
-                const fmt = (n: number) =>
-                    typeof n === 'number' && Number.isFinite(n) ? n.toFixed(4) : '-';
-                return (
-                    <span className="font-mono">
-                        {fmt(lat)}, {fmt(lng)}
-                    </span>
-                );
-            },
-        },
-        {
             accessorKey: 'activo', header: 'Estado',
             cell: ({ getValue }) => (getValue<boolean>() ? 'Activo' : 'Inactivo')
         },

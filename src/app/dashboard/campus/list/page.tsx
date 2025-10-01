@@ -15,9 +15,8 @@ import {
 } from '@/components/ui/dialog';
 import CampusForm from '@/features/campus/CampusForm';
 import { X } from 'lucide-react';
-import { set } from 'zod';
 
-const TAKE = 10;
+const TAKE = 8;
 
 export default function CampusListPage() {
   const [items, setItems] = useState<CampusRow[]>([]);
