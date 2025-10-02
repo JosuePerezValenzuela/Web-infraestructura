@@ -5,7 +5,10 @@ import {
     ColumnDef,
     flexRender,
     getCoreRowModel,
-    useReactTable
+    getSortedRowModel,
+    useReactTable,
+    type VisibilityState,
+    type SortingState,
 } from '@tanstack/react-table';
 import {
     Table,
@@ -23,30 +26,39 @@ import {
     PaginationNext,
     PaginationPrevious
 } from '@/components/ui/pagination';
+import { DataTableViewOptions } from './data-table-view-options';
 
-type Props<TData> = {
-    columns: ColumnDef<TData, any>[];
+type Props<TData, TValue> = {
+    columns: ColumnDef<TData, TValue>[];
     data: TData[];
     page: number;
     pages: number;
     onPageChange: (nextPage: number) => void;
 }
 
-export function DataTable<TData>({
+export function DataTable<TData, TValue>({
     columns,
     data,
     page,
     pages,
     onPageChange
-}: Props<TData>) {
+}: Props<TData, TValue>) {
+    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+    const [sorting, setSorting] = React.useState<SortingState>([]);
+
     const table = useReactTable({
         data,
         columns,
+        state: { columnVisibility, sorting },
+        onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        onColumnVisibilityChange: setColumnVisibility,
     });
 
     return (
         <div className='space-y-3'>
+            <DataTableViewOptions table={table} />
             <div className='rounded-md border'>
                 <Table>
                     {/* Encabezado de la tabla*/}

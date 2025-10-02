@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DataTableColumnHeader } from '../../../components/data-table-column-header'
 
 export type CampusRow = {
     id: number;
@@ -22,16 +23,28 @@ export function campusColumns(
     onDelete: (row: CampusRow) => void
 ): ColumnDef<CampusRow>[] {
     return [
-        { accessorKey: 'codigo', header: 'Código' },
-        { accessorKey: 'nombre', header: 'Nombre' },
-        { accessorKey: 'direccion', header: 'Dirección' },
         {
-            accessorKey: 'activo', header: 'Estado',
+            accessorKey: 'codigo',
+            meta: { label: 'Codigo'},
+            header: ({ column }) => (<DataTableColumnHeader column={column} title='Codigo' />),
+            enableHiding: false
+        },
+        { 
+            accessorKey: 'nombre',
+            meta: { label: 'NombreP'},
+            header: ({ column }) => (<DataTableColumnHeader column={column} title='Nombre' />)
+        },
+        { 
+            accessorKey: 'direccion', 
+            header: 'Dirección' },
+        {
+            accessorKey: 'activo', 
+            header: 'Estado',
             cell: ({ getValue }) => (getValue<boolean>() ? 'Activo' : 'Inactivo')
         },
         {
             accessorKey: 'creado_en',
-            header: 'Creado el',
+            header: 'Creado',
             accessorFn: (row) => row.creado_en,
             cell: ({ row }) => {
                 const iso = row.original.creado_en as string;
