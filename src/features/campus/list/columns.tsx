@@ -31,20 +31,24 @@ export function campusColumns(
         },
         { 
             accessorKey: 'nombre',
-            meta: { label: 'NombreP'},
+            meta: { label: 'Nombre'},
             header: ({ column }) => (<DataTableColumnHeader column={column} title='Nombre' />)
         },
         { 
             accessorKey: 'direccion', 
-            header: 'Dirección' },
+            meta: { label: "Direccion"},
+            header: ({ column }) => (<DataTableColumnHeader column={column} title='Direccion' />) 
+        },
         {
-            accessorKey: 'activo', 
-            header: 'Estado',
+            accessorKey: 'activo',
+            meta: { label: "Estado"}, 
+            header: ({ column }) => (<DataTableColumnHeader column={column} title='Estado' />),
             cell: ({ getValue }) => (getValue<boolean>() ? 'Activo' : 'Inactivo')
         },
         {
             accessorKey: 'creado_en',
-            header: 'Creado',
+            meta: { label: "Creado"},
+            header: ({ column }) => (<DataTableColumnHeader column={column} title='Creado en' />),
             accessorFn: (row) => row.creado_en,
             cell: ({ row }) => {
                 const iso = row.original.creado_en as string;
