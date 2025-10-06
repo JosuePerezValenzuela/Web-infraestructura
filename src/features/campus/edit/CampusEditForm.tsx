@@ -77,7 +77,7 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
       setSubmitting(true);
 
       // Realizamos la peticion al backend usando apiFetch para centralizar el acceso HTTP.
-      await apiFetch("/campus", {
+      await apiFetch(`/campus/${campus.id}`, {
         method: 'PATCH',
         json: payload,
       });
@@ -169,6 +169,7 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
           name="activo"
           render={({ field }) => (
             <FormItem className="flex items-center gap-3 space-y-0">
+              <FormLabel>Estado del campus:</FormLabel>
               <FormControl>
                 <Checkbox
                   id="activo"

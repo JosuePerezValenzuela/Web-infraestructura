@@ -1,20 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { DataTable } from '@/components/data-table';
-import { campusColumns, type CampusRow } from '@/features/campus/list/columns';
-import { Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table";
+import { campusColumns, type CampusRow } from "@/features/campus/list/columns";
+import { Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogClose,
-} from '@/components/ui/dialog';
-import CampusForm from '@/features/campus/CampusForm';
-import { X } from 'lucide-react';
+} from "@/components/ui/dialog";
+import CampusForm from "@/features/campus/CampusForm";
+import CampusEditForm from "@/features/campus/edit/CampusEditForm";
+import { X } from "lucide-react";
 
 const TAKE = 8;
 
@@ -22,8 +23,10 @@ export default function CampusListPage() {
   const [items, setItems] = useState<CampusRow[]>([]);
   const [page, setPage] = useState<number>(1);
   const [pages, setPages] = useState<number>(1);
-  const [search, setSearch] = useState<string>('');
+  const [search, setSearch] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const [campusToEdit, setCampusToEdit] = useState<CampusRow | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const query = useMemo(() => search.trim(), [search]);
 
@@ -41,11 +44,11 @@ export default function CampusListPage() {
       );
 
       if (!res.ok) {
-        console.error('Error cargando campus');
+        console.error("Error cargando campus");
         return;
       }
 
-      const data = await res.json() as {
+      const data = (await res.json()) as {
         items: CampusRow[];
         meta: { page: number; take: number; pages: number; total: number };
       };
@@ -54,7 +57,7 @@ export default function CampusListPage() {
       setPage(data.meta.page);
       setPages(data.meta.pages);
     } catch (err) {
-      if(err instanceof DOMException && err.name === 'AbortError'){
+      if (err instanceof DOMException && err.name === "AbortError") {
         return;
       }
     }
@@ -67,11 +70,12 @@ export default function CampusListPage() {
   }, [page, query]);
 
   function handleEdit(row: CampusRow) {
-    console.log('Editando', row.codigo);
+    setCampusToEdit(row);
+    setEditOpen(true);
   }
 
   async function handleDelete(row: CampusRow) {
-    console.log('Eliminando', row.codigo);
+    console.log("Eliminando", row.codigo);
   }
 
   return (
@@ -121,12 +125,40 @@ export default function CampusListPage() {
           </DialogHeader>
 
           <CampusForm
-            submitLabel='Crear campus'
+            submitLabel="Crear campus"
             onSubmitSuccess={async () => {
               await fetchData();
               setOpen(false);
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para editar un campus */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] max-w-full overflow-auto pb-2">
+          <DialogHeader>
+            <DialogTitle>Editar campus</DialogTitle>
+            <DialogClose
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background 
+                   transition-opacity hover:opacity-100 focus:outline-none 
+                   focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Cerrar</span>
+            </DialogClose>
+          </DialogHeader>
+
+          {campusToEdit && (
+            <CampusEditForm
+              campus={campusToEdit}
+              onSubmitSuccess={async () => {
+                await fetchData();
+                setEditOpen(false);
+                setCampusToEdit(null);
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
