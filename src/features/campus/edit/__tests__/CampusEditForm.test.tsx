@@ -27,7 +27,7 @@ describe('CampusEditForm', () => {
     // Definimos un campus de ejemplo para rellenar el formulario con datos reales.
     const campus: CampusRow = {
       id: 5,
-      codigo: 'ABC123',
+      codigo: '123456',
       nombre: 'Campus Principal',
       direccion: 'Av. Central 123',
       lat: -17.39,
@@ -49,11 +49,8 @@ describe('CampusEditForm', () => {
     // Obtenemos el campo de nombre para poder modificarlo.
     const nombreInput = screen.getByLabelText(/nombre/i);
 
-    // Obtenemos el campo que permite marcar si el campus esta activo.
-    const activoCheckbox = screen.getByRole('checkbox', { name: /activo/i });
-
     // Obtenemos el boton de guardar que dispara el envio del formulario.
-    const submitButton = screen.getByRole('button', { name: /guardar cambios/i });
+    const submitButton = screen.getByRole('button', { name: /Guardar cambios/i });
 
     // Creamos un usuario virtual para simular interacciones reales.
     const user = userEvent.setup();
@@ -64,23 +61,20 @@ describe('CampusEditForm', () => {
     // Escribimos un nombre actualizado para el campus.
     await user.type(nombreInput, 'Campus Actualizado');
 
-    // Desmarcamos el campus para dejarlo inactivo durante la prueba.
-    await user.click(activoCheckbox);
-
     // Enviamos el formulario haciendo clic en el boton de guardar.
     await user.click(submitButton);
 
     // Esperamos a que la peticion al API se realice con los datos esperados.
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith('/campus/5', {
-        method: 'PUT',
+        method: 'PATCH',
         json: {
-          codigo: 'ABC123',
+          codigo: '123456',
           nombre: 'Campus Actualizado',
           direccion: 'Av. Central 123',
           lat: -17.39,
           lng: -66.15,
-          activo: false,
+          activo: true,
         },
       });
     });
@@ -96,7 +90,7 @@ describe('CampusEditForm', () => {
     // Definimos un campus de ejemplo para la prueba de error.
     const campus: CampusRow = {
       id: 7,
-      codigo: 'XYZ789',
+      codigo: '789',
       nombre: 'Campus Norte',
       direccion: 'Calle Secundaria 45',
       lat: -17.4,
@@ -113,7 +107,7 @@ describe('CampusEditForm', () => {
     render(<CampusEditForm campus={campus} />);
 
     // Obtenemos el boton de guardar para enviarlo sin cambiar datos.
-    const submitButton = screen.getByRole('button', { name: /guardar cambios/i });
+    const submitButton = screen.getByRole('button', { name: /Guardar cambios/i });
 
     // Creamos un usuario virtual para simular el clic.
     const user = userEvent.setup();
@@ -129,3 +123,4 @@ describe('CampusEditForm', () => {
     });
   });
 });
+

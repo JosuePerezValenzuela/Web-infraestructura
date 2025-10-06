@@ -135,7 +135,12 @@ export default function CampusListPage() {
       </Dialog>
 
       {/* Modal para editar un campus */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog open={editOpen} onOpenChange={(value) => {
+        setEditOpen(value);
+        if (!value) {
+          setCampusToEdit(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] max-w-full overflow-auto pb-2">
           <DialogHeader>
             <DialogTitle>Editar campus</DialogTitle>
@@ -164,3 +169,4 @@ export default function CampusListPage() {
     </div>
   );
 }
+

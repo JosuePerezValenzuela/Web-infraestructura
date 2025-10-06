@@ -205,3 +205,4 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
     </Form>
   );
 }
+
