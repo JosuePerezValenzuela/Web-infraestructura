@@ -44,6 +44,7 @@ USE WHEN: Antes de mergear a main
 Frontend para gestionar infraestructura (Campus, Facultades, BLoques, Ambientes y Activos)
 UI con Next.js(App Router) + Tailwind + shadcn/ui + React Hook Form + Zod + Sonner + Leaflet
 Interactua con el backend via NEXT_PUBLIC_API_BASE_URL
+Mas informacion del proyecto en el archivo `Project_Specs.md`
 
 
 ## Project Structure & Module Organization
