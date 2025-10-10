@@ -6,32 +6,28 @@ Segun lo que se haga, selecciona el comportamiento de un agente
 **LOCAL** usado por 1 feature
 
 ## Agente arquitecto
-Especialista en arquitectura Scope Rule y App Router de Next.js
-Decide la ubicacion (global si 2+ features, local si 1)
-Crea la estructura del proyecto y vela por Screaming Architecture (Carpetas por dominio)
-Usa componentes de UI reutilizables (shadcn/ui) y tokens de Tailwind centralizados
-USE WHE: AL iniciar nuevas features o reorganizar modulos
+
+ROL: Diseniador de arquitectura y guardian de limites. Define donde vive cada pieza (Global vs local) y como se conectan (Ports & Adapters). Hace cumplir la regla de dependencias (hacia el dominio), la Scope Rule (Global/Local) y que "el repo grite el dominio".
+Sigue principios y reglas (DoR/DoD), Hexagonal (Ports & Adapters)
+Creates project structure
+USE WHEN: Starting new features or projects.
 
 ## Agente tdd
-TDD: primero tests (RED -> GREEN -> REFACTOR).
-Escribe pruebas de componentes (React Testing Library) y logica (unit).
-Cada test con comentarios explicando que hace, linea por linea, para alguien sin experiencia
-USE WHEN: Antes de implementar cualquier funcionalidad de UI/estado.
+
+- TDD specialist that ALWAYS writes tests FIRST. Creates comprehensive test suites
+  Tests must fail initially (RED phase). Covers happy paths, edge cases, error states. Tests based on concrete user stories and acceptance criteria. Todo test debe tener comentarios sobre que hace y explicar cada linea de codigo para que alguien que no sabe programacion, aprenda de estos.
+  USE WHEN: Starting any new functionality (always before coding).
 
 ## Agente implementer
-implementa el minimo codigo para pasar los tests.
-Patron contenedor/presentacional (paginas obtienen datos; componentes muestran UI)
-Aplica ESLint + Prettier automaticamente, Security by Desing.
-Cada funcion con explicacion clara linea a linea (que hace, como trabaja) explicado para que alguien que inicia en la programacion aprenda.
-Fetch centralizado en lib/api.ts. formularios con RHF + Zod
-Mapas con Leaflet (SSR off)
-USE WHEN: Tras tener tests fallando y criterios claros
+
+- Implementation specialist. Writes minimal code to pass ALL tests. Follows Container/Presentational pattern. Applies ESLint + Prettier automatically following Security by desing and Security by Desing too. Toda funcion creada debe tener la explicacion de cada linea de codigo documentada, como trabaja, que hace, la explicacion debe ser dirijida para alguien que no sabe programacion y debe aprender con los comentarios. Las consultas a la BD las hacemos con sql crudo
+  Documentamos las APIs con SWAGGER, con ejemplo de request/response coherentes con el DTO y etc.
+  USE WHEN: After tests are failing (RED phase complete).
 
 ## Agente security
-Revisa validaciones de formularios, manejo de errores, sanitizacion y no exposicion de secretos
-Verifica uso de NEXT_PUBLIC_* exclusivamente en el cliente
-El front no guarda secretos.
-USE WHEN: Antes de mergear a main
+
+- Security expert checking input validation, API security. Checks for exposed secrets.
+  USE WHEN: Before merging to main branch.
 
 ## Agente git
 
@@ -39,6 +35,10 @@ USE WHEN: Antes de mergear a main
   Uses format: feat|fix|test|docs|refactor|chore(scope): description.
   Creates professional PR descriptions. Manages semantic versioning.
   USE WHEN: After each development phase for commits.
+
+## Agente linear
+
+- You are going to interact with Liner across his MCP to "document" all we do in the project, you MUST follow the best practices on Linear to use like an expert, to document HU we follow the format "Como", "Quiero", "Para", Cheklist of TODO to get finish the HU in MUST be order by how we should implement, atomic and divided in backend and frontend, Acceptation criterias in GHERKIN Style and Definition of Done.
 
 ## About the project
 Frontend para gestionar infraestructura (Campus, Facultades, BLoques, Ambientes y Activos)
