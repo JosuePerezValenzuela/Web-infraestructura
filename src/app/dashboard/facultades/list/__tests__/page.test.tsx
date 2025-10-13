@@ -18,11 +18,15 @@ const campusResponse = {
       id: 4,
       codigo: "CMP-001",
       nombre: "Campus Central",
+      lat: -17.38,
+      lng: -66.16,
     },
     {
       id: 6,
       codigo: "CMP-002",
       nombre: "Campus Norte",
+      lat: -17.33,
+      lng: -66.12,
     },
   ],
   // meta describe la paginación del endpoint de campus, aunque aquí solo usamos los elementos.
@@ -278,8 +282,8 @@ describe("FacultyListPage interactions", () => {
         nombre: "Facultad de Ingeniería",
         nombre_corto: "FI",
         campus_id: 4,
-        lat: -17.3939,
-        lng: -66.157,
+        lat: -17.38,
+        lng: -66.16,
       });
     });
 
