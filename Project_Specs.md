@@ -593,15 +593,13 @@ CONSTRAINT fk_facultades_campus FOREIGN KEY ( campus_id ) REFERENCES infraestruc
 {
 "items": [
 {
+"id": 1,
 "codigo": "12345",
 "nombre": "Facultad de cieencias y tecnologia",
 "nombre_corto": "FCyT",
-"lat": -17.3939,
-"lng": -66.15,
-"campus_id": 1,
+"campus_nombre": "Campus Central",
 "activo": true,
-"creando_en": "2025-09-24T15:20:30.767Z",
-"actualizado_en": "2025-09-24T15:20:30.767Z"
+"creando_en": "2025-09-24T15:20:30.767Z"
 }
 ],
 "meta": {
