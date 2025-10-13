@@ -7,6 +7,9 @@ import { vi } from "vitest";
 // Importamos la página que vamos a probar; aún no existe la implementación real, por eso las pruebas fallarán primero.
 import FacultyListPage from "../page";
 
+// Declaramos una variable para reutilizar el espía de fetch en cada prueba.
+let fetchSpy: ReturnType<typeof vi.spyOn>;
+
 // Agrupamos las pruebas relacionadas con la página de facultades para mantenerlas organizadas.
 describe("FacultyListPage interactions", () => {
   // Definimos una respuesta base que el backend devolvería al listar facultades.
@@ -46,9 +49,14 @@ describe("FacultyListPage interactions", () => {
   // Antes de cada prueba configuramos un espía sobre fetch para controlar las respuestas HTTP.
   beforeEach(() => {
     // Creamos un mock que siempre devuelve una respuesta exitosa con el JSON anterior.
-    vi.spyOn(global, "fetch").mockImplementation(async () => ({
+    fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async () => ({
       ok: true,
       json: async () => facultyResponse,
+      headers: {
+        // Usamos un objeto mínimo con un método get para simular los encabezados HTTP.
+        get: (name: string) =>
+          name.toLowerCase() === "content-type" ? "application/json" : null,
+      },
     }) as unknown as Response);
   });
 
@@ -77,9 +85,6 @@ describe("FacultyListPage interactions", () => {
 
   // Segunda prueba: cambiar la búsqueda debe reiniciar la paginación a la primera página.
   it("resets the current page to 1 when the search query changes", async () => {
-    // Necesitamos acceso directo al mock de fetch para inspeccionar las URLs solicitadas.
-    const fetchSpy = vi.spyOn(global, "fetch");
-
     // Volvemos a renderizar la página para iniciar el escenario.
     render(<FacultyListPage />);
 
@@ -108,7 +113,7 @@ describe("FacultyListPage interactions", () => {
 
     // Ubicamos el campo de búsqueda que filtra la tabla.
     const searchBox = screen.getByPlaceholderText(
-      "Buscar por código, nombre o campus"
+      "Buscar por cod, nom o campus"
     );
 
     // Simulamos que la persona escribe un término nuevo.
