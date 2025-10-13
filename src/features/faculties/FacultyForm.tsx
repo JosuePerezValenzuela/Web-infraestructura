@@ -25,6 +25,8 @@ type CampusOption = {
   id: number;
   nombre: string;
   codigo: string;
+  lat: number | null;
+  lng: number | null;
 };
 
 type CampusListResponse = {
@@ -87,7 +89,13 @@ export default function FacultyForm({
           "/campus?page=1&limit=100",
           { signal: controller.signal }
         );
-        setCampusOptions(data.items);
+        setCampusOptions(
+          data.items.map((item) => ({
+            ...item,
+            lat: typeof item.lat === "number" ? item.lat : null,
+            lng: typeof item.lng === "number" ? item.lng : null,
+          }))
+        );
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
@@ -295,6 +303,17 @@ export default function FacultyForm({
                                 className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                                 onClick={() => {
                                   field.onChange(option.id);
+                                  if (
+                                    typeof option.lat === "number" &&
+                                    typeof option.lng === "number"
+                                  ) {
+                                    form.setValue("lat", option.lat, {
+                                      shouldValidate: true,
+                                    });
+                                    form.setValue("lng", option.lng, {
+                                      shouldValidate: true,
+                                    });
+                                  }
                                   setCampusDropdownOpen(false);
                                 }}
                               >
