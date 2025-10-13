@@ -10,6 +10,30 @@ import FacultyListPage from "../page";
 // Declaramos una variable para reutilizar el espía de fetch en cada prueba.
 let fetchSpy: ReturnType<typeof vi.spyOn>;
 
+// Declaramos una respuesta base para el listado de campus que el formulario necesita para popular el selector.
+const campusResponse = {
+  // items contiene cada campus con su identificador y nombre legible.
+  items: [
+    {
+      id: 4,
+      codigo: "CMP-001",
+      nombre: "Campus Central",
+    },
+    {
+      id: 6,
+      codigo: "CMP-002",
+      nombre: "Campus Norte",
+    },
+  ],
+  // meta describe la paginación del endpoint de campus, aunque aquí solo usamos los elementos.
+  meta: {
+    page: 1,
+    take: 20,
+    pages: 1,
+    total: 2,
+  },
+};
+
 // Agrupamos las pruebas relacionadas con la página de facultades para mantenerlas organizadas.
 describe("FacultyListPage interactions", () => {
   // Definimos una respuesta base que el backend devolvería al listar facultades.
@@ -49,15 +73,57 @@ describe("FacultyListPage interactions", () => {
   // Antes de cada prueba configuramos un espía sobre fetch para controlar las respuestas HTTP.
   beforeEach(() => {
     // Creamos un mock que siempre devuelve una respuesta exitosa con el JSON anterior.
-    fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async () => ({
-      ok: true,
-      json: async () => facultyResponse,
-      headers: {
-        // Usamos un objeto mínimo con un método get para simular los encabezados HTTP.
-        get: (name: string) =>
-          name.toLowerCase() === "content-type" ? "application/json" : null,
-      },
-    }) as unknown as Response);
+    fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        // Convertimos el argumento input en una cadena para comparar rutas fácilmente.
+        const url = typeof input === "string" ? input : input.toString();
+
+        // Esta rama simula el GET inicial de la tabla de facultades.
+        if (url.includes("/facultades") && (!init || !init.method || init.method === "GET")) {
+          return {
+            ok: true,
+            json: async () => facultyResponse,
+            headers: {
+              get: (name: string) =>
+                name.toLowerCase() === "content-type" ? "application/json" : null,
+            },
+          } as unknown as Response;
+        }
+
+        // Esta rama simula la petición para obtener el catálogo de campus que alimenta el selector.
+        if (url.includes("/campus") && (!init || !init.method || init.method === "GET")) {
+          return {
+            ok: true,
+            json: async () => campusResponse,
+            headers: {
+              get: (name: string) =>
+                name.toLowerCase() === "content-type" ? "application/json" : null,
+            },
+          } as unknown as Response;
+        }
+
+        // Esta rama captura la creación de una nueva facultad.
+        if (url.includes("/facultades") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => ({ id: 42 }),
+            headers: {
+              get: (name: string) =>
+                name.toLowerCase() === "content-type" ? "application/json" : null,
+            },
+          } as unknown as Response;
+        }
+
+        // Cualquier otra llamada devuelve una respuesta vacía exitosa.
+        return {
+          ok: true,
+          json: async () => ({}),
+          headers: {
+            get: () => null,
+          },
+        } as unknown as Response;
+      });
   });
 
   // Después de cada prueba restauramos el comportamiento real de fetch para no afectar a otras suites.
@@ -148,5 +214,99 @@ describe("FacultyListPage interactions", () => {
     expect(
       await screen.findByRole("heading", { name: /registrar nueva facultad/i })
     ).toBeInTheDocument();
+  });
+
+  // Cuarta prueba: validamos que el formulario permita crear una facultad completa incluyendo la selección de campus.
+  it("submits the create faculty form with the selected campus", async () => {
+    // Configuramos al usuario simulado para escribir y hacer clic igual que una persona.
+    const user = userEvent.setup();
+
+    // Renderizamos la página de listado para interactuar con el formulario de creación.
+    render(<FacultyListPage />);
+
+    // Esperamos a que la tabla se cargue para asegurar que las peticiones iniciales terminaron.
+    await screen.findByText("Facultad de Ciencias y Tecnología");
+
+    // Abrimos el diálogo de creación haciendo clic en el botón principal.
+    const createButton = screen.getByRole("button", { name: /nueva facultad/i });
+    await user.click(createButton);
+
+    // Confirmamos que el encabezado del formulario esté visible para continuar con los campos.
+    await screen.findByRole("heading", { name: /registrar nueva facultad/i });
+
+    // Llenamos el campo de código con un valor de ejemplo.
+    await user.type(screen.getByLabelText(/código de la facultad/i), "FAC-123");
+
+    // Llenamos el nombre oficial de la facultad.
+    await user.type(
+      screen.getByLabelText(/nombre de la facultad/i),
+      "Facultad de Ingeniería"
+    );
+
+    // Llenamos el nombre corto opcional.
+    await user.type(
+      screen.getByLabelText(/nombre corto/i),
+      "FI"
+    );
+
+    // Registramos la dirección física requerida.
+    await user.type(
+      screen.getByLabelText(/dirección/i),
+      "Av. Universitaria 100"
+    );
+
+    // Abrimos el selector de campus para escoger la relación adecuada.
+    await user.click(screen.getByRole("button", { name: /seleccionar campus/i }));
+
+    // Escribimos un texto de búsqueda para filtrar los campus disponibles.
+    const campusSearchInput = screen.getByPlaceholderText(/buscar campus/i);
+    await user.type(campusSearchInput, "central");
+
+    // Elegimos la opción filtrada que coincide con el término introducido.
+    await user.click(
+      await screen.findByRole("option", { name: /campus central/i })
+    );
+
+    // Llenamos la latitud obligatoria.
+    await user.type(
+      screen.getByLabelText(/latitud/i),
+      "-17.38"
+    );
+
+    // Llenamos la longitud obligatoria.
+    await user.type(
+      screen.getByLabelText(/longitud/i),
+      "-66.16"
+    );
+
+    // Enviamos el formulario haciendo clic en el botón principal.
+    await user.click(screen.getByRole("button", { name: /crear facultad/i }));
+
+    // Verificamos que se haya realizado la petición POST con el payload correcto.
+    await waitFor(() => {
+      const postCall = fetchSpy.mock.calls.find(
+        ([input, init]) =>
+          String(input).includes("/facultades") && init?.method === "POST"
+      );
+      expect(postCall).toBeTruthy();
+      const [, init] = postCall!;
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      expect(body).toMatchObject({
+        codigo: "FAC-123",
+        nombre: "Facultad de Ingeniería",
+        nombre_corto: "FI",
+        direccion: "Av. Universitaria 100",
+        campus_id: 4,
+        lat: -17.38,
+        lng: -66.16,
+      });
+    });
+
+    // Finalmente comprobamos que el diálogo se haya cerrado después del envío exitoso.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: /registrar nueva facultad/i })
+      ).not.toBeInTheDocument();
+    });
   });
 });
