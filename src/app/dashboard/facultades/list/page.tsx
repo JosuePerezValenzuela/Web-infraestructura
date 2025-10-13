@@ -8,6 +8,7 @@ import {
   facultyColumns,
   type FacultyRow,
 } from "@/features/faculties/list/columns";
+import FacultyForm from "@/features/faculties/FacultyForm";
 import { Plus, X } from "lucide-react";
 import {
   Dialog,
@@ -38,34 +39,35 @@ export default function FacultyListPage() {
   const [search, setSearch] = useState<string>("");
   const [openCreate, setOpenCreate] = useState<boolean>(false);
   const [openEdit, setOpenEdit] = useState<boolean>(false);
-  const [selectedFaculty, setSelectedFaculty] = useState<FacultyRow | null>(
-    null
-  );
+  const [selectedFaculty, setSelectedFaculty] = useState<FacultyRow | null>(null);
 
   const query = useMemo(() => search.trim(), [search]);
 
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(TAKE),
-      ...(query ? { search: query } : {}),
-    });
+  const fetchData = useCallback(
+    async (signal?: AbortSignal) => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(TAKE),
+        ...(query ? { search: query } : {}),
+      });
 
-    try {
-      const data = await apiFetch<FacultyListResponse>(
-        `/facultades?${params.toString()}`,
-        { signal }
-      );
+      try {
+        const data = await apiFetch<FacultyListResponse>(
+          `/facultades?${params.toString()}`,
+          { signal }
+        );
 
-      setItems(data.items);
-      setPages(data.meta.pages > 0 ? data.meta.pages : 1);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        return;
+        setItems(data.items);
+        setPages(data.meta.pages > 0 ? data.meta.pages : 1);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        console.error("Error al cargar facultades", error);
       }
-      console.error("Error al cargar facultades", error);
-    }
-  }, [page, query]);
+    },
+    [page, query]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -121,7 +123,7 @@ export default function FacultyListPage() {
           <DialogHeader>
             <DialogTitle>Registrar nueva facultad</DialogTitle>
             <DialogDescription>
-              Tuki.
+              Completa los datos necesarios para registrar la facultad.
             </DialogDescription>
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <X className="h-4 w-4" />
@@ -129,9 +131,14 @@ export default function FacultyListPage() {
             </DialogClose>
           </DialogHeader>
 
-          <p className="text-sm text-muted-foreground">
-            Sin implementar aun.
-          </p>
+          <FacultyForm
+            submitLabel="Crear facultad"
+            onSubmitSuccess={async () => {
+              setPage(1);
+              await fetchData();
+              setOpenCreate(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
 
@@ -148,8 +155,7 @@ export default function FacultyListPage() {
           <DialogHeader>
             <DialogTitle>Editar facultad</DialogTitle>
             <DialogDescription>
-              Este formulario permitirá actualizar los datos de la facultad
-              seleccionada.
+              Este formulario permitira actualizar los datos de la facultad seleccionada.
             </DialogDescription>
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <X className="h-4 w-4" />
@@ -160,7 +166,7 @@ export default function FacultyListPage() {
           {selectedFaculty ? (
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                Código seleccionado:{" "}
+                Codigo seleccionado:{" "}
                 <span className="font-semibold">{selectedFaculty.codigo}</span>
               </p>
               <p>
@@ -168,8 +174,7 @@ export default function FacultyListPage() {
                 <span className="font-semibold">{selectedFaculty.nombre}</span>
               </p>
               <p>
-                Este diálogo se completará cuando el flujo de edición esté
-                disponible.
+                Este dialogo se completara cuando el flujo de edicion este disponible.
               </p>
             </div>
           ) : null}
