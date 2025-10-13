@@ -249,12 +249,6 @@ describe("FacultyListPage interactions", () => {
       "FI"
     );
 
-    // Registramos la dirección física requerida.
-    await user.type(
-      screen.getByLabelText(/dirección/i),
-      "Av. Universitaria 100"
-    );
-
     // Abrimos el selector de campus para escoger la relación adecuada.
     await user.click(screen.getByRole("button", { name: /seleccionar campus/i }));
 
@@ -265,18 +259,6 @@ describe("FacultyListPage interactions", () => {
     // Elegimos la opción filtrada que coincide con el término introducido.
     await user.click(
       await screen.findByRole("option", { name: /campus central/i })
-    );
-
-    // Llenamos la latitud obligatoria.
-    await user.type(
-      screen.getByLabelText(/latitud/i),
-      "-17.38"
-    );
-
-    // Llenamos la longitud obligatoria.
-    await user.type(
-      screen.getByLabelText(/longitud/i),
-      "-66.16"
     );
 
     // Enviamos el formulario haciendo clic en el botón principal.
@@ -295,10 +277,9 @@ describe("FacultyListPage interactions", () => {
         codigo: "FAC-123",
         nombre: "Facultad de Ingeniería",
         nombre_corto: "FI",
-        direccion: "Av. Universitaria 100",
         campus_id: 4,
-        lat: -17.38,
-        lng: -66.16,
+        lat: -17.3939,
+        lng: -66.157,
       });
     });
 
