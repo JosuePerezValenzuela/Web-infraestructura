@@ -12,10 +12,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogClose,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import CampusForm from "@/features/campus/CampusForm";
 import CampusEditForm from "@/features/campus/edit/CampusEditForm";
 import { X } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 const TAKE = 8;
 
@@ -27,6 +31,9 @@ export default function CampusListPage() {
   const [open, setOpen] = useState(false);
   const [campusToEdit, setCampusToEdit] = useState<CampusRow | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [campusToDelete, setCampusToDelete] = useState<CampusRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const query = useMemo(() => search.trim(), [search]);
 
@@ -75,7 +82,43 @@ export default function CampusListPage() {
   }
 
   async function handleDelete(row: CampusRow) {
-    console.log("Eliminando", row.codigo);
+    setCampusToDelete(row);
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!campusToDelete) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+
+      await apiFetch(`/campus/${campusToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      toast.success("Campus eliminado", {
+        description: "El registro se elimino correctamente.",
+      });
+
+      // Refresca la tabla de la vista inicial
+      await fetchData();
+
+      setDeleteOpen(false);
+
+      setCampusToDelete(null);
+    } catch (error: any) {
+      const description = Array.isArray(error?.details)
+        ? error.details.join("\n")
+        : error?.message ?? "Error desconocido.";
+
+      toast.error("No se pudo eliminar el campus", {
+        description,
+      });
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -135,6 +178,7 @@ export default function CampusListPage() {
       </Dialog>
 
       {/* Modal para editar un campus */}
+
       <Dialog open={editOpen} onOpenChange={(value) => {
         setEditOpen(value);
         if (!value) {
@@ -164,6 +208,52 @@ export default function CampusListPage() {
               }}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialogo para eliminar un campus */}
+      
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(value) => {
+          setDeleteOpen(value);
+          if (!value) {
+            setCampusToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-full overflow-auto pb-2 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Eliminar campus</DialogTitle>
+            <DialogDescription>
+              Esta accion eliminara el campus y todos sus infraestructuras asociadas. Esta accion no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>Por seguridad, confirma que deseas eliminar este registro.</p>
+            {campusToDelete ? (
+              <p>
+                Campus seleccionado:{" "}
+                <span className="font-semibold">{campusToDelete.nombre}</span>
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={deleting}>
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
