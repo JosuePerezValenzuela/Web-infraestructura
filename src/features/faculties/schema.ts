@@ -1,40 +1,50 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
-// Utilidad para convertir cadenas provenientes de inputs numéricos a números reales.
+// Utilidad para transformar cadenas provenientes de inputs numÃ©ricos en nÃºmeros reales.
 const numberFromInput = z
   .coerce
   .number()
-  .refine(Number.isFinite, { message: "Debe ser numérico" });
+  .refine(Number.isFinite, { message: "Debe ser numerico" });
 
-// Esquema de validación para crear una facultad, alineado con HU 5.
-export const facultyCreateSchema = z.object({
+// Esquema base compartido entre creaciÃ³n y ediciÃ³n de facultades.
+const facultyBaseSchema = z.object({
   codigo: z
-    .string({ error: "Ingrese el código de la facultad" })
+    .string({ error: "Ingrese el codigo de la facultad" })
     .trim()
-    .min(1, { message: "Ingrese el código de la facultad" })
-    .max(16, { message: "Máximo 16 caracteres" }),
+    .min(1, { message: "Ingrese el codigo de la facultad" })
+    .max(16, { message: "Maximo 16 caracteres" }),
   nombre: z
     .string({ error: "Ingrese el nombre de la facultad" })
     .trim()
     .min(1, { message: "Ingrese el nombre de la facultad" })
-    .max(128, { message: "Máximo 128 caracteres" }),
+    .max(128, { message: "Maximo 128 caracteres" }),
   nombre_corto: z
     .string({ error: "El nombre corto debe ser texto" })
     .trim()
-    .max(16, { message: "Máximo 16 caracteres" })
+    .max(16, { message: "Maximo 16 caracteres" })
     .optional()
     .transform((value) => (value && value.length > 0 ? value : undefined)),
   campus_id: z
     .coerce
-    .number({ error: "Seleccione un campus válido" })
-    .int({ message: "Seleccione un campus válido" })
-    .min(1, { message: "Seleccione un campus válido" }),
+    .number({ error: "Seleccione un campus valido" })
+    .int({ message: "Seleccione un campus valido" })
+    .min(1, { message: "Seleccione un campus valido" }),
   lat: numberFromInput
-    .min(-90, { message: "Latitud inválida" })
-    .max(90, { message: "Latitud inválida" }),
+    .min(-90, { message: "Latitud invalida" })
+    .max(90, { message: "Latitud invalida" }),
   lng: numberFromInput
-    .min(-180, { message: "Longitud inválida" })
-    .max(180, { message: "Longitud inválida" }),
+    .min(-180, { message: "Longitud invalida" })
+    .max(180, { message: "Longitud invalida" }),
+});
+
+// Esquema de validaciÃ³n para crear una facultad, alineado con la HU 5.
+export const facultyCreateSchema = facultyBaseSchema;
+
+// Esquema de validaciÃ³n para actualizar una facultad, alineado con la HU 7.
+export const facultyUpdateSchema = facultyBaseSchema.extend({
+  activo: z.boolean({ error: "Indique si la facultad esta activa" }),
 });
 
 export type FacultyCreateInput = z.output<typeof facultyCreateSchema>;
+export type FacultyUpdateInput = z.output<typeof facultyUpdateSchema>;
+
