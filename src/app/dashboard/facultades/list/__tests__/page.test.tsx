@@ -1,14 +1,29 @@
-// Importamos las utilidades de pruebas para renderizar componentes y consultar la pantalla.
+﻿// Importamos las utilidades de pruebas para renderizar componentes y consultar la pantalla.
 import { render, screen, waitFor } from "@testing-library/react";
 // Importamos userEvent para simular acciones humanas como clics o tipeos.
 import userEvent from "@testing-library/user-event";
 // Importamos vi desde Vitest para crear dobles (mocks) de funciones globales como fetch.
 import { vi } from "vitest";
-// Importamos la página que vamos a probar; aún no existe la implementación real, por eso las pruebas fallarán primero.
+// Importamos toast para validar los mensajes mostrados en la interfaz.
+import { toast } from "sonner";
+// Importamos la pÃ¡gina que vamos a probar; las pruebas seguirÃ¡n fallando hasta implementar la ediciÃ³n real.
 import FacultyListPage from "../page";
 
-// Declaramos una variable para reutilizar el espía de fetch en cada prueba.
+// Reemplazamos el mÃ³dulo sonner para poder espiar los mensajes sin mostrar UI real.
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+// Declaramos una variable para reutilizar el espÃ­a de fetch en cada prueba.
 let fetchSpy: ReturnType<typeof vi.spyOn>;
+// Guardamos la implementaciÃ³n por defecto para poder reutilizarla en pruebas que cambien el comportamiento.
+let defaultFetchImplementation: (
+  input: RequestInfo | URL,
+  init?: RequestInit
+) => Promise<Response>;
 
 // Declaramos una respuesta base para el listado de campus que el formulario necesita para popular el selector.
 const campusResponse = {
@@ -29,7 +44,7 @@ const campusResponse = {
       lng: -66.12,
     },
   ],
-  // meta describe la paginación del endpoint de campus, aunque aquí solo usamos los elementos.
+  // meta describe la paginaciÃ³n del endpoint de campus, aunque aquÃ­ solo usamos los elementos.
   meta: {
     page: 1,
     take: 20,
@@ -38,110 +53,131 @@ const campusResponse = {
   },
 };
 
-// Agrupamos las pruebas relacionadas con la página de facultades para mantenerlas organizadas.
+// Agrupamos las pruebas relacionadas con la pÃ¡gina de facultades para mantenerlas organizadas.
 describe("FacultyListPage interactions", () => {
-  // Definimos una respuesta base que el backend devolvería al listar facultades.
+  // Definimos una respuesta base que el backend devolverÃ­a al listar facultades.
   const facultyResponse = {
     // La clave items contiene el arreglo de filas que la tabla debe mostrar.
     items: [
       {
-        // id interno que NO debe aparecer en la tabla, pero sí está disponible en la respuesta.
+        // id interno que NO debe aparecer en la tabla, pero sÃ­ estÃ¡ disponible en la respuesta.
         id: 7,
-        // código único de la facultad que sí debe mostrarse.
+        // cÃ³digo Ãºnico de la facultad que sÃ­ debe mostrarse.
         codigo: "FAC-001",
         // nombre completo de la facultad que debe ser visible.
-        nombre: "Facultad de Ciencias y Tecnología",
-        // nombre corto que también debe aparecer como columna.
+        nombre: "Facultad de Ciencias y Tecnologia",
+        // nombre corto que tambiÃ©n debe aparecer como columna.
         nombre_corto: "FCyT",
         // nombre del campus al que pertenece; reemplaza al campus_id en la tabla.
         campus_nombre: "Campus Central",
-        // indicador de estado; se mostrará como texto "Activo" o "Inactivo".
+        // indicador de estado; se mostrarÃ¡ como texto "Activo" o "Inactivo".
         activo: true,
-        // fecha de creación que la tabla debe formatear.
+        // fecha de creaciÃ³n que la tabla debe formatear.
         creado_en: "2025-01-15T10:30:00Z",
+        // coordenadas y campus_id se incluyen para precargar el formulario de ediciÃ³n.
+        lat: -17.38,
+        lng: -66.16,
+        campus_id: 4,
       },
     ],
-    // Meta describe la paginación que acompaña a los datos.
+    // Meta describe la paginaciÃ³n que acompaÃ±a a los datos.
     meta: {
-      // Página actual entregada por el backend.
+      // PÃ¡gina actual entregada por el backend.
       page: 1,
-      // Cantidad de elementos por página.
+      // Cantidad de elementos por pÃ¡gina.
       take: 8,
-      // Total de páginas disponibles; usamos 3 para poder probar el cambio de página.
+      // Total de pÃ¡ginas disponibles; usamos 3 para poder probar el cambio de pÃ¡gina.
       pages: 3,
       // Total de elementos existentes en la base.
       total: 12,
     },
   };
 
-  // Antes de cada prueba configuramos un espía sobre fetch para controlar las respuestas HTTP.
+  // Antes de cada prueba configuramos un espÃ­a sobre fetch para controlar las respuestas HTTP.
   beforeEach(() => {
+    // Definimos un comportamiento base que responde segÃºn el mÃ©todo HTTP y la ruta invocada.
+    defaultFetchImplementation = async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+
+      // Esta rama simula el GET inicial de la tabla de facultades.
+      if (url.includes("/facultades") && (!init || !init.method || init.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => facultyResponse,
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "content-type" ? "application/json" : null,
+          },
+        } as unknown as Response;
+      }
+
+      // Esta rama simula la peticiÃ³n para obtener el catÃ¡logo de campus que alimenta el selector.
+      if (url.includes("/campus") && (!init || !init.method || init.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => campusResponse,
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "content-type" ? "application/json" : null,
+          },
+        } as unknown as Response;
+      }
+
+      // Esta rama captura la creaciÃ³n de una nueva facultad.
+      if (url.includes("/facultades") && init?.method === "POST") {
+        return {
+          ok: true,
+          json: async () => ({ id: 42 }),
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "content-type" ? "application/json" : null,
+          },
+        } as unknown as Response;
+      }
+
+      // Esta rama responde al flujo de ediciÃ³n exitoso.
+      if (url.includes("/facultades") && init?.method === "PATCH") {
+        return {
+          ok: true,
+          json: async () => ({ id: 7 }),
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "content-type" ? "application/json" : null,
+          },
+        } as unknown as Response;
+      }
+
+      // Cualquier otra llamada devuelve una respuesta vacÃ­a exitosa.
+      return {
+        ok: true,
+        json: async () => ({}),
+        headers: {
+          get: () => null,
+        },
+      } as unknown as Response;
+    };
+
     // Creamos un mock que siempre devuelve una respuesta exitosa con el JSON anterior.
     fetchSpy = vi
       .spyOn(global, "fetch")
-      .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-        // Convertimos el argumento input en una cadena para comparar rutas fácilmente.
-        const url = typeof input === "string" ? input : input.toString();
-
-        // Esta rama simula el GET inicial de la tabla de facultades.
-        if (url.includes("/facultades") && (!init || !init.method || init.method === "GET")) {
-          return {
-            ok: true,
-            json: async () => facultyResponse,
-            headers: {
-              get: (name: string) =>
-                name.toLowerCase() === "content-type" ? "application/json" : null,
-            },
-          } as unknown as Response;
-        }
-
-        // Esta rama simula la petición para obtener el catálogo de campus que alimenta el selector.
-        if (url.includes("/campus") && (!init || !init.method || init.method === "GET")) {
-          return {
-            ok: true,
-            json: async () => campusResponse,
-            headers: {
-              get: (name: string) =>
-                name.toLowerCase() === "content-type" ? "application/json" : null,
-            },
-          } as unknown as Response;
-        }
-
-        // Esta rama captura la creación de una nueva facultad.
-        if (url.includes("/facultades") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ id: 42 }),
-            headers: {
-              get: (name: string) =>
-                name.toLowerCase() === "content-type" ? "application/json" : null,
-            },
-          } as unknown as Response;
-        }
-
-        // Cualquier otra llamada devuelve una respuesta vacía exitosa.
-        return {
-          ok: true,
-          json: async () => ({}),
-          headers: {
-            get: () => null,
-          },
-        } as unknown as Response;
-      });
+      .mockImplementation(defaultFetchImplementation);
   });
 
-  // Después de cada prueba restauramos el comportamiento real de fetch para no afectar a otras suites.
+  // DespuÃ©s de cada prueba restauramos el comportamiento real de fetch y limpiamos los contadores.
   afterEach(() => {
+    // Limpiamos los contadores de llamadas de todos los dobles usados en el escenario.
+    vi.clearAllMocks();
+    // Restauramos la implementaciÃ³n original de fetch despuÃ©s de cada prueba.
     vi.restoreAllMocks();
   });
 
-  // Primera prueba: la tabla debe mostrar los datos básicos de una facultad y ocultar campos técnicos.
+  // Primera prueba: la tabla debe mostrar los datos bÃ¡sicos de una facultad y ocultar campos tÃ©cnicos.
   it("renders faculty rows showing the campus name instead of raw identifiers", async () => {
-    // Renderizamos la página completa como lo haría el navegador.
+    // Renderizamos la pÃ¡gina completa como lo harÃ­a el navegador.
     render(<FacultyListPage />);
 
-    // Esperamos a que aparezca el nombre de la facultad, lo que indica que la tabla se llenó.
-    await screen.findByText("Facultad de Ciencias y Tecnología");
+    // Esperamos a que aparezca el nombre de la facultad, lo que indica que la tabla se llenÃ³.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
 
     // Verificamos que el nombre del campus sea visible en la misma fila.
     expect(screen.getByText("Campus Central")).toBeInTheDocument();
@@ -153,43 +189,43 @@ describe("FacultyListPage interactions", () => {
     expect(screen.queryByText("7")).not.toBeInTheDocument();
   });
 
-  // Segunda prueba: cambiar la búsqueda debe reiniciar la paginación a la primera página.
+  // Segunda prueba: cambiar la bÃºsqueda debe reiniciar la paginaciÃ³n a la primera pÃ¡gina.
   it("resets the current page to 1 when the search query changes", async () => {
-    // Volvemos a renderizar la página para iniciar el escenario.
+    // Volvemos a renderizar la pÃ¡gina para iniciar el escenario.
     render(<FacultyListPage />);
 
-    // Esperamos a que cargue la primera tanda de datos (página 1).
-    await screen.findByText("Facultad de Ciencias y Tecnología");
+    // Esperamos a que cargue la primera tanda de datos (pÃ¡gina 1).
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
 
-    // Buscamos el botón que avanza a la siguiente página.
+    // Buscamos el botÃ³n que avanza a la siguiente pÃ¡gina.
     const nextPageButton = screen.getByRole("button", { name: /next/i });
 
-    // Simulamos que la persona hace clic para ir a la página 2.
+    // Simulamos que la persona hace clic para ir a la pÃ¡gina 2.
     await userEvent.click(nextPageButton);
 
-    // Esperamos hasta confirmar que se haya hecho una nueva petición con page=2.
+    // Esperamos hasta confirmar que se haya hecho una nueva peticiÃ³n con page=2.
     await waitFor(() => {
-      // Tomamos la última URL solicitada y revisamos sus parámetros.
+      // Tomamos la Ãºltima URL solicitada y revisamos sus parÃ¡metros.
       const lastCall = fetchSpy.mock.calls.at(-1);
       // Si no hubo ninguna llamada, fallamos inmediatamente para evitar falsos positivos.
       expect(lastCall).toBeTruthy();
       // Extraemos el primer argumento (la URL) de la llamada.
       const requestedUrl = String(lastCall![0]);
-      // Reconstruimos la URL absoluta para leer cómodamente los parámetros de búsqueda.
+      // Reconstruimos la URL absoluta para leer cÃ³modamente los parÃ¡metros de bÃºsqueda.
       const params = new URL(requestedUrl, "https://localhost").searchParams;
-      // Validamos que la consulta haya pedido la página 2.
+      // Validamos que la consulta haya pedido la pÃ¡gina 2.
       expect(params.get("page")).toBe("2");
     });
 
-    // Ubicamos el campo de búsqueda que filtra la tabla.
+    // Ubicamos el campo de bÃºsqueda que filtra la tabla.
     const searchBox = screen.getByPlaceholderText(
       "Buscar por cod, nom o campus"
     );
 
-    // Simulamos que la persona escribe un término nuevo.
+    // Simulamos que la persona escribe un tÃ©rmino nuevo.
     await userEvent.type(searchBox, "central");
 
-    // Esperamos la petición resultante y comprobamos que page vuelva a 1.
+    // Esperamos la peticiÃ³n resultante y comprobamos que page vuelva a 1.
     await waitFor(() => {
       const lastCall = fetchSpy.mock.calls.at(-1);
       expect(lastCall).toBeTruthy();
@@ -200,75 +236,72 @@ describe("FacultyListPage interactions", () => {
     });
   });
 
-  // Tercera prueba: el botón de crear debe mostrar un diálogo accesible para registrar una nueva facultad.
+  // Tercera prueba: el botÃ³n de crear debe mostrar un diÃ¡logo accesible para registrar una nueva facultad.
   it("opens the creation dialog when the user clicks the 'Nueva facultad' button", async () => {
-    // Renderizamos la página para disponer de la UI.
+    // Renderizamos la pÃ¡gina para disponer de la UI.
     render(<FacultyListPage />);
 
-    // Esperamos a que la primera carga termine para garantizar que el componente esté estable.
-    await screen.findByText("Facultad de Ciencias y Tecnología");
+    // Esperamos a que la primera carga termine para garantizar que el componente estÃ¡ estable.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
 
-    // Localizamos el botón principal que inicia el registro de una facultad.
+    // Localizamos el botÃ³n principal que inicia el registro de una facultad.
     const createButton = screen.getByRole("button", { name: /nueva facultad/i });
 
-    // Simulamos el clic humano sobre el botón.
+    // Simulamos el clic humano sobre el botÃ³n.
     await userEvent.click(createButton);
 
-    // Verificamos que aparezca el encabezado del diálogo indicando que se puede crear una nueva facultad.
+    // Verificamos que aparezca el encabezado del diÃ¡logo indicando que se puede crear una nueva facultad.
     expect(
       await screen.findByRole("heading", { name: /registrar nueva facultad/i })
     ).toBeInTheDocument();
   });
 
-  // Cuarta prueba: validamos que el formulario permita crear una facultad completa incluyendo la selección de campus.
+  // Cuarta prueba: validamos que el formulario permita crear una facultad completa incluyendo la selecciÃ³n de campus.
   it("submits the create faculty form with the selected campus", async () => {
     // Configuramos al usuario simulado para escribir y hacer clic igual que una persona.
     const user = userEvent.setup();
 
-    // Renderizamos la página de listado para interactuar con el formulario de creación.
+    // Renderizamos la pÃ¡gina de listado para interactuar con el formulario de creaciÃ³n.
     render(<FacultyListPage />);
 
     // Esperamos a que la tabla se cargue para asegurar que las peticiones iniciales terminaron.
-    await screen.findByText("Facultad de Ciencias y Tecnología");
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
 
-    // Abrimos el diálogo de creación haciendo clic en el botón principal.
+    // Abrimos el diÃ¡logo de creaciÃ³n haciendo clic en el botÃ³n principal.
     const createButton = screen.getByRole("button", { name: /nueva facultad/i });
     await user.click(createButton);
 
-    // Confirmamos que el encabezado del formulario esté visible para continuar con los campos.
+    // Confirmamos que el encabezado del formulario estÃ¡ visible para continuar con los campos.
     await screen.findByRole("heading", { name: /registrar nueva facultad/i });
 
-    // Llenamos el campo de código con un valor de ejemplo.
-    await user.type(screen.getByLabelText(/código de la facultad/i), "FAC-123");
+    // Llenamos el campo de cÃ³digo con un valor de ejemplo.
+    await user.type(screen.getByLabelText(/codigo de la facultad/i), "FAC-123");
 
     // Llenamos el nombre oficial de la facultad.
     await user.type(
       screen.getByLabelText(/nombre de la facultad/i),
-      "Facultad de Ingeniería"
+      "Facultad de Ingenieria"
     );
 
     // Llenamos el nombre corto opcional.
-    await user.type(
-      screen.getByLabelText(/nombre corto/i),
-      "FI"
-    );
+    await user.type(screen.getByLabelText(/nombre corto/i), "FI");
 
-    // Abrimos el selector de campus para escoger la relación adecuada.
+    // Abrimos el selector de campus para escoger la relaciÃ³n adecuada.
     await user.click(screen.getByRole("button", { name: /seleccionar campus/i }));
 
-    // Escribimos un texto de búsqueda para filtrar los campus disponibles.
+    // Escribimos un texto de bÃºsqueda para filtrar los campus disponibles.
     const campusSearchInput = screen.getByPlaceholderText(/buscar campus/i);
     await user.type(campusSearchInput, "central");
 
-    // Elegimos la opción filtrada que coincide con el término introducido.
+    // Elegimos la opciÃ³n filtrada que coincide con el tÃ©rmino introducido.
     await user.click(
       await screen.findByRole("option", { name: /campus central/i })
     );
 
-    // Enviamos el formulario haciendo clic en el botón principal.
+    // Enviamos el formulario haciendo clic en el botÃ³n principal.
     await user.click(screen.getByRole("button", { name: /crear facultad/i }));
 
-    // Verificamos que se haya realizado la petición POST con el payload correcto.
+    // Verificamos que se haya realizado la peticiÃ³n POST con el payload correcto.
     await waitFor(() => {
       const postCall = fetchSpy.mock.calls.find(
         ([input, init]) =>
@@ -279,7 +312,7 @@ describe("FacultyListPage interactions", () => {
       const body = init?.body ? JSON.parse(String(init.body)) : null;
       expect(body).toMatchObject({
         codigo: "FAC-123",
-        nombre: "Facultad de Ingeniería",
+        nombre: "Facultad de Ingenieria",
         nombre_corto: "FI",
         campus_id: 4,
         lat: -17.38,
@@ -287,11 +320,179 @@ describe("FacultyListPage interactions", () => {
       });
     });
 
-    // Finalmente comprobamos que el diálogo se haya cerrado después del envío exitoso.
+    // Finalmente comprobamos que el diÃ¡logo se haya cerrado despuÃ©s del envÃ­o exitoso.
     await waitFor(() => {
       expect(
         screen.queryByRole("heading", { name: /registrar nueva facultad/i })
       ).not.toBeInTheDocument();
     });
   });
+
+  // Quinta prueba: el flujo de ediciÃ³n debe abrir un formulario prellenado con la informaciÃ³n existente.
+  it("opens the edit dialog with the selected faculty data", async () => {
+    // Configuramos a la persona usuaria virtual que ejecutarÃ¡ los eventos.
+    const user = userEvent.setup();
+
+    // Renderizamos la pÃ¡gina que lista las facultades para interactuar con ella.
+    render(<FacultyListPage />);
+
+    // Esperamos a que la primera carga finalice mostrando la fila conocida.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
+
+    // Localizamos el botÃ³n de editar presente en la fila de resultados.
+    const editButton = screen.getByTitle(/editar/i);
+
+    // Simulamos el clic humano para abrir el modal de ediciÃ³n.
+    await user.click(editButton);
+
+    // Confirmamos que el encabezado del diÃ¡logo corresponde a la acciÃ³n de editar.
+    await screen.findByRole("heading", { name: /editar facultad/i });
+
+    // Verificamos que el campo de cÃ³digo muestre el valor original recibido del backend.
+    expect(
+      screen.getByLabelText(/codigo de la facultad/i)
+    ).toHaveValue("FAC-001");
+
+    // Revisamos que el nombre completo se encuentre prellenado correctamente.
+    expect(
+      screen.getByLabelText(/nombre de la facultad/i)
+    ).toHaveValue("Facultad de Ciencias y Tecnologia");
+
+    // Revisamos tambiÃ©n el nombre corto para asegurar que no se pierden datos.
+    expect(screen.getByLabelText(/nombre corto/i)).toHaveValue("FCyT");
+
+    // Corroboramos que el selector de campus despliegue el nombre actual asignado.
+    expect(screen.getByRole("button", { name: /campus central/i })).toBeInTheDocument();
+
+    // Finalmente comprobamos que el indicador de estado activo estÃ© marcado.
+    expect(
+      screen.getByRole("checkbox", { name: /facultad activa/i })
+    ).toBeChecked();
+  });
+
+  // Sexta prueba: el formulario de ediciÃ³n debe enviar la informaciÃ³n actualizada y cerrar el modal al finalizar.
+  it("sends the updated faculty data and closes the dialog after success", async () => {
+    // Preparamos al usuario virtual para realizar todos los pasos de la interacciÃ³n.
+    const user = userEvent.setup();
+
+    // Renderizamos la pantalla de listado que contiene el flujo a probar.
+    render(<FacultyListPage />);
+
+    // Esperamos a que la tabla inicial aparezca, seÃ±al de que las peticiones GET han concluido.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
+
+    // Clic en el botÃ³n de editar para abrir el modal con el formulario.
+    await user.click(screen.getByTitle(/editar/i));
+
+    // Esperamos a que el formulario se monte mostrÃ¡ndose dentro del diÃ¡logo.
+    await screen.findByRole("heading", { name: /editar facultad/i });
+
+    // Actualizamos el nombre completo para simular un cambio real.
+    const nameInput = screen.getByLabelText(/nombre de la facultad/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Facultad de Ingenieria Actualizada");
+
+    // Modificamos el nombre corto con un nuevo acrÃ³nimo.
+    const shortNameInput = screen.getByLabelText(/nombre corto/i);
+    await user.clear(shortNameInput);
+    await user.type(shortNameInput, "FIA");
+
+    // Abrimos el selector de campus para elegir una sede diferente.
+    await user.click(screen.getByRole("button", { name: /campus central/i }));
+
+    // Elegimos la opciÃ³n correspondiente al campus norte dentro del listado.
+    await user.click(await screen.findByRole("option", { name: /campus norte/i }));
+
+    // Desmarcamos la casilla de activo para simular que la facultad queda inactiva.
+    await user.click(screen.getByRole("checkbox", { name: /facultad activa/i }));
+
+    // Enviamos el formulario con los nuevos valores.
+    await user.click(screen.getByRole("button", { name: /guardar cambios/i }));
+
+    // Esperamos a que se realice la peticiÃ³n PATCH hacia el backend con el payload correcto.
+    await waitFor(() => {
+      const patchCall = fetchSpy.mock.calls.find(
+        ([input, init]) =>
+          String(input).includes("/facultades/7") && init?.method === "PATCH"
+      );
+      expect(patchCall).toBeTruthy();
+      const [, init] = patchCall!;
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      expect(body).toMatchObject({
+        codigo: "FAC-001",
+        nombre: "Facultad de Ingenieria Actualizada",
+        nombre_corto: "FIA",
+        campus_id: 6,
+        lat: -17.33,
+        lng: -66.12,
+        activo: false,
+      });
+    });
+
+    // Validamos que el mensaje de Ã©xito se notifique a la persona usuaria.
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Facultad actualizada", {
+        description: "Se guardaron los cambios correctamente.",
+      });
+    });
+
+    // Confirmamos que el modal se cierre despuÃ©s de guardar los cambios.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: /editar facultad/i })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  // SÃ©ptima prueba: si la actualizaciÃ³n falla, se debe mostrar un mensaje de error y mantener abierto el formulario.
+  it("shows an error toast when the faculty update fails", async () => {
+    // Ajustamos la implementaciÃ³n para provocar un error cuando se intente actualizar.
+    fetchSpy.mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/facultades/7") && init?.method === "PATCH") {
+        return {
+          ok: false,
+          status: 400,
+          statusText: "Bad Request",
+          json: async () => ({ message: "No se pudo actualizar" }),
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "content-type" ? "application/json" : null,
+          },
+        } as unknown as Response;
+      }
+      return defaultFetchImplementation(input, init);
+    });
+
+    // Preparamos al usuario virtual para ejecutar el flujo de ediciÃ³n.
+    const user = userEvent.setup();
+
+    // Renderizamos nuevamente la pÃ¡gina objetivo del escenario.
+    render(<FacultyListPage />);
+
+    // Esperamos que aparezca la fila inicial para continuar.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
+
+    // Abrimos el modal de ediciÃ³n con el botÃ³n de la tabla.
+    await user.click(screen.getByTitle(/editar/i));
+
+    // Verificamos que el formulario se haya mostrado correctamente.
+    await screen.findByRole("heading", { name: /editar facultad/i });
+
+    // Intentamos guardar sin cambios para provocar la peticiÃ³n PATCH fallida.
+    await user.click(screen.getByRole("button", { name: /guardar cambios/i }));
+
+    // Confirmamos que se muestre un mensaje de error al usuario.
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("No se pudo actualizar la facultad", {
+        description: "No se pudo actualizar",
+      });
+    });
+
+    // El formulario debe mantenerse visible porque la operaciÃ³n no fue exitosa.
+    expect(
+      screen.getByRole("heading", { name: /editar facultad/i })
+    ).toBeInTheDocument();
+  });
 });
+
