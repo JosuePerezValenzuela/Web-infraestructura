@@ -14,6 +14,9 @@ export type FacultyRow = {
   campus_nombre: string;
   activo: boolean;
   creado_en: string;
+  campus_id: number;
+  lat: number | null;
+  lng: number | null;
 };
 
 export function facultyColumns(
