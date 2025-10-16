@@ -9,6 +9,7 @@ import {
   type FacultyRow,
 } from "@/features/faculties/list/columns";
 import FacultyForm from "@/features/faculties/FacultyForm";
+import FacultyEditForm from "@/features/faculties/edit/FacultyEditForm";
 import { Plus, X } from "lucide-react";
 import {
   Dialog,
@@ -155,7 +156,7 @@ export default function FacultyListPage() {
           <DialogHeader>
             <DialogTitle>Editar facultad</DialogTitle>
             <DialogDescription>
-              Este formulario permitira actualizar los datos de la facultad seleccionada.
+              Revisa y actualiza los datos antes de guardar los cambios.
             </DialogDescription>
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <X className="h-4 w-4" />
@@ -164,19 +165,14 @@ export default function FacultyListPage() {
           </DialogHeader>
 
           {selectedFaculty ? (
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                Codigo seleccionado:{" "}
-                <span className="font-semibold">{selectedFaculty.codigo}</span>
-              </p>
-              <p>
-                Nombre actual:{" "}
-                <span className="font-semibold">{selectedFaculty.nombre}</span>
-              </p>
-              <p>
-                Este dialogo se completara cuando el flujo de edicion este disponible.
-              </p>
-            </div>
+            <FacultyEditForm
+              faculty={selectedFaculty}
+              onSubmitSuccess={async () => {
+                await fetchData();
+                setOpenEdit(false);
+                setSelectedFaculty(null);
+              }}
+            />
           ) : null}
         </DialogContent>
       </Dialog>
