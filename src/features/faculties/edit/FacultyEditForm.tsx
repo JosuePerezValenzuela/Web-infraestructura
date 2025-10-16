@@ -106,7 +106,7 @@ export default function FacultyEditForm({ faculty, onSubmitSuccess }: Props) {
     async function loadCampus() {
       try {
         const data = await apiFetch<CampusListResponse>(
-          "/campus?page=1&limit=100",
+          "/campus?page=1&limit=1000",
           { signal: controller.signal }
         );
 
