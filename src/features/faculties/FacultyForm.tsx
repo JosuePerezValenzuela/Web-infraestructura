@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -48,7 +48,7 @@ export default function FacultyForm({
   submitLabel = "Crear facultad",
   onSubmitSuccess,
 }: Props) {
-  // Creamos el formulario con react-hook-form aplicando la validación de Zod.
+  // Creamos el formulario con react-hook-form aplicando la validaciÃ³n de Zod.
   const form = useForm<FacultyCreateFormValues>({
     resolver: zodResolver(facultyCreateSchema),
     mode: "onTouched",
@@ -100,7 +100,7 @@ export default function FacultyForm({
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-        console.error("Error al cargar el catálogo de campus", error);
+        console.error("Error al cargar el catalogo de campus", error);
         toast.error("No se pudieron cargar los campus disponibles");
       }
     }
@@ -152,7 +152,7 @@ export default function FacultyForm({
         });
 
         toast.success("Facultad creada", {
-          description: "Se registró correctamente la facultad.",
+          description: "Se registro correctamente la facultad.",
         });
 
         form.reset({
@@ -194,7 +194,7 @@ export default function FacultyForm({
           name="codigo"
           render={({ field }) => (
             <FormItem>
-              <FormLabel htmlFor="codigo-facultad">Código de la facultad</FormLabel>
+              <FormLabel htmlFor="codigo-facultad">Codigo de la facultad</FormLabel>
               <FormControl>
                 <Input
                   id="codigo-facultad"
@@ -351,7 +351,7 @@ export default function FacultyForm({
 
         <div className="flex justify-end">
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Guardando…" : submitLabel}
+            {submitting ? "Guardando" : submitLabel}
           </Button>
         </div>
       </form>
