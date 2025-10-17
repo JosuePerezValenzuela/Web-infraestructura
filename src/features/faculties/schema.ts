@@ -37,10 +37,10 @@ const facultyBaseSchema = z.object({
     .max(180, { message: "Longitud invalida" }),
 });
 
-// Esquema de validaciÃ³n para crear una facultad, alineado con la HU 5.
+// Esquema de validacio para crear una facultad, alineado con la HU 5.
 export const facultyCreateSchema = facultyBaseSchema;
 
-// Esquema de validaciÃ³n para actualizar una facultad, alineado con la HU 7.
+// Esquema de validacion para actualizar una facultad, alineado con la HU 7.
 export const facultyUpdateSchema = facultyBaseSchema.extend({
   activo: z.boolean({ error: "Indique si la facultad esta activa" }),
 });
