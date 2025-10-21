@@ -147,6 +147,17 @@ describe("FacultyListPage interactions", () => {
         } as unknown as Response;
       }
 
+      if (url.includes("/facultades/") && init?.method === "DELETE") {
+        return {
+          ok: true,
+          status: 204,
+          json: async () => undefined,
+          headers: {
+            get: () => null,
+          },
+        } as unknown as Response;
+      }
+
       // Cualquier otra llamada devuelve una respuesta vacÃ­a exitosa.
       return {
         ok: true,
@@ -492,6 +503,135 @@ describe("FacultyListPage interactions", () => {
     // El formulario debe mantenerse visible porque la operaciÃ³n no fue exitosa.
     expect(
       screen.getByRole("heading", { name: /editar facultad/i })
+    ).toBeInTheDocument();
+  });
+
+  // Octava prueba: el boton de eliminar debe abrir un dialogo que muestre nombre y advertencias claras.
+  it("opens the delete confirmation dialog showing the faculty details", async () => {
+    // Configuramos a la persona usuaria virtual para simular clics reales.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina de listado donde aparece la accion de eliminar.
+    render(<FacultyListPage />);
+
+    // Esperamos a que la tabla se llene para tener un registro disponible.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
+
+    // Obtenemos el boton de eliminar ubicado en la fila mostrada.
+    const deleteButton = screen.getByTitle(/eliminar/i);
+
+    // Abrimos el dialogo de confirmacion haciendo clic en el boton.
+    await user.click(deleteButton);
+
+    // Verificamos que el titulo del dialogo corresponda a la accion destructiva.
+    await screen.findByRole("heading", { name: /eliminar facultad/i });
+
+    // Confirmamos que el nombre especifico de la facultad aparezca como referencia visual.
+    expect(
+      screen.getByText("Facultad de Ciencias y Tecnologia", { selector: "span" })
+    ).toBeInTheDocument();
+
+    // Validamos que el mensaje advierta sobre la eliminacion de bloques y ambientes dependientes.
+    expect(
+      screen.getByText(/bloques y ambientes quedar\u00E1n eliminados/i)
+    ).toBeInTheDocument();
+  });
+
+  // Novena prueba: al confirmar la eliminacion se debe invocar DELETE, mostrar un toast y refrescar la tabla.
+  it("deletes the faculty, refreshes the list and shows a success toast", async () => {
+    // Preparamos al usuario virtual encargado de ejecutar la confirmacion.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina con el listado inicial de facultades.
+    render(<FacultyListPage />);
+
+    // Esperamos a que aparezca la fila objetivo para continuar el flujo.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
+
+    // Abrimos el dialogo pulsando el boton de eliminar disponible en la fila.
+    await user.click(screen.getByTitle(/eliminar/i));
+
+    // Tomamos el boton que confirma la accion irreversible.
+    const confirmButton = await screen.findByRole("button", { name: /Eliminar/i });
+
+    // Cerramos el flujo confirmando la eliminacion.
+    await user.click(confirmButton);
+
+    // Revisamos que se haya invocado fetch con el metodo DELETE y el id correcto.
+    await waitFor(() => {
+      const deleteCall = fetchSpy.mock.calls.find(
+        ([input, init]) =>
+          String(input).includes("/facultades/7") && init?.method === "DELETE"
+      );
+      expect(deleteCall).toBeTruthy();
+    });
+
+    // Corroboramos que aparezca un mensaje de exito alineado a UX.
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Facultad eliminada", {
+        description: "La facultad y sus dependencias se eliminaron correctamente.",
+      });
+    });
+
+    // Verificamos que el listado se actualice realizando otra peticion GET al backend.
+    await waitFor(() => {
+      const listRequests = fetchSpy.mock.calls.filter(([input, init]) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        return url.includes("/facultades") && method === "GET";
+      });
+      expect(listRequests.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // Decima prueba: cuando la eliminacion falla se informa el error y el dialogo permanece abierto.
+  it("shows an error toast and keeps the dialog open when deletion fails", async () => {
+    // Sobrescribimos la implementacion para devolver un error al intentar eliminar.
+    fetchSpy.mockImplementation(async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/facultades/7") && init?.method === "DELETE") {
+        return {
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+          json: async () => ({ message: "El backend fallo" }),
+          headers: {
+            get: (name: string) =>
+              name.toLowerCase() === "content-type" ? "application/json" : null,
+          },
+        } as unknown as Response;
+      }
+      return defaultFetchImplementation(input, init);
+    });
+
+    // Configuramos a la persona usuaria simulada para realizar los clics necesarios.
+    const user = userEvent.setup();
+
+    // Renderizamos la pantalla para tener disponible la fila objetivo.
+    render(<FacultyListPage />);
+
+    // Esperamos a que la informacion inicial se muestre correctamente.
+    await screen.findByText("Facultad de Ciencias y Tecnologia");
+
+    // Abrimos el dialogo activando el boton de eliminar.
+    await user.click(screen.getByTitle(/eliminar/i));
+
+    // Extraemos el boton que confirma la eliminacion.
+    const confirmButton = await screen.findByRole("button", { name: /Eliminar/i });
+
+    // Intentamos eliminar sabiendo que se devolvera un error.
+    await user.click(confirmButton);
+
+    // Confirmamos que se haya mostrado un toast de error con el detalle del backend.
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("No se pudo eliminar la facultad", {
+        description: "El backend fallo",
+      });
+    });
+
+    // El dialogo debe continuar visible para permitir cancelar o reintentar.
+    expect(
+      screen.getByRole("heading", { name: /eliminar facultad/i })
     ).toBeInTheDocument();
   });
 });
