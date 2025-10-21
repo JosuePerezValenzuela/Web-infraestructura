@@ -18,8 +18,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 const TAKE = 8;
 
@@ -41,6 +43,9 @@ export default function FacultyListPage() {
   const [openCreate, setOpenCreate] = useState<boolean>(false);
   const [openEdit, setOpenEdit] = useState<boolean>(false);
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyRow | null>(null);
+  const [openDelete, setOpenDelete] = useState<boolean>(false);
+  const [facultyToDelete, setFacultyToDelete] = useState<FacultyRow | null>(null);
+  const [deleting, setDeleting] = useState<boolean>(false);
 
   const query = useMemo(() => search.trim(), [search]);
 
@@ -82,7 +87,58 @@ export default function FacultyListPage() {
   }
 
   function handleDelete(row: FacultyRow) {
-    console.log("Eliminar facultad", row.codigo);
+    // Guardamos la facultad que la persona desea eliminar y mostramos el dialogo de confirmacion.
+    setFacultyToDelete(row);
+    setOpenDelete(true);
+  }
+
+  async function confirmDelete() {
+    // Si no hay una facultad seleccionada no ejecutamos ninguna accion adicional.
+    if (!facultyToDelete) {
+      return;
+    }
+
+    // Activamos el estado de carga para deshabilitar los controles mientras dura el proceso.
+    setDeleting(true);
+
+    try {
+      // Invocamos el endpoint DELETE con el identificador de la facultad seleccionada.
+      await apiFetch(`/facultades/${facultyToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      // Notificamos a la persona usuaria que la eliminacion se completo de forma exitosa.
+      toast.success("Facultad eliminada", {
+        description: "La facultad y sus dependencias se eliminaron correctamente.",
+      });
+
+      // Solicitamos nuevamente los datos para reflejar la eliminacion en la tabla principal.
+      await fetchData();
+
+      // Cerramos el dialogo y limpiamos la seleccion para evitar estados inconsistentes.
+      setOpenDelete(false);
+      setFacultyToDelete(null);
+    } catch (error) {
+      // Normalizamos el mensaje de la excepcion para mostrar un detalle amigable.
+      const apiError = error as {
+        message?: string;
+        details?: unknown;
+      };
+      const description =
+        Array.isArray(apiError?.details)
+          ? (apiError.details as string[]).join("\n")
+          : typeof apiError?.message === "string"
+          ? apiError.message
+          : "Error desconocido.";
+
+      // Informamos a la persona usuaria que no se pudo completar la eliminacion.
+      toast.error("No se pudo eliminar la facultad", {
+        description,
+      });
+    } finally {
+      // Restablecemos el estado de carga para reactivar los botones del dialogo.
+      setDeleting(false);
+    }
   }
 
   return (
@@ -174,6 +230,58 @@ export default function FacultyListPage() {
               }}
             />
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={openDelete}
+        onOpenChange={(value) => {
+          setOpenDelete(value);
+          if (!value) {
+            setFacultyToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-full overflow-auto pb-2 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Eliminar facultad</DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará definitivamente el registro y no se puede deshacer.
+            </DialogDescription>
+            <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Cerrar</span>
+            </DialogClose>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Los bloques y ambientes quedarán eliminados junto con la facultad seleccionada.
+            </p>
+            {facultyToDelete ? (
+              <p>
+                Facultad seleccionada:{" "}
+                <span className="font-semibold">{facultyToDelete.nombre}</span>
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={deleting}>
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                void confirmDelete();
+              }}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
