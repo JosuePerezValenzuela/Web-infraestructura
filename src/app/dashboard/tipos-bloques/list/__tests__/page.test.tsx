@@ -162,6 +162,37 @@ describe("BlockTypeListPage", () => {
     });
   });
 
+  it("permite cerrar el dialogo sin activar validaciones cuando no se ha llenado el formulario", async () => {
+    // Preparamos un usuario virtual para manipular la interfaz.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina objetivo.
+    render(<BlockTypeListPage />);
+
+    // Abrimos el dialogo de creacion para iniciar la prueba.
+    await user.click(
+      await screen.findByRole("button", { name: /nuevo tipo de bloque/i })
+    );
+
+    // Confirmamos que el dialogo se haya mostrado.
+    await screen.findByRole("heading", { name: /crear tipo de bloque/i });
+
+    // Cerramos el dialogo usando el boton de cierre sin haber llenado el formulario.
+    await user.click(screen.getByRole("button", { name: /cerrar/i }));
+
+    // Verificamos que el dialogo ya no se encuentre visible.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: /crear tipo de bloque/i })
+      ).not.toBeInTheDocument();
+    });
+
+    // Aseguramos que no se hayan mostrado mensajes de validacion en la pantalla.
+    expect(
+      screen.queryByText(/el nombre es obligatorio/i)
+    ).not.toBeInTheDocument();
+  });
+
   it("muestra un mensaje de error cuando la creacion falla", async () => {
     // Configuramos el mock para que la peticion de creacion falle.
     vi.mocked(apiFetch).mockRejectedValueOnce({
