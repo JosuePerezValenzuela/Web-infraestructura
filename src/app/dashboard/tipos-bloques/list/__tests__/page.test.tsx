@@ -130,16 +130,6 @@ describe("BlockTypeListPage", () => {
       "Bloques utilizados para aulas generales y oficinas administrativas."
     );
 
-    // Tomamos el switch o checkbox de activo para asegurarnos que permanezca encendido.
-    const activeToggle = screen.getByRole("checkbox", {
-      name: /activo/i,
-    }) as HTMLInputElement;
-
-    // Si el control estuviera apagado lo activamos para cumplir con la validacion.
-    if (!activeToggle.checked) {
-      await user.click(activeToggle);
-    }
-
     // Buscamos el boton de guardar dentro del dialogo para enviar el formulario.
     const submitButton = screen.getByRole("button", { name: /guardar/i });
 
