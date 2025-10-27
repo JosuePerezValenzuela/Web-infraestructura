@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { blockTypeColumns, type BlockTypeRow } from "@/features/block-types/list/columns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import BlockTypeForm from "@/features/block-types/BlockTypeForm";
+import { X } from "lucide-react";
 
 const TAKE = 8;
 
@@ -109,12 +110,25 @@ export default function BlockTypeListPage() {
       />
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Crear tipo de bloque</DialogTitle>
-            <DialogDescription>
-              Ingresa la información necesaria para registrar un nuevo tipo de bloque.
-            </DialogDescription>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader className="space-y-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <DialogTitle>Crear tipo de bloque</DialogTitle>
+                <DialogDescription>
+                  Ingresa la información necesaria para registrar un nuevo tipo de bloque.
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">Cerrar</span>
+                </button>
+              </DialogClose>
+            </div>
           </DialogHeader>
 
           <BlockTypeForm
