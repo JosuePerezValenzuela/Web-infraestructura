@@ -144,7 +144,6 @@ describe("BlockTypeListPage", () => {
           nombre: "Edificio academico",
           descripcion:
             "Bloques utilizados para aulas generales y oficinas administrativas.",
-          activo: true,
         }),
         headers: {
           "Content-Type": "application/json",
