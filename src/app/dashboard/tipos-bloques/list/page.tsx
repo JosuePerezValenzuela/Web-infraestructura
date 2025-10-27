@@ -93,7 +93,7 @@ export default function BlockTypeListPage() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre o descripción"
+            placeholder="Buscar por nombre"
             aria-label="Buscar tipos de bloques"
           />
         </div>
