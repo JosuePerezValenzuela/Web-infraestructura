@@ -79,6 +79,21 @@ describe("BlockTypeListPage", () => {
     // Confirmamos que el estado activo se transforme en texto legible.
     expect(screen.getByText(/activo/i)).toBeInTheDocument();
 
+    // Validamos que la tabla muestre la columna de acciones para futuras operaciones.
+    expect(
+      screen.getByRole("columnheader", { name: /acciones/i })
+    ).toBeInTheDocument();
+
+    // Revisamos que exista un boton dedicado a la edicion del tipo de bloque.
+    expect(
+      screen.getByRole("button", { name: /editar tipo de bloque/i })
+    ).toBeInTheDocument();
+
+    // Revisamos que exista un boton dedicado a la eliminacion del tipo de bloque.
+    expect(
+      screen.getByRole("button", { name: /eliminar tipo de bloque/i })
+    ).toBeInTheDocument();
+
     // Validamos que el boton para crear un nuevo tipo de bloque este visible.
     expect(
       screen.getByRole("button", { name: /nuevo tipo de bloque/i })
