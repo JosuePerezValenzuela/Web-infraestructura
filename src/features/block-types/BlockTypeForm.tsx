@@ -27,7 +27,6 @@ export default function BlockTypeForm({ onSuccess, onClose }: BlockTypeFormProps
     defaultValues: {
       nombre: "",
       descripcion: "",
-      activo: true,
     },
   });
 
@@ -56,7 +55,6 @@ export default function BlockTypeForm({ onSuccess, onClose }: BlockTypeFormProps
       form.reset({
         nombre: "",
         descripcion: "",
-        activo: true,
       });
       // Avisamos a la página para que vuelva a obtener los datos y refleje el nuevo elemento.
       if (onSuccess) {
@@ -109,29 +107,6 @@ export default function BlockTypeForm({ onSuccess, onClose }: BlockTypeFormProps
                 />
               </FormControl>
               <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="activo"
-          render={({ field }) => (
-            <FormItem className="flex items-start gap-3 rounded-md border p-3">
-              <FormControl>
-                <input
-                  id="block-type-active"
-                  type="checkbox"
-                  checked={field.value}
-                  onChange={(event) => field.onChange(event.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-muted-foreground"
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel htmlFor="block-type-active">Activo</FormLabel>
-                <p className="text-muted-foreground text-sm">
-                  Mantiene disponible el tipo de bloque en los formularios.
-                </p>
-              </div>
             </FormItem>
           )}
         />
