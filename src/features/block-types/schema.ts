@@ -9,7 +9,6 @@ export const blockTypeCreateSchema = z.object({
     .string()
     .min(1, "La descripcion es obligatoria.")
     .max(256, "La descripcion no puede superar 256 caracteres."),
-  activo: z.boolean(),
 });
 
 export type BlockTypeCreateInput = z.input<typeof blockTypeCreateSchema>;
