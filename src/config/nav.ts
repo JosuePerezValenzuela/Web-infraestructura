@@ -1,10 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { 
-    Building2, Layers3, Layers2,
-    House,
-    ToolCase,
-    Shapes
-} from 'lucide-react'
+import {
+  Building2,
+  Layers3,
+  Layers2,
+  House,
+  ToolCase,
+  Shapes,
+} from "lucide-react";
+import { CLASSIFIERS } from "./classifiers";
 
 export type NavGroup = { label: string; icon?: LucideIcon; href: string }
 
@@ -33,6 +36,11 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'Activos',
         icon: ToolCase,
         href: `/dashboard/activos/list`
+    },
+    {
+        label: 'Clasificadores',
+        icon: Shapes,
+        href: `/dashboard/clasificadores`
     }
 ]
 
@@ -43,11 +51,10 @@ export const NAV_GROUPS_CLASIFICATORS: NavGroupWithContent[] = [
     {
         label: 'Clasificadores',
         icon: Shapes,
-        content: [
-            { label: 'Tipo de bloques', href: '/dashboard/bloques/list' },
-            { label: 'Tipos de ambientes', href: '/dashboard/ambientes/list' },
-            { label: 'Tipos de activos', href: '/dashboard/activos/list' },
-        ]
+        content: CLASSIFIERS.map((classifier) => ({
+            label: classifier.title,
+            href: classifier.href,
+        }))
     }
-    
+
 ]
