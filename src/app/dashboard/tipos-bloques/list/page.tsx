@@ -15,9 +15,12 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import BlockTypeForm from "@/features/block-types/BlockTypeForm";
 import BlockTypeEditForm from "@/features/block-types/edit/BlockTypeEditForm";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 import { X } from "lucide-react";
 
 const TAKE = 8;
@@ -39,6 +42,13 @@ export default function BlockTypeListPage() {
   );
   // Controlamos la apertura del dialogo de edicion.
   const [editOpen, setEditOpen] = useState(false);
+  // Conservamos el registro seleccionado para eliminacion.
+  const [blockTypeToDelete, setBlockTypeToDelete] =
+    useState<BlockTypeRow | null>(null);
+  // Administramos la apertura del dialogo de eliminacion.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Indicamos si la peticion DELETE esta en curso.
+  const [deleting, setDeleting] = useState(false);
 
   // Limpiamos espacios innecesarios del termino de busqueda antes de enviarlo al servidor.
   const query = useMemo(() => search.trim(), [search]);
@@ -101,6 +111,58 @@ export default function BlockTypeListPage() {
     setEditOpen(true);
   }
 
+  function handleDelete(blockType: BlockTypeRow) {
+    // Guardamos el registro que se desea eliminar y mostramos el dialogo de confirmacion.
+    setBlockTypeToDelete(blockType);
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    // Si no hay registro seleccionado no continuamos.
+    if (!blockTypeToDelete) {
+      return;
+    }
+
+    try {
+      // Avisamos que la peticion comenzo para deshabilitar los controles.
+      setDeleting(true);
+
+      // Enviamos la solicitud DELETE al backend para eliminar el registro.
+      await apiFetch(`/tipo_bloques/${blockTypeToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      // Notificamos que la eliminacion se realizo correctamente.
+      toast.success("Tipo de bloque eliminado", {
+        description: "El registro se elimino correctamente.",
+      });
+
+      // Refrescamos la tabla para reflejar la eliminacion.
+      await fetchData();
+
+      // Cerramos el dialogo y limpiamos el estado seleccionado.
+      setDeleteOpen(false);
+      setBlockTypeToDelete(null);
+    } catch (error) {
+      // Obtenemos un mensaje claro para mostrar en la notificacion.
+      const description =
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message?: unknown }).message === "string"
+          ? String((error as { message?: unknown }).message)
+          : "Error desconocido.";
+
+      // Indicamos que algo salio mal para que la persona usuaria pueda reintentar.
+      toast.error("No se pudo eliminar el tipo de bloque", {
+        description,
+      });
+    } finally {
+      // Restablecemos el estado de carga sin importar el resultado.
+      setDeleting(false);
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header className="flex flex-col gap-2">
@@ -126,7 +188,7 @@ export default function BlockTypeListPage() {
 
       <DataTable
         data={items}
-        columns={blockTypeColumns(handleEdit)}
+        columns={blockTypeColumns(handleEdit, handleDelete)}
         page={page}
         pages={pages}
         onPageChange={(nextPage) => setPage(nextPage)}
@@ -202,6 +264,67 @@ export default function BlockTypeListPage() {
               }}
             />
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(value) => {
+          setDeleteOpen(value);
+          if (!value) {
+            setBlockTypeToDelete(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader className="space-y-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <DialogTitle>Eliminar tipo de bloque</DialogTitle>
+                <DialogDescription>
+                  Esta accion eliminara el tipo de bloque y sus bloques y
+                  ambientes asociados. No se puede deshacer.
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  disabled={deleting}
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">Cerrar</span>
+                </button>
+              </DialogClose>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>Confirma la eliminacion del registro seleccionado.</p>
+            {blockTypeToDelete ? (
+              <p>
+                Tipo de bloque:{" "}
+                <span className="font-semibold">
+                  {blockTypeToDelete.nombre}
+                </span>
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={deleting}>
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </section>
