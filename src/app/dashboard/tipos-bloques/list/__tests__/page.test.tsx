@@ -236,4 +236,126 @@ describe("BlockTypeListPage", () => {
       );
     });
   });
+
+  it("permite abrir el dialogo de edicion con los datos del registro seleccionado", async () => {
+    // Creamos una persona usuaria virtual para controlar la interfaz.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina que contiene la tabla y los dialogos.
+    render(<BlockTypeListPage />);
+
+    // Esperamos a que la fila inicial se muestre para asegurar que la tabla esta lista.
+    await screen.findByText("Laboratorio");
+
+    // Buscamos el boton de edicion que se muestra en la columna de acciones.
+    const editButton = screen.getByRole("button", {
+      name: /editar tipo de bloque/i,
+    });
+
+    // Hacemos clic en el boton para abrir el dialogo emergente.
+    await user.click(editButton);
+
+    // Confirmamos que el encabezado del dialogo se muestre indicando la accion de edicion.
+    await screen.findByRole("heading", { name: /editar tipo de bloque/i });
+
+    // Verificamos que el formulario muestre el nombre actual como valor inicial.
+    expect(
+      screen.getByDisplayValue("Laboratorio")
+    ).toBeInTheDocument();
+
+    // Verificamos que la descripcion actual tambien se precargue en el formulario.
+    expect(
+      screen.getByDisplayValue(
+        "Bloques destinados a laboratorios especializados."
+      )
+    ).toBeInTheDocument();
+
+    // Comprobamos que el estado activo aparezca marcado al abrir el dialogo.
+    expect(
+      screen.getByRole("checkbox", { name: /activo/i })
+    ).toBeChecked();
+  });
+
+  it("actualiza un tipo de bloque desde el dialogo de edicion y refresca la tabla", async () => {
+    // Simulamos que la peticion PATCH funciona correctamente.
+    vi.mocked(apiFetch).mockResolvedValueOnce(undefined);
+
+    // Creamos una persona usuaria virtual para interactuar con la UI.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina objetivo.
+    render(<BlockTypeListPage />);
+
+    // Esperamos a que el listado inicial aparezca en pantalla.
+    await screen.findByText("Laboratorio");
+
+    // Buscamos el boton dedicado a la edicion de la fila.
+    const editButton = screen.getByRole("button", {
+      name: /editar tipo de bloque/i,
+    });
+
+    // Abrimos el dialogo de edicion con los datos de la fila seleccionada.
+    await user.click(editButton);
+
+    // Aseguramos que el formulario del dialogo se encuentre visible.
+    await screen.findByRole("heading", { name: /editar tipo de bloque/i });
+
+    // Localizamos el campo de nombre para actualizarlo.
+    const nombreInput = screen.getByLabelText(/nombre/i);
+
+    // Borramos el valor actual del campo.
+    await user.clear(nombreInput);
+
+    // Escribimos un nombre nuevo.
+    await user.type(nombreInput, "Laboratorio avanzado");
+
+    // Obtenemos el textarea de descripcion para modificarlo.
+    const descripcionTextarea = screen.getByLabelText(/descripcion/i);
+
+    // Reemplazamos la descripcion previa.
+    await user.clear(descripcionTextarea);
+
+    // Escribimos la descripcion actualizada.
+    await user.type(
+      descripcionTextarea,
+      "Espacios para experimentacion avanzada en distintas disciplinas."
+    );
+
+    // Recuperamos el checkbox que controla el estado activo.
+    const activoCheckbox = screen.getByRole("checkbox", { name: /activo/i });
+
+    // Cambiamos el estado a inactivo.
+    await user.click(activoCheckbox);
+
+    // Localizamos el boton encargado de enviar el formulario.
+    const submitButton = screen.getByRole("button", {
+      name: /guardar cambios/i,
+    });
+
+    // Disparamos el envio para guardar la informacion editada.
+    await user.click(submitButton);
+
+    // Verificamos que la API reciba la ruta y datos esperados.
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/tipo_bloques/7", {
+        method: "PATCH",
+        json: {
+          nombre: "Laboratorio avanzado",
+          descripcion:
+            "Espacios para experimentacion avanzada en distintas disciplinas.",
+          activo: false,
+        },
+      });
+    });
+
+    // Confirmamos que se muestre un toast de exito informativo.
+    expect(toast.success).toHaveBeenCalledWith("Tipo de bloque actualizado", {
+      description: "Se guardaron los cambios correctamente.",
+    });
+
+    // Esperamos a que se vuelva a consultar el listado para refrescar la tabla.
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+  });
 });
