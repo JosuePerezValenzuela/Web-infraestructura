@@ -13,3 +13,10 @@ export const blockTypeCreateSchema = z.object({
 
 export type BlockTypeCreateInput = z.input<typeof blockTypeCreateSchema>;
 export type BlockTypeCreateOutput = z.output<typeof blockTypeCreateSchema>;
+
+export const blockTypeUpdateSchema = blockTypeCreateSchema.extend({
+  activo: z.boolean(),
+});
+
+export type BlockTypeUpdateInput = z.input<typeof blockTypeUpdateSchema>;
+export type BlockTypeUpdateOutput = z.output<typeof blockTypeUpdateSchema>;
