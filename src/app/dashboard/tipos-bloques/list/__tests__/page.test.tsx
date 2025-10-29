@@ -358,4 +358,100 @@ describe("BlockTypeListPage", () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
   });
+
+  it("elimina un tipo de bloque desde el dialogo y refresca la tabla", async () => {
+    // Indicamos que la peticion DELETE se resolvera correctamente.
+    vi.mocked(apiFetch).mockResolvedValueOnce(undefined);
+
+    // Simulamos a la persona usuaria que interactuara con la pantalla.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina que contiene la tabla y los dialogos.
+    render(<BlockTypeListPage />);
+
+    // Esperamos a que el listado inicial aparezca para comenzar la secuencia.
+    await screen.findByText("Laboratorio");
+
+    // Obtenemos el boton de eliminar asociado a la fila disponible.
+    const deleteButton = screen.getByRole("button", {
+      name: /eliminar tipo de bloque/i,
+    });
+
+    // Abrimos el dialogo de confirmacion haciendo clic en el boton de eliminar.
+    await user.click(deleteButton);
+
+    // Comprobamos que el encabezado del dialogo de eliminacion aparezca en pantalla.
+    await screen.findByRole("heading", { name: /eliminar tipo de bloque/i });
+
+    // Identificamos el boton que confirma la accion destructiva.
+    const confirmButton = screen.getByRole("button", { name: /eliminar/i });
+
+    // Ejecutamos la eliminacion enviando la peticion DELETE.
+    await user.click(confirmButton);
+
+    // Verificamos que se haya llamado al endpoint correspondiente con el metodo adecuado.
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/tipo_bloques/7", {
+        method: "DELETE",
+      });
+    });
+
+    // Confirmamos que se muestre un mensaje de exito informando la eliminacion.
+    expect(toast.success).toHaveBeenCalledWith("Tipo de bloque eliminado", {
+      description: "El registro se elimino correctamente.",
+    });
+
+    // Esperamos a que se dispare nuevamente la consulta de la tabla para refrescar los datos.
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("mantiene el dialogo abierto y muestra un error cuando la eliminacion falla", async () => {
+    // Configuramos el mock de la API para que rechace la eliminacion.
+    vi.mocked(apiFetch).mockRejectedValueOnce({
+      message: "No se pudo eliminar el registro.",
+    });
+
+    // Generamos una persona usuaria virtual para ejecutar acciones.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina bajo prueba.
+    render(<BlockTypeListPage />);
+
+    // Aguardamos a que el listado inicial se encuentre disponible.
+    await screen.findByText("Laboratorio");
+
+    // Localizamos el boton de eliminar presente en la tabla.
+    const deleteButton = screen.getByRole("button", {
+      name: /eliminar tipo de bloque/i,
+    });
+
+    // Abrimos el dialogo de confirmacion activando el boton.
+    await user.click(deleteButton);
+
+    // Verificamos que el encabezado del dialogo sea visible para la persona usuaria.
+    await screen.findByRole("heading", { name: /eliminar tipo de bloque/i });
+
+    // Seleccionamos el boton de confirmacion que intenta completar la eliminacion.
+    const confirmButton = screen.getByRole("button", { name: /eliminar/i });
+
+    // Intentamos eliminar el registro para activar el escenario de error controlado.
+    await user.click(confirmButton);
+
+    // Esperamos a que se muestre un mensaje claro notificando el problema.
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "No se pudo eliminar el tipo de bloque",
+        {
+          description: "No se pudo eliminar el registro.",
+        }
+      );
+    });
+
+    // Comprobamos que el dialogo siga abierto permitiendo reintentar o cancelar la accion.
+    expect(
+      screen.getByRole("heading", { name: /eliminar tipo de bloque/i })
+    ).toBeInTheDocument();
+  });
 });
