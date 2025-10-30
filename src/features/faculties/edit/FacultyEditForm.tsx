@@ -258,6 +258,7 @@ export default function FacultyEditForm({ faculty, onSubmitSuccess }: Props) {
                 <Input
                   id="codigo-facultad-edit"
                   placeholder="FAC-001"
+                  type="text"
                   {...field}
                 />
               </FormControl>

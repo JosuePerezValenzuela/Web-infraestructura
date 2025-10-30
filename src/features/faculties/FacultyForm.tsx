@@ -199,6 +199,7 @@ export default function FacultyForm({
                 <Input
                   id="codigo-facultad"
                   placeholder="FAC-001"
+                  type="text"
                   {...field}
                 />
               </FormControl>
