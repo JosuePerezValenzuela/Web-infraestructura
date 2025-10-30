@@ -120,7 +120,8 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
               <FormLabel>Codigo del campus</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="123456789"
+                  placeholder="CAMP-001"
+                  type='text'
                   {...field}
                 />
               </FormControl>

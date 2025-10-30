@@ -101,7 +101,7 @@ export default function CampusForm({
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Codigo</FormLabel>
-                            <FormControl><Input placeholder="123456789" type="number" {...field} /></FormControl>
+                            <FormControl><Input placeholder="CAMP-001" type="text" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
