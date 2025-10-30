@@ -23,7 +23,7 @@ import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
-const TAKE = 8;
+const TAKE = 6;
 
 export default function BlockTypeListPage() {
   // Guardamos la informacion que llega desde la API para poblar la tabla.
