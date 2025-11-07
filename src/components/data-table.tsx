@@ -9,6 +9,7 @@ import {
     useReactTable,
     type VisibilityState,
     type SortingState,
+    type Table as ReactTableInstance,
 } from '@tanstack/react-table';
 import {
     Table,
@@ -34,6 +35,8 @@ type Props<TData, TValue> = {
     page: number;
     pages: number;
     onPageChange: (nextPage: number) => void;
+    showViewOptions?: boolean;
+    onTableReady?: (table: ReactTableInstance<TData>) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,7 +44,9 @@ export function DataTable<TData, TValue>({
     data,
     page,
     pages,
-    onPageChange
+    onPageChange,
+    showViewOptions = true,
+    onTableReady,
 }: Props<TData, TValue>) {
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
     const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -56,9 +61,17 @@ export function DataTable<TData, TValue>({
         onColumnVisibilityChange: setColumnVisibility,
     });
 
+    React.useEffect(() => {
+        onTableReady?.(table);
+    }, [table, onTableReady]);
+
     return (
         <div className='space-y-3'>
-            <DataTableViewOptions table={table} />
+            {showViewOptions ? (
+                <div className='flex justify-end'>
+                    <DataTableViewOptions table={table} />
+                </div>
+            ) : null}
             <div className='rounded-md border'>
                 <Table>
                     {/* Encabezado de la tabla*/}
