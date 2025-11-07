@@ -7,6 +7,7 @@ import {
   useState,
   type FormEvent,
 } from "react"; // React nos brinda el estado y los efectos necesarios para manejar la UI.
+import Link from "next/link";
 import { Button } from "@/components/ui/button"; // Botones reutilizables con los estilos del sistema.
 import { Input } from "@/components/ui/input"; // Campo de texto accesible y consistente.
 import { Label } from "@/components/ui/label"; // Etiquetas accesibles para todos los controles.
@@ -422,10 +423,6 @@ const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones d
     setPage(1); // Regresamos a la primera página.
   }
 
-  function handleCreatePlaceholder() {
-    toast.info("La creacion de bloques estara disponible en la siguiente iteracion."); // Informamos que la acción llegará en la próxima HU.
-  }
-
   function handleEditPlaceholder(block: BlockRow) {
     toast.info(
       `La edicion del bloque ${block.nombre} estara disponible en la siguiente entrega.`
@@ -472,12 +469,8 @@ const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones d
             >
               Limpiar filtros
             </Button>
-            <Button
-              type="button"
-              onClick={handleCreatePlaceholder}
-              className="w-full min-[480px]:w-auto"
-            >
-              Nuevo bloque
+            <Button asChild className="w-full min-[480px]:w-auto">
+              <Link href="/dashboard/bloques/create">Nuevo bloque</Link>
             </Button>
           </div>
         </div>
