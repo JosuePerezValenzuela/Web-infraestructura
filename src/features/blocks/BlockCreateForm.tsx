@@ -101,7 +101,7 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
         className="space-y-6"
         noValidate
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <FormField
             control={form.control}
             name="codigo"
@@ -142,7 +142,7 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
             )}
           />
 
-          <FormField
+<FormField
             control={form.control}
             name="nombre_corto"
             render={({ field }) => (
@@ -162,7 +162,7 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
             )}
           />
 
-          <FormField
+            <FormField
             control={form.control}
             name="pisos"
             render={({ field }) => (
@@ -183,9 +183,49 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="facultad_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel id="facultad-label">Facultad</FormLabel>
+                <CatalogSearchSelect
+                  buttonId="facultad-select"
+                  labelId="facultad-label"
+                  placeholder="Selecciona una facultad"
+                  searchPlaceholder="Buscar facultad"
+                  options={faculties}
+                  value={field.value ? String(field.value) : ""}
+                  onChange={(value) => field.onChange(value)}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="tipo_bloque_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel id="tipo-bloque-label">Tipo de bloque</FormLabel>
+                <CatalogSearchSelect
+                  buttonId="tipo-bloque-select"
+                  labelId="tipo-bloque-label"
+                  placeholder="Selecciona un tipo de bloque"
+                  searchPlaceholder="Buscar tipo"
+                  options={blockTypes}
+                  value={field.value ? String(field.value) : ""}
+                  onChange={(value) => field.onChange(value)}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
-        <div className="rounded-md border bg-muted/20 p-3">
+        <div className="rounded-md border bg-muted/20 p-1">
           <div className="h-64 overflow-hidden rounded-md">
             <MapPicker
               lat={mapLat}
@@ -238,48 +278,6 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
               )}
             />
           </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="facultad_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel id="facultad-label">Facultad</FormLabel>
-                <CatalogSearchSelect
-                  buttonId="facultad-select"
-                  labelId="facultad-label"
-                  placeholder="Selecciona una facultad"
-                  searchPlaceholder="Buscar facultad"
-                  options={faculties}
-                  value={field.value ? String(field.value) : ""}
-                  onChange={(value) => field.onChange(value)}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="tipo_bloque_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel id="tipo-bloque-label">Tipo de bloque</FormLabel>
-                <CatalogSearchSelect
-                  buttonId="tipo-bloque-select"
-                  labelId="tipo-bloque-label"
-                  placeholder="Selecciona un tipo de bloque"
-                  searchPlaceholder="Buscar tipo"
-                  options={blockTypes}
-                  value={field.value ? String(field.value) : ""}
-                  onChange={(value) => field.onChange(value)}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         <div className="flex justify-end gap-3">

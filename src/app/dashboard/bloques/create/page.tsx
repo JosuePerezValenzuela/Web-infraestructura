@@ -80,16 +80,12 @@ export default function BlockCreatePage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <p className="text-sm font-medium text-muted-foreground">Bloques</p>
         <h1 className="text-2xl font-semibold tracking-tight">
           Registrar nuevo bloque
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Completa el formulario para sumar un bloque al inventario.
-        </p>
       </header>
 
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
+      <div className="rounded-lg border bg-card p-2 shadow-sm">
         {loading ? (
           <p className="text-sm text-muted-foreground">Cargando catalogos...</p>
         ) : error ? (
