@@ -4,11 +4,20 @@ import { render, screen, waitFor, within } from "@testing-library/react"; // Imp
 import userEvent from "@testing-library/user-event"; // Esta utilidad nos permite simular las acciones que haría una persona usando la interfaz.
 import { vi } from "vitest"; // Vitest nos aporta las funciones para crear mocks y escribir pruebas.
 import { apiFetch } from "@/lib/api"; // apiFetch es el cliente que utiliza la app para hablar con el backend; lo vamos a espiar.
+import { toast } from "sonner"; // Espiamos las notificaciones para verificar los mensajes de éxito o error.
 import BlockListPage from "../page"; // Importamos la página que vamos a probar.
 
 // También simulamos el helper apiFetch para controlar completamente las respuestas del backend.
 vi.mock("@/lib/api", () => ({
   apiFetch: vi.fn(), // Creamos una función espiada que podremos configurar en cada escenario.
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
 }));
 
 // Jsdom no implementa hasPointerCapture/releasePointerCapture y Radix Select los requiere para manejar eventos de puntero.
@@ -73,7 +82,7 @@ const mockedApiFetch = vi.mocked(apiFetch);
 // Esta función configura el mock para que responda correctamente a cada endpoint solicitado.
 function mockSuccessfulCatalogs() {
   // Reemplazamos la implementación de apiFetch por una versión que inspecciona la ruta solicitada.
-  mockedApiFetch.mockImplementation(async (path: string) => {
+  mockedApiFetch.mockImplementation(async (path: string, options?: RequestInit) => {
     // Si la ruta consulta facultades devolvemos el catálogo preparado.
     if (path.startsWith("/facultades")) {
       return facultiesResponse as never;
@@ -84,6 +93,9 @@ function mockSuccessfulCatalogs() {
     }
     // Siempre que se pidan bloques devolvemos la respuesta base.
     if (path.startsWith("/bloques")) {
+      if (options?.method === "DELETE") {
+        return undefined as never;
+      }
       return blockListResponse as never;
     }
     // Si llega una ruta inesperada fallamos explicitamente para detectar problemas en la prueba.
@@ -273,5 +285,105 @@ describe("BlockListPage", () => {
       "href",
       "/dashboard/bloques/create"
     ); // Confirmamos que lleve a la ruta de creación.
+  });
+
+  it("muestra el dialogo de confirmacion de eliminacion con los datos del bloque", async () => {
+    const user = userEvent.setup(); // Instanciamos al usuario virtual para operar la interfaz.
+    render(<BlockListPage />); // Montamos la página bajo prueba.
+
+    await screen.findByText("Bloque Central"); // Esperamos a que la fila inicial esté disponible.
+
+    const deleteButton = screen.getByTitle(/eliminar bloque/i); // Obtenemos el botón de eliminar de la fila.
+    await user.click(deleteButton); // Abrimos el dialogo de confirmación.
+
+    await screen.findByRole("heading", { name: /eliminar bloque/i }); // Verificamos el título del dialogo.
+    expect(
+      screen.getByText(/Confirma el codigo y nombre antes de continuar/i)
+    ).toBeInTheDocument(); // Validamos el mensaje de seguridad.
+    expect(
+      screen.getByText(/BLO-044/, { selector: "span" })
+    ).toBeInTheDocument(); // Mostramos el código del bloque seleccionado.
+    expect(
+      screen.getByText(/Bloque Central/, { selector: "span" })
+    ).toBeInTheDocument(); // También debe aparecer el nombre descriptivo.
+  });
+
+  it("elimina el bloque, refresca la tabla y muestra un toast de exito", async () => {
+    const user = userEvent.setup(); // Configuramos a la persona usuaria simulada.
+    render(<BlockListPage />); // Renderizamos la vista del listado.
+
+    await screen.findByText("Bloque Central"); // Esperamos a que la data se cargue.
+
+    await user.click(screen.getByTitle(/eliminar bloque/i)); // Abrimos el dialogo destructivo.
+
+    const confirmButton = await screen.findByRole("button", {
+      name: /eliminar/i,
+    }); // Localizamos el botón que confirma la eliminación.
+    await user.click(confirmButton); // Ejecutamos la acción.
+
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        `/bloques/${blockListResponse.items[0]!.id}`,
+        expect.objectContaining({ method: "DELETE" })
+      ); // Validamos que se invoque DELETE con el id correcto.
+    });
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Bloque eliminado", {
+        description: "El bloque se eliminó correctamente.",
+      }); // Confirmamos el mensaje de éxito mostrado a la persona usuaria.
+    });
+
+    await waitFor(() => {
+      const listRequests = mockedApiFetch.mock.calls.filter(
+        ([path, options]) =>
+          typeof path === "string" &&
+          path.startsWith("/bloques?") &&
+          (!options || !("method" in options) || options.method === undefined)
+      );
+      expect(listRequests.length).toBeGreaterThanOrEqual(2); // Debe haber al menos una recarga posterior al borrado.
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: /eliminar bloque/i })
+      ).not.toBeInTheDocument(); // El dialogo se cierra automáticamente tras la eliminación.
+    });
+  });
+
+  it("muestra un toast de error y mantiene abierto el dialogo cuando la eliminacion falla", async () => {
+    const baseImplementation = mockedApiFetch.getMockImplementation(); // Guardamos la implementación de éxito por defecto.
+
+    mockedApiFetch.mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path.startsWith("/bloques") && options?.method === "DELETE") {
+        throw { message: "El backend falló" };
+      }
+      return baseImplementation?.(path, options as RequestInit);
+    }); // Sobrescribimos para simular el error en DELETE.
+
+    const user = userEvent.setup(); // Usuario virtual para los clicks.
+    render(<BlockListPage />); // Montamos la página.
+
+    await screen.findByText("Bloque Central"); // Esperamos los datos iniciales.
+
+    await user.click(screen.getByTitle(/eliminar bloque/i)); // Abrimos el dialogo.
+
+    const confirmButton = await screen.findByRole("button", {
+      name: /eliminar/i,
+    }); // Botón para confirmar.
+    await user.click(confirmButton); // Intentamos eliminar sabiendo que fallará.
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "No se pudo eliminar el bloque",
+        {
+          description: "El backend falló",
+        }
+      ); // Se informa el error devuelto por la API.
+    });
+
+    expect(
+      screen.getByRole("heading", { name: /eliminar bloque/i })
+    ).toBeInTheDocument(); // El dialogo permanece abierto para permitir reintentar.
   });
 });
