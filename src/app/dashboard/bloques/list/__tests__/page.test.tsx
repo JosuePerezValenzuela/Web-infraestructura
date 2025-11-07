@@ -3,17 +3,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react"; // Importamos las utilidades básicas de Testing Library para montar componentes y consultar el DOM virtual.
 import userEvent from "@testing-library/user-event"; // Esta utilidad nos permite simular las acciones que haría una persona usando la interfaz.
 import { vi } from "vitest"; // Vitest nos aporta las funciones para crear mocks y escribir pruebas.
-import { toast } from "sonner"; // Importamos el objeto toast para poder verificar los mensajes que la pantalla muestra.
 import { apiFetch } from "@/lib/api"; // apiFetch es el cliente que utiliza la app para hablar con el backend; lo vamos a espiar.
 import BlockListPage from "../page"; // Importamos la página que vamos a probar.
-
-// Configuramos un mock del paquete sonner para capturar cualquier intento de mostrar notificaciones.
-vi.mock("sonner", () => ({
-  toast: {
-    info: vi.fn(), // Simulamos el método info para saber cuándo se invoca.
-    error: vi.fn(), // Simulamos el método error por si la pantalla llegara a usarlo.
-  },
-}));
 
 // También simulamos el helper apiFetch para controlar completamente las respuestas del backend.
 vi.mock("@/lib/api", () => ({
@@ -79,8 +70,6 @@ const blockTypesResponse = {
 
 // Obtenemos referencias tipadas a los mocks para usarlas cómodamente.
 const mockedApiFetch = vi.mocked(apiFetch);
-const mockedToast = vi.mocked(toast);
-
 // Esta función configura el mock para que responda correctamente a cada endpoint solicitado.
 function mockSuccessfulCatalogs() {
   // Reemplazamos la implementación de apiFetch por una versión que inspecciona la ruta solicitada.
@@ -139,8 +128,8 @@ describe("BlockListPage", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: /Nuevo bloque/i })
-    ).toBeInTheDocument(); // El botón para crear registros debe estar disponible.
+      screen.getByRole("link", { name: /Nuevo bloque/i })
+    ).toBeInTheDocument(); // El enlace para registrar nuevos bloques debe estar disponible.
 
     // Validamos que todos los filtros solicitados existan en la interfaz.
     expect(
@@ -273,17 +262,16 @@ describe("BlockListPage", () => {
     });
   });
 
-  it("informa que la creacion y edicion estaran disponibles cuando se solicita una accion", async () => {
-    const user = userEvent.setup(); // Generamos el usuario virtual.
-    render(<BlockListPage />); // Renderizamos la interfaz.
+  it("ofrece un enlace directo para registrar nuevos bloques", async () => {
+    render(<BlockListPage />); // Renderizamos la página objetivo.
 
-    const newButton = await screen.findByRole("button", {
+    const createLink = await screen.findByRole("link", {
       name: /nuevo bloque/i,
-    }); // Buscamos el botón que accionará la futura creación.
-    await user.click(newButton); // Disparamos el clic para verificar la notificación temporal.
+    }); // Buscamos el enlace responsable de iniciar la creación.
 
-    expect(mockedToast.info).toHaveBeenCalledWith(
-      "La creacion de bloques estara disponible en la siguiente iteracion."
-    ); // Validamos que se informe a la persona usuaria que la acción llegará pronto.
+    expect(createLink).toHaveAttribute(
+      "href",
+      "/dashboard/bloques/create"
+    ); // Confirmamos que lleve a la ruta de creación.
   });
 });
