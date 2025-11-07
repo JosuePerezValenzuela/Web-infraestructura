@@ -18,6 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DataTable } from "@/components/data-table"; // Tabla reutilizable con ordenamiento y visibilidad de columnas.
 import { DataTableViewOptions } from "@/components/data-table-view-options";
 import {
@@ -293,11 +302,15 @@ export default function BlockListPage() {
   const [appliedSearch, setAppliedSearch] = useState(""); // Texto efectivamente aplicado como filtro.
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS); // Estado con los filtros seleccionados.
   const [faculties, setFaculties] = useState<CatalogOption[]>([]); // Opciones de facultad para el select.
-const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque.
+  const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque.
   const [loadingCatalogs, setLoadingCatalogs] = useState(true); // Indicador para mostrar que aún cargamos los catálogos.
   const [isFetching, setIsFetching] = useState(false); // Indicador que muestra cuando se consulta el listado principal.
   const [tableInstance, setTableInstance] =
     useState<ReactTableInstance<BlockRow> | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false); // Controla la apertura del diálogo de eliminación.
+  const [blockToDelete, setBlockToDelete] = useState<BlockRow | null>(null); // Guarda el registro seleccionado para eliminar.
+  const [deleting, setDeleting] = useState(false); // Marca si la petición DELETE está en curso.
+  const [reloadKey, setReloadKey] = useState(0); // Permite forzar la recarga del listado tras eliminar.
 
   // Esta función auxilia se encarga de consultar los catálogos necesarios apenas carga la pantalla.
   useEffect(() => {
@@ -399,7 +412,7 @@ const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones d
 
     void loadBlocks(); // Ejecutamos la consulta.
     return () => controller.abort(); // Abortamos si el efecto se limpia antes de completar.
-  }, [queryString]);
+  }, [queryString, reloadKey]);
 
   // Handlers auxiliares para mantener el componente ordenado.
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -429,10 +442,49 @@ const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones d
     ); // Mensaje temporal mientras se implementa HU 15.
   }
 
-  function handleDeletePlaceholder(block: BlockRow) {
-    toast.info(
-      `La eliminacion del bloque ${block.nombre} estara disponible pronto.`
-    ); // Mensaje temporal previo a HU 16.
+  function handleDelete(block: BlockRow) {
+    setBlockToDelete(block); // Guardamos el bloque que se desea eliminar.
+    setDeleteOpen(true); // Mostramos el diálogo de confirmación.
+  }
+
+  async function confirmDelete() {
+    if (!blockToDelete) {
+      return; // Si por alguna razón no hay registro seleccionado, no continuamos.
+    }
+
+    try {
+      setDeleting(true); // Deshabilitamos los controles mientras invocamos la API.
+      await apiFetch(`/bloques/${blockToDelete.id}`, {
+        method: "DELETE",
+      }); // Invocamos el endpoint definido en HU 16.
+
+      toast.success("Bloque eliminado", {
+        description: "El bloque se eliminó correctamente.",
+      }); // Avisamos a la persona usuaria que la operación concluyó.
+
+      setDeleteOpen(false); // Cerramos el diálogo de confirmación.
+      setBlockToDelete(null); // Limpiamos la referencia.
+      setReloadKey((previous) => previous + 1); // Forzamos la recarga del listado para reflejar el cambio.
+    } catch (error) {
+      const errorDetails =
+        typeof error === "object" && error && "details" in error
+          ? (error as { details?: unknown }).details
+          : undefined;
+      const errorMessage =
+        typeof error === "object" && error && "message" in error
+          ? String((error as { message?: string }).message ?? "")
+          : "";
+
+      const description = Array.isArray(errorDetails) && errorDetails.length
+        ? errorDetails.join("\n")
+        : errorMessage || "Revisa los datos e inténtalo nuevamente.";
+
+      toast.error("No se pudo eliminar el bloque", {
+        description,
+      }); // Mostramos el detalle del fallo.
+    } finally {
+      setDeleting(false); // Restablecemos los controles sin importar el resultado.
+    }
   }
 
   return (
@@ -565,7 +617,7 @@ const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones d
       </form>
 
       <DataTable
-        columns={blockColumns(handleEditPlaceholder, handleDeletePlaceholder)}
+        columns={blockColumns(handleEditPlaceholder, handleDelete)}
         data={items}
         page={page}
         pages={pages}
@@ -573,6 +625,57 @@ const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones d
         showViewOptions={false}
         onTableReady={setTableInstance}
       />
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(value) => {
+          setDeleteOpen(value);
+          if (!value) {
+            setBlockToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg space-y-4">
+          <DialogHeader>
+            <DialogTitle>Eliminar bloque</DialogTitle>
+            <DialogDescription>
+              Esta accion eliminara el bloque seleccionado y los ambientes que dependan de el. No se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>Confirma el codigo y nombre antes de continuar.</p>
+            {blockToDelete ? (
+              <>
+                <p>
+                  Codigo:{" "}
+                  <span className="font-semibold">{blockToDelete.codigo}</span>
+                </p>
+                <p>
+                  Nombre:{" "}
+                  <span className="font-semibold">{blockToDelete.nombre}</span>
+                </p>
+              </>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={deleting}>
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
