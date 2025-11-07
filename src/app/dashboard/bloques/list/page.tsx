@@ -1,0 +1,585 @@
+"use client";
+
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react"; // React nos brinda el estado y los efectos necesarios para manejar la UI.
+import { Button } from "@/components/ui/button"; // Botones reutilizables con los estilos del sistema.
+import { Input } from "@/components/ui/input"; // Campo de texto accesible y consistente.
+import { Label } from "@/components/ui/label"; // Etiquetas accesibles para todos los controles.
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DataTable } from "@/components/data-table"; // Tabla reutilizable con ordenamiento y visibilidad de columnas.
+import { DataTableViewOptions } from "@/components/data-table-view-options";
+import {
+  blockColumns,
+  type BlockRow,
+} from "@/features/blocks/list/columns"; // Columnas específicas de la entidad Bloques.
+import { apiFetch } from "@/lib/api"; // Cliente centralizado para hablar con el backend.
+import { toast } from "sonner"; // Notificaciones amigables para informar el estado de las operaciones.
+import type { Table as ReactTableInstance } from "@tanstack/react-table";
+
+// Describimos el shape de la respuesta paginada del backend para el listado de bloques.
+type BlockListResponse = {
+  items: BlockRow[]; // Tipamos cada elemento con la estructura BlockRow.
+  meta: {
+    total: number; // Total de registros en la base de datos.
+    page: number; // Página actual retornada.
+    pages: number; // Total de páginas disponibles.
+    take: number; // Cantidad de elementos por página.
+    hasNextPage: boolean; // Indicador de paginación hacia adelante.
+    hasPreviousPage: boolean; // Indicador de paginación hacia atrás.
+  };
+};
+
+// Cada opción de catálogo (facultades y tipos de bloque) comparte la misma forma.
+type CatalogOption = {
+  id: number; // Identificador del elemento en el backend.
+  nombre: string; // Etiqueta ya normalizada para el select.
+};
+
+type CatalogApiItem = {
+  id: number;
+  nombre?: string | null;
+  nombre_corto?: string | null;
+  nombreCorto?: string | null;
+  descripcion?: string | null;
+  codigo?: string | null;
+};
+
+// Resultado estándar que entrega el backend cuando se consultan catálogos simples.
+type CatalogResponse = {
+  items: CatalogApiItem[]; // Lista de opciones disponibles.
+};
+
+// Estado local que guardará los filtros aplicados a la grilla.
+type FilterState = {
+  facultadId: string; // Identificador de la facultad seleccionada o cadena vacía.
+  tipoBloqueId: string; // Identificador del tipo de bloque seleccionado o cadena vacía.
+  activo: string; // "true", "false" o cadena vacía para todos.
+  pisosMin: string; // Límite inferior para el rango de pisos.
+  pisosMax: string; // Límite superior para el rango de pisos.
+};
+
+const TAKE = 8; // Cantidad de registros por página según la historia de usuario.
+const INITIAL_FILTERS: FilterState = {
+  facultadId: "",
+  tipoBloqueId: "",
+  activo: "",
+  pisosMin: "",
+  pisosMax: "",
+}; // Estado base que nos permite restaurar los filtros rápidamente.
+const ALL_VALUE = "all"; // Valor centinela requerido por Radix Select para representar la opción de "todos".
+
+function normalizeCatalogOptions(
+  items: CatalogApiItem[],
+  fallbackPrefix: string
+): CatalogOption[] {
+  return items
+    .map((item) => {
+      if (typeof item.id !== "number") {
+        return null;
+      }
+      const label =
+        item.nombre ??
+        item.nombre_corto ??
+        item.nombreCorto ??
+        item.descripcion ??
+        item.codigo;
+
+      const finalLabel =
+        typeof label === "string" && label.trim().length
+          ? label.trim()
+          : `${fallbackPrefix} ${item.id}`;
+
+      return { id: item.id, nombre: finalLabel };
+    })
+    .filter((option): option is CatalogOption => Boolean(option));
+}
+
+type SearchableSelectProps = {
+  id: string;
+  label: string;
+  ariaLabel: string;
+  placeholder: string;
+  emptyLabel: string;
+  allLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: CatalogOption[];
+  loading?: boolean;
+};
+
+function SearchableSelect({
+  id,
+  label,
+  ariaLabel,
+  placeholder,
+  emptyLabel,
+  allLabel,
+  value,
+  onChange,
+  options,
+  loading = false,
+}: SearchableSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const filteredOptions = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      return options;
+    }
+    return options.filter((option) =>
+      option.nombre.toLowerCase().includes(term)
+    );
+  }, [options, searchTerm]);
+
+  const selectedOption = options.find((option) => String(option.id) === value);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (
+        dropdownRef.current?.contains(target) ||
+        triggerRef.current?.contains(target) ||
+        containerRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const labelId = `${id}-label`;
+  const triggerId = `${id}-trigger`;
+  const searchInputId = `${id}-search`;
+
+  return (
+    <div className="space-y-2">
+      <Label id={labelId} htmlFor={triggerId}>
+        {label}
+      </Label>
+      <div className="relative" ref={containerRef}>
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          id={triggerId}
+          className="w-full justify-between"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={`${id}-listbox`}
+          aria-labelledby={`${labelId} ${triggerId}`}
+          onClick={() => {
+            setOpen((previous) => !previous);
+            setSearchTerm("");
+          }}
+        >
+          <span className="truncate">
+            {selectedOption ? selectedOption.nombre : allLabel}
+          </span>
+          <span
+            aria-hidden
+            className="text-xs text-muted-foreground"
+          >
+            {open ? "Cerrar" : "Abrir"}
+          </span>
+        </Button>
+
+        {open ? (
+          <div
+            ref={dropdownRef}
+            className="absolute z-30 mt-2 w-full rounded-md border bg-popover shadow-md"
+          >
+            <div className="p-2">
+              <Input
+                id={searchInputId}
+                placeholder={placeholder}
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <ul
+              id={`${id}-listbox`}
+              role="listbox"
+              aria-label={ariaLabel}
+              className="max-h-56 overflow-y-auto px-1 pb-2"
+            >
+              <li className="p-1">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={value === ""}
+                  className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    onChange("");
+                    setOpen(false);
+                  }}
+                >
+                  {allLabel}
+                </button>
+              </li>
+
+              {loading ? (
+                <li className="px-3 py-2 text-sm text-muted-foreground">
+                  Cargando opciones...
+                </li>
+              ) : filteredOptions.length ? (
+                filteredOptions.map((option) => (
+                  <li key={option.id} className="p-1">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={value === String(option.id)}
+                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => {
+                        onChange(String(option.id));
+                        setOpen(false);
+                      }}
+                    >
+                      {option.nombre}
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="px-3 py-2 text-sm text-muted-foreground">
+                  {emptyLabel}
+                </li>
+              )}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export default function BlockListPage() {
+  const [items, setItems] = useState<BlockRow[]>([]); // Contendrá las filas visibles en la tabla.
+  const [page, setPage] = useState(1); // Página actual que estamos mostrando.
+  const [pages, setPages] = useState(1); // Cantidad total de páginas disponibles.
+  const [search, setSearch] = useState(""); // Texto que la persona escribe en el campo de búsqueda.
+  const [appliedSearch, setAppliedSearch] = useState(""); // Texto efectivamente aplicado como filtro.
+  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS); // Estado con los filtros seleccionados.
+  const [faculties, setFaculties] = useState<CatalogOption[]>([]); // Opciones de facultad para el select.
+const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque.
+  const [loadingCatalogs, setLoadingCatalogs] = useState(true); // Indicador para mostrar que aún cargamos los catálogos.
+  const [isFetching, setIsFetching] = useState(false); // Indicador que muestra cuando se consulta el listado principal.
+  const [tableInstance, setTableInstance] =
+    useState<ReactTableInstance<BlockRow> | null>(null);
+
+  // Esta función auxilia se encarga de consultar los catálogos necesarios apenas carga la pantalla.
+  useEffect(() => {
+    // Creamos un abort controller para cancelar la petición si la persona abandona la vista.
+    const controller = new AbortController();
+
+    async function loadCatalogs() {
+      try {
+        setLoadingCatalogs(true); // Marcamos que estamos cargando la data de los selects.
+        // Consultamos los catálogos en paralelo para ahorrar tiempo y cumplir con la regla de Security by Design (white list).
+        const [facultiesData, blockTypesData] = await Promise.all([
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=50", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200", {
+            signal: controller.signal,
+          }),
+        ]);
+        setFaculties(
+          normalizeCatalogOptions(facultiesData.items, "Facultad")
+        ); // Guardamos las facultades para el select con nombres legibles.
+        setBlockTypes(
+          normalizeCatalogOptions(blockTypesData.items, "Tipo de bloque")
+        ); // Guardamos los tipos de bloque normalizados.
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return; // Si abortamos manualmente salimos silenciosamente.
+        }
+        toast.error(
+          "No se pudieron cargar los catálogos de facultades y tipos de bloque."
+        ); // Mostramos un mensaje amable cuando falla la carga.
+      } finally {
+        setLoadingCatalogs(false); // Restablecemos el indicador en cualquier caso.
+      }
+    }
+
+    void loadCatalogs(); // Disparamos la carga.
+    return () => controller.abort(); // Abortamos las solicitudes cuando el componente se desmonta.
+  }, []);
+
+  // Construimos la query string cada vez que la página, los filtros o la búsqueda cambian.
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams(); // Preparamos el objeto que traduciremos a ?clave=valor.
+    params.set("page", String(page)); // Siempre enviamos la página actual.
+    params.set("limit", String(TAKE)); // El backend necesita saber cuántos registros devolver.
+    if (appliedSearch) {
+      params.set("search", appliedSearch); // Solo agregamos la búsqueda si la persona la confirmó.
+    }
+    if (filters.facultadId) {
+      params.set("facultadId", filters.facultadId); // Traduce el filtro de facultades.
+    }
+    if (filters.tipoBloqueId) {
+      params.set("tipoBloqueId", filters.tipoBloqueId); // Traduce el filtro por tipo.
+    }
+    if (filters.activo) {
+      params.set("activo", filters.activo); // true/false según la opción seleccionada.
+    }
+    if (filters.pisosMin.trim() !== "") {
+      const parsedMin = Number(filters.pisosMin.trim()); // Intentamos convertir el mínimo a número.
+      if (!Number.isNaN(parsedMin)) {
+        params.set("pisosMin", String(parsedMin)); // Sólo enviamos el valor cuando es válido.
+      }
+    }
+    if (filters.pisosMax.trim() !== "") {
+      const parsedMax = Number(filters.pisosMax.trim()); // Repetimos el proceso para el máximo.
+      if (!Number.isNaN(parsedMax)) {
+        params.set("pisosMax", String(parsedMax));
+      }
+    }
+    return params.toString(); // Finalmente devolvemos la cadena para ejecutar la solicitud.
+  }, [page, appliedSearch, filters]);
+
+  // Cada vez que la query string cambia consultamos el backend para actualizar la tabla.
+  useEffect(() => {
+    const controller = new AbortController(); // Creamos un controlador para abortar la petición si es necesario.
+
+    async function loadBlocks() {
+      try {
+        setIsFetching(true); // Indicamos que estamos sincronizando datos.
+        const data = await apiFetch<BlockListResponse>(
+          `/bloques?${queryString}`,
+          {
+            signal: controller.signal,
+          }
+        ); // Realizamos la consulta principal de bloques.
+        setItems(Array.isArray(data.items) ? data.items : []); // Guardamos las filas recibidas.
+        setPages(data.meta.pages > 0 ? data.meta.pages : 1); // Nos aseguramos de tener al menos una página.
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return; // Si abortamos manualmente no mostramos errores.
+        }
+        toast.error(
+          "No pudimos cargar el listado de bloques. Reintenta en unos segundos."
+        ); // Comunicamos el fallo a la persona usuaria de manera controlada.
+      } finally {
+        setIsFetching(false); // Siempre restablecemos el indicador.
+      }
+    }
+
+    void loadBlocks(); // Ejecutamos la consulta.
+    return () => controller.abort(); // Abortamos si el efecto se limpia antes de completar.
+  }, [queryString]);
+
+  // Handlers auxiliares para mantener el componente ordenado.
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); // Evitamos la recarga del navegador.
+    setAppliedSearch(search.trim()); // Guardamos la versión limpia de la búsqueda.
+    setPage(1); // Volvemos a la primera página según la regla de negocio.
+  }
+
+  function updateFilter<Key extends keyof FilterState>(
+    key: Key,
+    value: string
+  ) {
+    setFilters((prev) => ({ ...prev, [key]: value })); // Actualizamos solamente el filtro indicado.
+    setPage(1); // Siempre que cambia un filtro regresamos al inicio de la paginación.
+  }
+
+  function handleClearFilters() {
+    setFilters(INITIAL_FILTERS); // Restauramos los filtros al estado base.
+    setSearch(""); // Limpiamos el campo de búsqueda visible.
+    setAppliedSearch(""); // Eliminamos el filtro aplicado en la query.
+    setPage(1); // Regresamos a la primera página.
+  }
+
+  function handleCreatePlaceholder() {
+    toast.info("La creacion de bloques estara disponible en la siguiente iteracion."); // Informamos que la acción llegará en la próxima HU.
+  }
+
+  function handleEditPlaceholder(block: BlockRow) {
+    toast.info(
+      `La edicion del bloque ${block.nombre} estara disponible en la siguiente entrega.`
+    ); // Mensaje temporal mientras se implementa HU 15.
+  }
+
+  function handleDeletePlaceholder(block: BlockRow) {
+    toast.info(
+      `La eliminacion del bloque ${block.nombre} estara disponible pronto.`
+    ); // Mensaje temporal previo a HU 16.
+  }
+
+  return (
+    <section className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Bloques</h1>
+      </header>
+
+      <form
+        onSubmit={handleSearchSubmit}
+        className="space-y-4 rounded-lg border bg-card p-4 shadow-sm"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 lg:min-w-[280px]">
+            <Label htmlFor="block-search">Buscar</Label>
+            <Input
+              id="block-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por codigo, nombre o nombre corto"
+              aria-label="Buscar bloques"
+            />
+          </div>
+
+          <div className="flex w-full flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center lg:w-auto">
+            <Button type="submit" className="w-full min-[480px]:w-auto">
+              Buscar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearFilters}
+              className="w-full min-[480px]:w-auto"
+            >
+              Limpiar filtros
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreatePlaceholder}
+              className="w-full min-[480px]:w-auto"
+            >
+              Nuevo bloque
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <SearchableSelect
+            id="facultad-filter"
+            label="Filtrar por facultad"
+            ariaLabel="Listado de facultades para filtrar bloques"
+            placeholder="Buscar facultad"
+            emptyLabel="No se encontraron facultades"
+            allLabel="Todas las facultades"
+            value={filters.facultadId}
+            onChange={(value) => updateFilter("facultadId", value)}
+            options={faculties}
+            loading={loadingCatalogs}
+          />
+
+          <SearchableSelect
+            id="tipo-bloque-filter"
+            label="Filtrar por tipo de bloque"
+            ariaLabel="Listado de tipos de bloque para filtrar"
+            placeholder="Buscar tipo de bloque"
+            emptyLabel="No se encontraron tipos"
+            allLabel="Todos los tipos"
+            value={filters.tipoBloqueId}
+            onChange={(value) => updateFilter("tipoBloqueId", value)}
+            options={blockTypes}
+            loading={loadingCatalogs}
+          />
+
+          <div className="space-y-2">
+            <Label id="estado-filter-label">Filtrar por estado</Label>
+            <Select
+              value={filters.activo || ALL_VALUE}
+              onValueChange={(value) =>
+                updateFilter("activo", value === ALL_VALUE ? "" : value)
+              }
+            >
+              <SelectTrigger
+                aria-labelledby="estado-filter-label"
+                aria-label="Filtrar por estado"
+              >
+                <SelectValue placeholder="Todos los estados" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>Todos los estados</SelectItem>
+                <SelectItem value="true">Solo activos</SelectItem>
+                <SelectItem value="false">Solo inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pisos-min">Pisos mínimos</Label>
+            <Input
+              id="pisos-min"
+              type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              min={0}
+              placeholder="Ej. 2"
+              aria-label="Pisos mínimos"
+              value={filters.pisosMin}
+              onChange={(event) => updateFilter("pisosMin", event.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pisos-max">Pisos máximos</Label>
+            <Input
+              id="pisos-max"
+              type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              min={0}
+              placeholder="Ej. 10"
+              aria-label="Pisos máximos"
+              value={filters.pisosMax}
+              onChange={(event) => updateFilter("pisosMax", event.target.value)}
+            />
+          </div>
+
+          {tableInstance ? (
+            <div className="flex items-end justify-end">
+              <DataTableViewOptions table={tableInstance} />
+            </div>
+          ) : (
+            <div aria-hidden />
+          )}
+        </div>
+      </form>
+
+      <DataTable
+        columns={blockColumns(handleEditPlaceholder, handleDeletePlaceholder)}
+        data={items}
+        page={page}
+        pages={pages}
+        onPageChange={setPage}
+        showViewOptions={false}
+        onTableReady={setTableInstance}
+      />
+    </section>
+  );
+}
