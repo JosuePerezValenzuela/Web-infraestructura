@@ -13,7 +13,13 @@ export function DataTableViewOptions<TData>({ table }: Props<TData>) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant='outline' size='sm'>Ver</Button>
+                <Button
+                    variant='default'
+                    size='sm'
+                    className="bg-black text-white hover:bg-black/90"
+                >
+                    Ver
+                </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel>Columnas</DropdownMenuLabel>
