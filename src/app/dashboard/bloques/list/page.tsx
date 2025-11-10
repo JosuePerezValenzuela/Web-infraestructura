@@ -33,6 +33,7 @@ import {
   blockColumns,
   type BlockRow,
 } from "@/features/blocks/list/columns"; // Columnas específicas de la entidad Bloques.
+import BlockEditForm from "@/features/blocks/edit/BlockEditForm";
 import { apiFetch } from "@/lib/api"; // Cliente centralizado para hablar con el backend.
 import { toast } from "sonner"; // Notificaciones amigables para informar el estado de las operaciones.
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
@@ -310,6 +311,8 @@ export default function BlockListPage() {
   const [deleteOpen, setDeleteOpen] = useState(false); // Controla la apertura del diálogo de eliminación.
   const [blockToDelete, setBlockToDelete] = useState<BlockRow | null>(null); // Guarda el registro seleccionado para eliminar.
   const [deleting, setDeleting] = useState(false); // Marca si la petición DELETE está en curso.
+  const [editOpen, setEditOpen] = useState(false); // Controla la apertura del diálogo de edición.
+  const [blockToEdit, setBlockToEdit] = useState<BlockRow | null>(null); // Mantiene el bloque que se está editando.
   const [reloadKey, setReloadKey] = useState(0); // Permite forzar la recarga del listado tras eliminar.
 
   // Esta función auxilia se encarga de consultar los catálogos necesarios apenas carga la pantalla.
@@ -436,10 +439,9 @@ export default function BlockListPage() {
     setPage(1); // Regresamos a la primera página.
   }
 
-  function handleEditPlaceholder(block: BlockRow) {
-    toast.info(
-      `La edicion del bloque ${block.nombre} estara disponible en la siguiente entrega.`
-    ); // Mensaje temporal mientras se implementa HU 15.
+  function handleEdit(block: BlockRow) {
+    setBlockToEdit(block); // Guardamos la fila seleccionada para popular el formulario.
+    setEditOpen(true); // Abrimos el diálogo de edición.
   }
 
   function handleDelete(block: BlockRow) {
@@ -617,7 +619,7 @@ export default function BlockListPage() {
       </form>
 
       <DataTable
-        columns={blockColumns(handleEditPlaceholder, handleDelete)}
+        columns={blockColumns(handleEdit, handleDelete)}
         data={items}
         page={page}
         pages={pages}
@@ -625,6 +627,43 @@ export default function BlockListPage() {
         showViewOptions={false}
         onTableReady={setTableInstance}
       />
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(value) => {
+          setEditOpen(value);
+          if (!value) {
+            setBlockToEdit(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl">
+          <div className="flex max-h-[85vh] flex-col ">
+            <DialogHeader className="space-y-2 border-b p-6">
+              <DialogTitle>Editar bloque</DialogTitle>  
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {blockToEdit ? (
+                <BlockEditForm
+                  block={blockToEdit}
+                  faculties={faculties}
+                  blockTypes={blockTypes}
+                  onCancel={() => {
+                    setEditOpen(false);
+                    setBlockToEdit(null);
+                  }}
+                  onSubmitSuccess={async () => {
+                    setEditOpen(false);
+                    setBlockToEdit(null);
+                    setReloadKey((previous) => previous + 1);
+                  }}
+                />
+              ) : null}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={deleteOpen}
