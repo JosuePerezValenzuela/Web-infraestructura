@@ -20,6 +20,49 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const { blockEditFormMock } = vi.hoisted(() => ({
+  blockEditFormMock: vi.fn(
+    ({
+      block,
+      onSubmitSuccess,
+      onCancel,
+    }: {
+      block: { id: number; nombre: string };
+      faculties: unknown[];
+      blockTypes: unknown[];
+      onSubmitSuccess?: () => void | Promise<void>;
+      onCancel?: () => void;
+    }) => (
+      <div data-testid="mock-edit-form">
+        <p>
+          Editando bloque: <span>{block.nombre}</span>
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            void onSubmitSuccess?.();
+          }}
+        >
+          Simular guardado
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onCancel?.();
+          }}
+        >
+          Cancelar edicion
+        </button>
+      </div>
+    )
+  ),
+}));
+
+vi.mock("@/features/blocks/edit/BlockEditForm", () => ({
+  __esModule: true,
+  default: blockEditFormMock,
+}));
+
 // Jsdom no implementa hasPointerCapture/releasePointerCapture y Radix Select los requiere para manejar eventos de puntero.
 if (!Element.prototype.hasPointerCapture) {
   // Proveemos una implementación mínima que solo devuelve false.
@@ -109,6 +152,7 @@ describe("BlockListPage", () => {
   beforeEach(() => {
     mockedApiFetch.mockReset(); // Limpiamos cualquier llamada o implementación previa del mock.
     mockSuccessfulCatalogs(); // Registramos la implementación que devuelve los catálogos simulados.
+    blockEditFormMock.mockClear(); // Aseguramos que el mock del formulario de edición empiece limpio.
   });
 
   // Después de cada escenario limpiamos los mocks para que no filtren estado a las siguientes pruebas.
@@ -349,6 +393,43 @@ describe("BlockListPage", () => {
         screen.queryByRole("heading", { name: /eliminar bloque/i })
       ).not.toBeInTheDocument(); // El dialogo se cierra automáticamente tras la eliminación.
     });
+  });
+
+  it("abre el dialogo de edicion y refresca el listado cuando el guardado simulado finaliza", async () => {
+    const user = userEvent.setup(); // Instanciamos al usuario virtual para disparar las acciones.
+    render(<BlockListPage />); // Montamos la pagina completa para probar el flujo real.
+
+    const editButton = await screen.findByTitle(/editar bloque/i); // Localizamos el boton de edicion dentro de la tabla.
+    await user.click(editButton); // Abrimos el dialogo presionando el icono de lapiz.
+
+    expect(
+      await screen.findByRole("heading", { name: /editar bloque/i })
+    ).toBeInTheDocument(); // Confirmamos que el dialogo muestre el titulo correcto.
+
+    const mockForm = await screen.findByTestId("mock-edit-form"); // El componente simulado deberia renderizarse dentro del dialogo.
+    expect(mockForm).toHaveTextContent("Bloque Central"); // Validamos que reciba la fila seleccionada.
+
+    const lastCall = blockEditFormMock.mock.calls.at(-1); // Revisamos los argumentos del mock para confirmar el registro enviado.
+    expect(lastCall?.[0].block.id).toBe(44); // El bloque con id 44 deberia ser el que se intenta editar.
+
+    await user.click(
+      screen.getByRole("button", { name: /simular guardado/i })
+    ); // Simulamos que el formulario termino correctamente y notifico al padre.
+
+    await waitFor(() => {
+      const blockRequests = mockedApiFetch.mock.calls.filter(([path, options]) => {
+        return (
+          typeof path === "string" &&
+          path.startsWith("/bloques") &&
+          (!options || options.method === undefined)
+        );
+      });
+      expect(blockRequests.length).toBeGreaterThanOrEqual(2); // Debe ejecutar una recarga adicional del listado.
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("mock-edit-form")).not.toBeInTheDocument();
+    }); // El dialogo debe cerrarse tras completar la edicion.
   });
 
   it("muestra un toast de error y mantiene abierto el dialogo cuando la eliminacion falla", async () => {
