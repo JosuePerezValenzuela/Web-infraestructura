@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { apiFetch } from "@/lib/api";
 
 type EnvironmentTypeFormProps = {
@@ -60,7 +60,8 @@ export default function EnvironmentTypeForm({
       });
 
       // Informamos a la persona usuaria que el registro se creo correctamente.
-      toast.success("Tipo de ambiente creado", {
+      notify.success({
+        title: "Tipo de ambiente creado",
         description: "El catalogo se actualizo correctamente.",
       });
 
@@ -80,7 +81,8 @@ export default function EnvironmentTypeForm({
       onClose?.();
     } catch (error) {
       // Ante un fallo mostramos un mensaje que explique como continuar.
-      toast.error("No se pudo crear el tipo de ambiente", {
+      notify.error({
+        title: "No se pudo crear el tipo de ambiente",
         description: "Revisa los datos e intentalo nuevamente.",
       });
     } finally {

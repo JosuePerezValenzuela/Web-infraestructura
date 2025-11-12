@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiFetch } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import {
   environmentTypeUpdateSchema,
   type EnvironmentTypeUpdateInput,
@@ -72,7 +72,8 @@ export default function EnvironmentTypeEditForm({
       });
 
       // Notificamos que la actualizacion fue exitosa.
-      toast.success("Tipo de ambiente actualizado", {
+      notify.success({
+        title: "Tipo de ambiente actualizado",
         description: "Se guardaron los cambios correctamente.",
       });
 
@@ -96,7 +97,8 @@ export default function EnvironmentTypeEditForm({
           ? String((error as { message?: unknown }).message)
           : "Error desconocido.";
 
-      toast.error("No se pudo actualizar el tipo de ambiente", {
+      notify.error({
+        title: "No se pudo actualizar el tipo de ambiente",
         description,
       });
     } finally {

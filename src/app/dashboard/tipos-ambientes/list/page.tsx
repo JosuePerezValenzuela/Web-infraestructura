@@ -21,7 +21,7 @@ import {
 import EnvironmentTypeForm from "@/features/environment-types/EnvironmentTypeForm";
 import EnvironmentTypeEditForm from "@/features/environment-types/edit/EnvironmentTypeEditForm";
 import { apiFetch } from "@/lib/api";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 
 // Definimos la cantidad de filas que solicitaremos por pagina para mantener una altura consistente.
 const TAKE = 8;
@@ -140,7 +140,8 @@ export default function EnvironmentTypeListPage() {
       await apiFetch(`/tipo_ambientes/${environmentTypeToDelete.id}`, {
         method: "DELETE",
       });
-      toast.success("Tipo de ambiente eliminado", {
+      notify.success({
+        title: "Tipo de ambiente eliminado",
         description: "El registro se elimino correctamente.",
       });
       await fetchData();
@@ -154,7 +155,8 @@ export default function EnvironmentTypeListPage() {
           ? String((error as { message?: unknown }).message)
           : "Error desconocido.";
 
-      toast.error("No se pudo eliminar el tipo de ambiente", {
+      notify.error({
+        title: "No se pudo eliminar el tipo de ambiente",
         description,
       });
     } finally {
