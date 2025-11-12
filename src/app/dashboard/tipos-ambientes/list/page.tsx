@@ -18,6 +18,7 @@ import {
   type EnvironmentTypeRow,
 } from "@/features/environment-types/list/columns";
 import EnvironmentTypeForm from "@/features/environment-types/EnvironmentTypeForm";
+import EnvironmentTypeEditForm from "@/features/environment-types/edit/EnvironmentTypeEditForm";
 
 // Definimos la cantidad de filas que solicitaremos por pagina para mantener una altura consistente.
 const TAKE = 8;
@@ -33,6 +34,11 @@ export default function EnvironmentTypeListPage() {
   const [search, setSearch] = useState("");
   // Controlamos la apertura del modal dedicado a crear tipos de ambientes.
   const [createOpen, setCreateOpen] = useState(false);
+  // Guardamos el tipo seleccionado para edicion.
+  const [environmentTypeToEdit, setEnvironmentTypeToEdit] =
+    useState<EnvironmentTypeRow | null>(null);
+  // Controlamos el modal de edicion.
+  const [editOpen, setEditOpen] = useState(false);
 
   // Normalizamos el termino de busqueda quitando espacios extra para evitar consultas innecesarias.
   const query = useMemo(() => search.trim(), [search]);
@@ -88,6 +94,21 @@ export default function EnvironmentTypeListPage() {
     await fetchData();
   }
 
+  function handleEdit(environmentType: EnvironmentTypeRow) {
+    setEnvironmentTypeToEdit(environmentType);
+    setEditOpen(true);
+  }
+
+  function handleCloseEditDialog() {
+    setEditOpen(false);
+    setEnvironmentTypeToEdit(null);
+  }
+
+  async function handleEditSuccess() {
+    await fetchData();
+    handleCloseEditDialog();
+  }
+
   // Ejecutamos la consulta inicial y la repetimos cada vez que cambian la pagina o el termino de busqueda.
   useEffect(() => {
     // Creamos un controlador para cancelar la peticion si el componente se desmonta.
@@ -111,7 +132,7 @@ export default function EnvironmentTypeListPage() {
       </header>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full max-w-md items-center gap-2">
+        <div className="w-full max-w-sm">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -130,11 +151,11 @@ export default function EnvironmentTypeListPage() {
 
       <DataTable
         data={items}
-        columns={environmentTypeColumns()}
+        columns={environmentTypeColumns(handleEdit)}
         page={page}
         pages={pages}
         onPageChange={(nextPage) => setPage(nextPage)}
-        showViewOptions={false}
+        showViewOptions
       />
 
       <Dialog
@@ -166,6 +187,45 @@ export default function EnvironmentTypeListPage() {
             onSuccess={handleCreateSuccess}
             onClose={() => setCreateOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(value) => {
+          setEditOpen(value);
+          if (!value) {
+            setEnvironmentTypeToEdit(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader className="space-y-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <DialogTitle>Editar tipo de ambiente</DialogTitle>
+                <DialogDescription>
+                  Ajusta los datos para mantener el catalogo actualizado.
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">Cerrar</span>
+                </button>
+              </DialogClose>
+            </div>
+          </DialogHeader>
+
+          {environmentTypeToEdit ? (
+            <EnvironmentTypeEditForm
+              environmentType={environmentTypeToEdit}
+              onSubmitSuccess={handleEditSuccess}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </section>
