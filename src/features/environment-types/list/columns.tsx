@@ -47,7 +47,7 @@ export function environmentTypeColumns(
       cell: ({ getValue }) => {
         const value = getValue<string>() ?? "";
         return (
-          <span className="block max-w-[28rem] whitespace-normal break-words text-sm text-muted-foreground">
+          <span className="block max-w-[28rem] whitespace-normal break-words">
             {value}
           </span>
         );
