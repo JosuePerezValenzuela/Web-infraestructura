@@ -5,9 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { X } from "lucide-react";
+import {
   environmentTypeColumns,
   type EnvironmentTypeRow,
 } from "@/features/environment-types/list/columns";
+import EnvironmentTypeForm from "@/features/environment-types/EnvironmentTypeForm";
 
 // Definimos la cantidad de filas que solicitaremos por pagina para mantener una altura consistente.
 const TAKE = 8;
@@ -21,6 +31,8 @@ export default function EnvironmentTypeListPage() {
   const [pages, setPages] = useState(1);
   // Mantenemos el termino de busqueda escrito por la persona usuaria.
   const [search, setSearch] = useState("");
+  // Controlamos la apertura del modal dedicado a crear tipos de ambientes.
+  const [createOpen, setCreateOpen] = useState(false);
 
   // Normalizamos el termino de busqueda quitando espacios extra para evitar consultas innecesarias.
   const query = useMemo(() => search.trim(), [search]);
@@ -30,7 +42,7 @@ export default function EnvironmentTypeListPage() {
     setPage(1);
   }, [query]);
 
-  // Encapsulamos la llamada al backend para poder reutilizarla despues de paginar.
+  // Encapsulamos la llamada al backend para poder reutilizarla despues de paginar o crear registros nuevos.
   async function fetchData(signal?: AbortSignal) {
     try {
       // Construimos los parametros aceptados por la API: pagina, limite y filtro opcional.
@@ -71,6 +83,11 @@ export default function EnvironmentTypeListPage() {
     }
   }
 
+  async function handleCreateSuccess() {
+    // Reutilizamos la llamada al backend para refrescar el listado tras una creacion exitosa.
+    await fetchData();
+  }
+
   // Ejecutamos la consulta inicial y la repetimos cada vez que cambian la pagina o el termino de busqueda.
   useEffect(() => {
     // Creamos un controlador para cancelar la peticion si el componente se desmonta.
@@ -102,7 +119,11 @@ export default function EnvironmentTypeListPage() {
             aria-label="Buscar tipos de ambientes"
           />
         </div>
-        <Button type="button" className="w-full sm:w-auto">
+        <Button
+          type="button"
+          className="w-full sm:w-auto"
+          onClick={() => setCreateOpen(true)}
+        >
           Nuevo tipo de ambientes
         </Button>
       </div>
@@ -115,6 +136,38 @@ export default function EnvironmentTypeListPage() {
         onPageChange={(nextPage) => setPage(nextPage)}
         showViewOptions={false}
       />
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader className="space-y-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <DialogTitle>Crear tipo de ambiente</DialogTitle>
+                <DialogDescription>
+                  Completa los datos para agregar un nuevo clasificador al catalogo.
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">Cerrar</span>
+                </button>
+              </DialogClose>
+            </div>
+          </DialogHeader>
+
+          <EnvironmentTypeForm
+            onSuccess={handleCreateSuccess}
+            onClose={() => setCreateOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
