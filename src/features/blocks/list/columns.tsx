@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table"; // Importamos el tipo qu
 import { Pencil, Trash2 } from "lucide-react"; // Usamos íconos claros para las acciones disponibles.
 import { Button } from "@/components/ui/button"; // Botón reutilizable que mantiene la identidad visual del sistema.
 import { DataTableColumnHeader } from "@/components/data-table-column-header"; // Encabezado que habilita ordenamiento accesible.
+import { Badge } from "@/components/ui/badge";
 
 type BaseBlockRow = {
   id: number; // Identificador único que utilizaremos más adelante para editar o eliminar.
@@ -145,7 +146,14 @@ export function blockColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Estado" />
       ),
-      cell: ({ getValue }) => (getValue<boolean>() ? "Activo" : "Inactivo"),
+      cell: ({ getValue }) => {
+        const active = getValue<boolean>();
+        return (
+          <Badge variant={active ? "secondary" : "outline"}>
+            {active ? "Activo" : "Inactivo"}
+          </Badge>
+        );
+      },
     },
     {
       // Columna final que agrupa las acciones disponibles sobre cada fila.

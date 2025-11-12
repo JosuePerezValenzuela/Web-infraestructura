@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table-column-header";
+import { Badge } from "@/components/ui/badge";
 
 export type BlockTypeRow = {
   id: number;
@@ -43,7 +44,14 @@ export function blockTypeColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Estado" />
       ),
-      cell: ({ getValue }) => (getValue<boolean>() ? "Activo" : "Inactivo"),
+      cell: ({ getValue }) => {
+        const active = getValue<boolean>();
+        return (
+          <Badge variant={active ? "secondary" : "outline"}>
+            {active ? "Activo" : "Inactivo"}
+          </Badge>
+        );
+      },
     },
     {
       // La columna de acciones agrupa los botones disponibles por fila.

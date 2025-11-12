@@ -4,6 +4,7 @@ import React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { DataTableColumnHeader } from '../../../components/data-table-column-header'
 
 export type CampusRow = {
@@ -43,7 +44,14 @@ export function campusColumns(
             accessorKey: 'activo',
             meta: { label: "Estado"}, 
             header: ({ column }) => (<DataTableColumnHeader column={column} title='Estado' />),
-            cell: ({ getValue }) => (getValue<boolean>() ? 'Activo' : 'Inactivo')
+            cell: ({ getValue }) => {
+                const active = getValue<boolean>();
+                return (
+                    <Badge variant={active ? "secondary" : "outline"}>
+                        {active ? "Activo" : "Inactivo"}
+                    </Badge>
+                );
+            }
         },
         {
             accessorKey: 'creado_en',

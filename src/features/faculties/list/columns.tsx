@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table-column-header";
+import { Badge } from "@/components/ui/badge";
 
 export type FacultyRow = {
   id: number;
@@ -60,7 +61,14 @@ export function facultyColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Estado" />
       ),
-      cell: ({ getValue }) => (getValue<boolean>() ? "Activo" : "Inactivo"),
+      cell: ({ getValue }) => {
+        const active = getValue<boolean>();
+        return (
+          <Badge variant={active ? "secondary" : "outline"}>
+            {active ? "Activo" : "Inactivo"}
+          </Badge>
+        );
+      },
     },
     {
       accessorKey: "creado_en",
