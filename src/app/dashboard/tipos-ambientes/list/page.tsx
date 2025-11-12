@@ -9,6 +9,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,6 +20,8 @@ import {
 } from "@/features/environment-types/list/columns";
 import EnvironmentTypeForm from "@/features/environment-types/EnvironmentTypeForm";
 import EnvironmentTypeEditForm from "@/features/environment-types/edit/EnvironmentTypeEditForm";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 // Definimos la cantidad de filas que solicitaremos por pagina para mantener una altura consistente.
 const TAKE = 8;
@@ -39,6 +42,13 @@ export default function EnvironmentTypeListPage() {
     useState<EnvironmentTypeRow | null>(null);
   // Controlamos el modal de edicion.
   const [editOpen, setEditOpen] = useState(false);
+  // Guardamos el tipo seleccionado para eliminacion.
+  const [environmentTypeToDelete, setEnvironmentTypeToDelete] =
+    useState<EnvironmentTypeRow | null>(null);
+  // Controlamos el modal de eliminacion.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Indicamos cuando la peticion DELETE esta en progreso.
+  const [deleting, setDeleting] = useState(false);
 
   // Normalizamos el termino de busqueda quitando espacios extra para evitar consultas innecesarias.
   const query = useMemo(() => search.trim(), [search]);
@@ -109,6 +119,49 @@ export default function EnvironmentTypeListPage() {
     handleCloseEditDialog();
   }
 
+  function handleDelete(environmentType: EnvironmentTypeRow) {
+    setEnvironmentTypeToDelete(environmentType);
+    setDeleteOpen(true);
+  }
+
+  function resetDeleteState() {
+    setEnvironmentTypeToDelete(null);
+    setDeleteOpen(false);
+    setDeleting(false);
+  }
+
+  async function confirmDelete() {
+    if (!environmentTypeToDelete) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await apiFetch(`/tipo_ambientes/${environmentTypeToDelete.id}`, {
+        method: "DELETE",
+      });
+      toast.success("Tipo de ambiente eliminado", {
+        description: "El registro se elimino correctamente.",
+      });
+      await fetchData();
+      resetDeleteState();
+    } catch (error) {
+      const description =
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message?: unknown }).message === "string"
+          ? String((error as { message?: unknown }).message)
+          : "Error desconocido.";
+
+      toast.error("No se pudo eliminar el tipo de ambiente", {
+        description,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   // Ejecutamos la consulta inicial y la repetimos cada vez que cambian la pagina o el termino de busqueda.
   useEffect(() => {
     // Creamos un controlador para cancelar la peticion si el componente se desmonta.
@@ -151,7 +204,7 @@ export default function EnvironmentTypeListPage() {
 
       <DataTable
         data={items}
-        columns={environmentTypeColumns(handleEdit)}
+        columns={environmentTypeColumns(handleEdit, handleDelete)}
         page={page}
         pages={pages}
         onPageChange={(nextPage) => setPage(nextPage)}
@@ -226,6 +279,71 @@ export default function EnvironmentTypeListPage() {
               onSubmitSuccess={handleEditSuccess}
             />
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(value) => {
+          setDeleteOpen(value);
+          if (!value) {
+            setEnvironmentTypeToDelete(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader className="space-y-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <DialogTitle>Eliminar tipo de ambiente</DialogTitle>
+                <DialogDescription>
+                  Esta accion eliminara el tipo de ambiente seleccionado y los
+                  ambientes asociados. No se puede deshacer.
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  disabled={deleting}
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">Cerrar</span>
+                </button>
+              </DialogClose>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Confirma el nombre antes de continuar. Los ambientes dependientes
+              se eliminaran en cadena.
+            </p>
+            {environmentTypeToDelete ? (
+              <p>
+                Tipo de ambiente:{" "}
+                <span className="font-semibold">
+                  {environmentTypeToDelete.nombre}
+                </span>
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={deleting}>
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={confirmDelete}
+            >
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </section>
