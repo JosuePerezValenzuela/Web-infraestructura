@@ -1,7 +1,20 @@
-﻿import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
+import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import EnvironmentTypeListPage from "../page";
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/api", () => ({
+  apiFetch: vi.fn(),
+}));
 
 // Configuramos un API base estable para que las URLs generadas por la pagina sean deterministicas.
 const API_BASE_URL = "https://api.infra.test";
@@ -153,5 +166,149 @@ describe("EnvironmentTypeListPage", () => {
         expect.anything()
       );
     });
+  });
+
+  it("abre el modal de creacion y muestra los campos solicitados por la HU 17", async () => {
+    // Generamos una persona usuaria virtual para interactuar con la pantalla.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina para iniciar la prueba.
+    render(<EnvironmentTypeListPage />);
+
+    // Esperamos a que el listado inicial aparezca para confirmar que la UI esta lista.
+    await screen.findByText("Aula de clases");
+
+    // Ubicamos el boton que abre el modal de creacion y lo activamos.
+    const createButton = screen.getByRole("button", {
+      name: /nuevo tipo de ambientes/i,
+    });
+    await user.click(createButton);
+
+    // Confirmamos que el modal muestre el encabezado correcto.
+    await screen.findByRole("heading", { name: /crear tipo de ambiente/i });
+
+    // Verificamos la presencia de cada campo requerido por el formulario.
+    expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Descripcion$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/descripcion corta/i)).toBeInTheDocument();
+
+    // Validamos que exista el boton que enviara el formulario.
+    expect(screen.getByRole("button", { name: /guardar/i })).toBeInTheDocument();
+  });
+
+  it("crea un tipo de ambiente y refresca la tabla tras el exito", async () => {
+    // Configuramos el mock del API para simular que el backend acepta el registro.
+    vi.mocked(apiFetch).mockResolvedValueOnce({ id: 99 });
+
+    // Creamos un usuario virtual para llenar el formulario.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina bajo prueba.
+    render(<EnvironmentTypeListPage />);
+
+    // Esperamos los datos iniciales para garantizar que la pantalla esta lista.
+    await screen.findByText("Aula de clases");
+
+    // Abrimos el modal de creacion.
+    await user.click(
+      screen.getByRole("button", { name: /nuevo tipo de ambientes/i })
+    );
+
+    // Esperamos a que aparezca el encabezado del modal.
+    await screen.findByRole("heading", { name: /crear tipo de ambiente/i });
+
+    // Llenamos cada campo siguiendo el contrato de la HU.
+    await user.type(screen.getByLabelText(/nombre/i), "Laboratorio verde");
+    await user.type(
+      screen.getByLabelText(/^Descripcion$/i),
+      "Espacios dedicados a investigacion practica."
+    );
+    await user.type(
+      screen.getByLabelText(/descripcion corta/i),
+      "Laboratorio"
+    );
+
+    // Enviamos el formulario mediante el boton principal.
+    await user.click(screen.getByRole("button", { name: /guardar/i }));
+
+    // Confirmamos que se llamo al API con el payload esperado.
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/tipo_ambientes", {
+        method: "POST",
+        json: {
+          nombre: "Laboratorio verde",
+          descripcion: "Espacios dedicados a investigacion practica.",
+          descripcion_corta: "Laboratorio",
+        },
+      });
+    });
+
+    // Validamos que se mostro el toast de exito.
+    expect(toast.success).toHaveBeenCalledWith("Tipo de ambiente creado", {
+      description: "El catalogo se actualizo correctamente.",
+    });
+
+    // Verificamos que la tabla se recargo pidiendo de nuevo los datos.
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    // Confirmamos que el modal se cerro automaticamente tras la creacion.
+    expect(
+      screen.queryByRole("heading", { name: /crear tipo de ambiente/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("muestra un mensaje de error cuando la creacion falla y mantiene el modal abierto", async () => {
+    // Indicamos que el API devolvera un error controlado.
+    vi.mocked(apiFetch).mockRejectedValueOnce({
+      message: "Duplicado detectado",
+    });
+
+    // Creamos el usuario virtual que interactuara con el formulario.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina.
+    render(<EnvironmentTypeListPage />);
+
+    // Esperamos a que el listado inicial se cargue.
+    await screen.findByText("Aula de clases");
+
+    // Abrimos el modal haciendo clic en el boton principal.
+    await user.click(
+      screen.getByRole("button", { name: /nuevo tipo de ambientes/i })
+    );
+
+    // Aseguramos que el modal se muestre.
+    await screen.findByRole("heading", { name: /crear tipo de ambiente/i });
+
+    // Llenamos los campos requeridos.
+    await user.type(screen.getByLabelText(/nombre/i), "Laboratorio verde");
+    await user.type(
+      screen.getByLabelText(/^Descripcion$/i),
+      "Espacios dedicados a investigacion practica."
+    );
+    await user.type(
+      screen.getByLabelText(/descripcion corta/i),
+      "Laboratorio"
+    );
+
+    // Intentamos guardar el registro.
+    await user.click(screen.getByRole("button", { name: /guardar/i }));
+
+    // Esperamos a que se informe el error mediante el toast correspondiente.
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "No se pudo crear el tipo de ambiente",
+        {
+          description: "Revisa los datos e intentalo nuevamente.",
+        }
+      );
+    });
+
+    // Verificamos que el modal permanezca abierto para permitir correcciones.
+    expect(
+      screen.getByRole("heading", { name: /crear tipo de ambiente/i })
+    ).toBeInTheDocument();
   });
 });
