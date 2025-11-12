@@ -311,4 +311,169 @@ describe("EnvironmentTypeListPage", () => {
       screen.getByRole("heading", { name: /crear tipo de ambiente/i })
     ).toBeInTheDocument();
   });
+
+  it("abre el modal de edicion y precarga los datos del tipo seleccionado", async () => {
+    // Generamos una persona usuaria para ejecutar interacciones en la UI.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina objetivo.
+    render(<EnvironmentTypeListPage />);
+
+    // Esperamos a que los datos iniciales se muestren.
+    await screen.findByText("Aula de clases");
+
+    // Hacemos clic en el boton de editar asociado a la fila.
+    await user.click(
+      screen.getByRole("button", { name: /editar tipo de ambiente/i })
+    );
+
+    // Verificamos que el modal de edicion aparezca.
+    await screen.findByRole("heading", { name: /editar tipo de ambiente/i });
+
+    // Confirmamos que los campos del formulario muestren los datos originales.
+    expect(screen.getByDisplayValue("Aula de clases")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("Ambiente destinado para clases")
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Clases")).toBeInTheDocument();
+
+    // Revisamos que el estado activo se refleje en el checkbox.
+    expect(
+      screen.getByRole("checkbox", { name: /activo/i })
+    ).toBeChecked();
+
+    // Confirmamos que el formulario impide guardar mientras no existan cambios.
+    expect(
+      screen.getByRole("button", { name: /guardar cambios/i })
+    ).toBeDisabled();
+  });
+
+  it("permite actualizar un tipo de ambiente desde el modal de edicion", async () => {
+    // Configuramos el mock del API para simular una actualizacion exitosa.
+    vi.mocked(apiFetch).mockResolvedValueOnce(undefined);
+
+    // Instanciamos usuario virtual.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina principal.
+    render(<EnvironmentTypeListPage />);
+
+    // Esperamos la carga inicial.
+    await screen.findByText("Aula de clases");
+
+    // Abrimos el modal de edicion.
+    await user.click(
+      screen.getByRole("button", { name: /editar tipo de ambiente/i })
+    );
+
+    // Verificamos que el modal aparezca.
+    await screen.findByRole("heading", { name: /editar tipo de ambiente/i });
+
+    // Ajustamos los campos para reflejar los cambios requeridos.
+    const nameInput = screen.getByLabelText(/nombre/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Aula multimedia");
+
+    const descriptionInput = screen.getByLabelText(/^Descripcion$/i);
+    await user.clear(descriptionInput);
+    await user.type(
+      descriptionInput,
+      "Espacios equipados con herramientas multimedia."
+    );
+
+    const shortDescriptionInput = screen.getByLabelText(
+      /descripcion corta/i
+    );
+    await user.clear(shortDescriptionInput);
+    await user.type(shortDescriptionInput, "Multimedia");
+
+    // Desactivamos el registro para probar el cambio en el estado.
+    const activeCheckbox = screen.getByRole("checkbox", { name: /activo/i });
+    await user.click(activeCheckbox);
+
+    // Enviamos el formulario.
+    await user.click(
+      screen.getByRole("button", { name: /guardar cambios/i })
+    );
+
+    // Validamos que la llamada al API incluya los datos modificados.
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/tipo_ambientes/4", {
+        method: "PATCH",
+        json: {
+          nombre: "Aula multimedia",
+          descripcion: "Espacios equipados con herramientas multimedia.",
+          descripcion_corta: "Multimedia",
+          activo: false,
+        },
+      });
+    });
+
+    // Confirmamos que se informe el exito mediante un toast.
+    expect(toast.success).toHaveBeenCalledWith(
+      "Tipo de ambiente actualizado",
+      {
+        description: "Se guardaron los cambios correctamente.",
+      }
+    );
+
+    // Verificamos que se haya refrescado el listado.
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    // Comprobamos que el modal se cierre al finalizar.
+    expect(
+      screen.queryByRole("heading", { name: /editar tipo de ambiente/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("mantiene el modal abierto y muestra un error cuando la edicion falla", async () => {
+    // Definimos un error controlado proveniente del backend.
+    vi.mocked(apiFetch).mockRejectedValueOnce({
+      message: "Conflicto de datos",
+    });
+
+    // Creamos el usuario virtual que interactuara con la UI.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina.
+    render(<EnvironmentTypeListPage />);
+
+    // Esperamos a que se cargue la tabla.
+    await screen.findByText("Aula de clases");
+
+    // Abrimos el modal de edicion.
+    await user.click(
+      screen.getByRole("button", { name: /editar tipo de ambiente/i })
+    );
+
+    // Esperamos al encabezado para confirmar que el modal se abrio.
+    await screen.findByRole("heading", { name: /editar tipo de ambiente/i });
+
+    // Realizamos un pequeño ajuste en el nombre para que el formulario se considere modificado.
+    const nameInput = screen.getByLabelText(/nombre/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Aula de clases 2");
+
+    // Intentamos guardar los cambios.
+    await user.click(
+      screen.getByRole("button", { name: /guardar cambios/i })
+    );
+
+    // Esperamos a que el toast de error se dispare con el mensaje adecuado.
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "No se pudo actualizar el tipo de ambiente",
+        {
+          description: "Conflicto de datos",
+        }
+      );
+    });
+
+    // Validamos que el modal permanezca abierto para permitir correcciones.
+    expect(
+      screen.getByRole("heading", { name: /editar tipo de ambiente/i })
+    ).toBeInTheDocument();
+  });
 });
