@@ -44,6 +44,14 @@ export function environmentTypeColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Descripcion" />
       ),
+      cell: ({ getValue }) => {
+        const value = getValue<string>() ?? "";
+        return (
+          <span className="block max-w-[28rem] whitespace-normal break-words text-sm text-muted-foreground">
+            {value}
+          </span>
+        );
+      },
     },
     {
       // Mostramos el alias corto o un mensaje cuando no exista valor configurado.
