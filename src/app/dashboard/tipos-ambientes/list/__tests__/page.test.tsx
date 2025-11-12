@@ -80,6 +80,24 @@ describe("EnvironmentTypeListPage", () => {
     expect(
       screen.getByLabelText("Buscar tipos de ambientes")
     ).toBeInTheDocument();
+
+    // Verificamos que el boton primario para crear nuevos registros este disponible.
+    expect(
+      screen.getByRole("button", { name: /nuevo tipo de ambientes/i })
+    ).toBeInTheDocument();
+
+    // Confirmamos que la columna de acciones se encuentre disponible para futuras operaciones.
+    expect(
+      screen.getByRole("columnheader", { name: /acciones/i })
+    ).toBeInTheDocument();
+
+    // Verificamos que los botones de editar y eliminar existan en la fila.
+    expect(
+      screen.getByRole("button", { name: /editar tipo de ambiente/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /eliminar tipo de ambiente/i })
+    ).toBeInTheDocument();
   });
 
   it("incluye el termino de busqueda dentro de la consulta remota", async () => {
