@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { Pencil, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table-column-header";
 
 // Definimos la forma que adopta cada fila proveniente del backend.
@@ -21,7 +23,10 @@ export type EnvironmentTypeRow = {
   actualizado_en: string;
 };
 
-export function environmentTypeColumns(): ColumnDef<EnvironmentTypeRow>[] {
+export function environmentTypeColumns(
+  onEdit?: (environmentType: EnvironmentTypeRow) => void,
+  onDelete?: (environmentType: EnvironmentTypeRow) => void
+): ColumnDef<EnvironmentTypeRow>[] {
   // Retornamos la lista de columnas que la tabla necesita para mostrar el catalogo.
   return [
     {
@@ -57,6 +62,40 @@ export function environmentTypeColumns(): ColumnDef<EnvironmentTypeRow>[] {
         <DataTableColumnHeader column={column} title="Estado" />
       ),
       cell: ({ getValue }) => (getValue<boolean>() ? "Activo" : "Inactivo"),
+    },
+    {
+      // La columna de acciones concentra los botones para editar o eliminar el registro.
+      id: "acciones",
+      meta: { label: "Acciones" },
+      header: "Acciones",
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          {/* Botón para disparar la edición del tipo de ambiente. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Editar tipo de ambiente"
+            title="Editar tipo de ambiente"
+            onClick={() => onEdit?.(row.original)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          {/* Botón para iniciar el flujo de eliminación. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Eliminar tipo de ambiente"
+            title="Eliminar tipo de ambiente"
+            onClick={() => onDelete?.(row.original)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
     },
   ];
 }
