@@ -476,4 +476,84 @@ describe("EnvironmentTypeListPage", () => {
       screen.getByRole("heading", { name: /editar tipo de ambiente/i })
     ).toBeInTheDocument();
   });
+
+  it("abre el modal de eliminacion y muestra los datos del tipo seleccionado", async () => {
+    const user = userEvent.setup();
+    render(<EnvironmentTypeListPage />);
+    await screen.findByText("Aula de clases");
+
+    await user.click(
+      screen.getByRole("button", { name: /eliminar tipo de ambiente/i })
+    );
+
+    await screen.findByRole("heading", { name: /eliminar tipo de ambiente/i });
+
+    expect(
+      screen.getByText(/Aula de clases/, { selector: "span" })
+    ).toBeInTheDocument();
+  });
+
+  it("elimina un tipo de ambiente y refresca la tabla", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    render(<EnvironmentTypeListPage />);
+    await screen.findByText("Aula de clases");
+
+    await user.click(
+      screen.getByRole("button", { name: /eliminar tipo de ambiente/i })
+    );
+
+    await screen.findByRole("heading", { name: /eliminar tipo de ambiente/i });
+
+    await user.click(screen.getByRole("button", { name: /eliminar/i }));
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/tipo_ambientes/4", {
+        method: "DELETE",
+      });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Tipo de ambiente eliminado", {
+      description: "El registro se elimino correctamente.",
+    });
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: /eliminar tipo de ambiente/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("mantiene el modal abierto cuando la eliminacion falla", async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce({
+      message: "No se pudo eliminar",
+    });
+
+    const user = userEvent.setup();
+    render(<EnvironmentTypeListPage />);
+    await screen.findByText("Aula de clases");
+
+    await user.click(
+      screen.getByRole("button", { name: /eliminar tipo de ambiente/i })
+    );
+
+    await screen.findByRole("heading", { name: /eliminar tipo de ambiente/i });
+
+    await user.click(screen.getByRole("button", { name: /eliminar/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "No se pudo eliminar el tipo de ambiente",
+        {
+          description: "No se pudo eliminar",
+        }
+      );
+    });
+
+    expect(
+      screen.getByRole("heading", { name: /eliminar tipo de ambiente/i })
+    ).toBeInTheDocument();
+  });
 });
