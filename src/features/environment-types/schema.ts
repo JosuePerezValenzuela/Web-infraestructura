@@ -31,3 +31,11 @@ export const environmentTypeCreateSchema = z.object({
 
 export type EnvironmentTypeCreateInput = z.input<typeof environmentTypeCreateSchema>;
 export type EnvironmentTypeCreateOutput = z.output<typeof environmentTypeCreateSchema>;
+
+// Esquema extendido para edicion que incorpora el estado activo.
+export const environmentTypeUpdateSchema = environmentTypeCreateSchema.extend({
+  activo: z.boolean(),
+});
+
+export type EnvironmentTypeUpdateInput = z.input<typeof environmentTypeUpdateSchema>;
+export type EnvironmentTypeUpdateOutput = z.output<typeof environmentTypeUpdateSchema>;
