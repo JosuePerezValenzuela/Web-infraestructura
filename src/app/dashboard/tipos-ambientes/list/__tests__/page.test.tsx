@@ -1,14 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import EnvironmentTypeListPage from "../page";
 
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("@/lib/notify", () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -244,7 +245,8 @@ describe("EnvironmentTypeListPage", () => {
     });
 
     // Validamos que se mostro el toast de exito.
-    expect(toast.success).toHaveBeenCalledWith("Tipo de ambiente creado", {
+    expect(notify.success).toHaveBeenCalledWith({
+      title: "Tipo de ambiente creado",
       description: "El catalogo se actualizo correctamente.",
     });
 
@@ -298,12 +300,10 @@ describe("EnvironmentTypeListPage", () => {
 
     // Esperamos a que se informe el error mediante el toast correspondiente.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "No se pudo crear el tipo de ambiente",
-        {
-          description: "Revisa los datos e intentalo nuevamente.",
-        }
-      );
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo crear el tipo de ambiente",
+        description: "Revisa los datos e intentalo nuevamente.",
+      });
     });
 
     // Verificamos que el modal permanezca abierto para permitir correcciones.
@@ -410,12 +410,10 @@ describe("EnvironmentTypeListPage", () => {
     });
 
     // Confirmamos que se informe el exito mediante un toast.
-    expect(toast.success).toHaveBeenCalledWith(
-      "Tipo de ambiente actualizado",
-      {
-        description: "Se guardaron los cambios correctamente.",
-      }
-    );
+    expect(notify.success).toHaveBeenCalledWith({
+      title: "Tipo de ambiente actualizado",
+      description: "Se guardaron los cambios correctamente.",
+    });
 
     // Verificamos que se haya refrescado el listado.
     await waitFor(() => {
@@ -463,12 +461,10 @@ describe("EnvironmentTypeListPage", () => {
 
     // Esperamos a que el toast de error se dispare con el mensaje adecuado.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "No se pudo actualizar el tipo de ambiente",
-        {
-          description: "Conflicto de datos",
-        }
-      );
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo actualizar el tipo de ambiente",
+        description: "Conflicto de datos",
+      });
     });
 
     // Validamos que el modal permanezca abierto para permitir correcciones.
@@ -513,7 +509,8 @@ describe("EnvironmentTypeListPage", () => {
       });
     });
 
-    expect(toast.success).toHaveBeenCalledWith("Tipo de ambiente eliminado", {
+    expect(notify.success).toHaveBeenCalledWith({
+      title: "Tipo de ambiente eliminado",
       description: "El registro se elimino correctamente.",
     });
 
@@ -544,12 +541,10 @@ describe("EnvironmentTypeListPage", () => {
     await user.click(screen.getByRole("button", { name: /eliminar/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "No se pudo eliminar el tipo de ambiente",
-        {
-          description: "No se pudo eliminar",
-        }
-      );
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo eliminar el tipo de ambiente",
+        description: "No se pudo eliminar",
+      });
     });
 
     expect(
