@@ -21,7 +21,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/api";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 
 const TAKE = 8;
 
@@ -108,7 +108,8 @@ export default function FacultyListPage() {
       });
 
       // Notificamos a la persona usuaria que la eliminacion se completo de forma exitosa.
-      toast.success("Facultad eliminada", {
+      notify.success({
+        title: "Facultad eliminada",
         description: "La facultad y sus dependencias se eliminaron correctamente.",
       });
 
@@ -132,7 +133,8 @@ export default function FacultyListPage() {
           : "Error desconocido.";
 
       // Informamos a la persona usuaria que no se pudo completar la eliminacion.
-      toast.error("No se pudo eliminar la facultad", {
+      notify.error({
+        title: "No se pudo eliminar la facultad",
         description,
       });
     } finally {

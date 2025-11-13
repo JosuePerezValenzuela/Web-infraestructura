@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import dynamic from "next/dynamic";
 
 type FacultyCreateFormValues = z.input<typeof facultyCreateSchema>;
@@ -101,7 +101,10 @@ export default function FacultyForm({
           return;
         }
         console.error("Error al cargar el catalogo de campus", error);
-        toast.error("No se pudieron cargar los campus disponibles");
+        notify.error({
+          title: "No se pudieron cargar los campus",
+          description: "Inténtalo nuevamente en unos minutos.",
+        });
       }
     }
 
@@ -151,7 +154,8 @@ export default function FacultyForm({
           json: payload,
         });
 
-        toast.success("Facultad creada", {
+        notify.success({
+          title: "Facultad creada",
           description: "Se registro correctamente la facultad.",
         });
 
@@ -173,7 +177,8 @@ export default function FacultyForm({
           message?: string;
           details?: string[];
         };
-        toast.error("Error al crear la facultad", {
+        notify.error({
+          title: "No se pudo crear la facultad",
           description: err?.details?.join("\n") ?? err?.message ?? "Error desconocido.",
         });
       } finally {

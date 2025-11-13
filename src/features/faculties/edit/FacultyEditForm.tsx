@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import dynamic from "next/dynamic";
 import { z } from "zod";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -121,7 +121,10 @@ export default function FacultyEditForm({ faculty, onSubmitSuccess }: Props) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-        toast.error("No se pudieron cargar los campus disponibles");
+        notify.error({
+          title: "No se pudieron cargar los campus",
+          description: "Inténtalo nuevamente en unos minutos.",
+        });
       }
     }
 
@@ -217,7 +220,8 @@ export default function FacultyEditForm({ faculty, onSubmitSuccess }: Props) {
         });
 
         // Mostramos un mensaje exitoso indicando que los cambios se guardaron.
-        toast.success("Facultad actualizada", {
+        notify.success({
+          title: "Facultad actualizada",
           description: "Se guardaron los cambios correctamente.",
         });
 
@@ -231,7 +235,8 @@ export default function FacultyEditForm({ faculty, onSubmitSuccess }: Props) {
           message?: string;
           details?: string[];
         };
-        toast.error("No se pudo actualizar la facultad", {
+        notify.error({
+          title: "No se pudo actualizar la facultad",
           description: err?.details?.join("\n") ?? err?.message ?? "Error desconocido.",
         });
       } finally {
