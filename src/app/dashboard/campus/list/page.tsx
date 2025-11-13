@@ -19,7 +19,7 @@ import CampusForm from "@/features/campus/CampusForm";
 import CampusEditForm from "@/features/campus/edit/CampusEditForm";
 import { X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 
 const TAKE = 8;
 
@@ -98,8 +98,9 @@ export default function CampusListPage() {
         method: "DELETE",
       });
 
-      toast.success("Campus eliminado", {
-        description: "El registro se elimino correctamente.",
+      notify.success({
+        title: "Campus eliminado",
+        description: "El registro se eliminó correctamente.",
       });
 
       // Refresca la tabla de la vista inicial
@@ -113,7 +114,8 @@ export default function CampusListPage() {
         ? error.details.join("\n")
         : error?.message ?? "Error desconocido.";
 
-      toast.error("No se pudo eliminar el campus", {
+      notify.error({
+        title: "No se pudo eliminar el campus",
         description,
       });
     } finally {
@@ -259,4 +261,3 @@ export default function CampusListPage() {
     </div>
   );
 }
-

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
+import { notify } from "@/lib/notify";
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -83,7 +83,8 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
       });
 
       // Mostramos una notificacion positiva al usuario indicando que todo salio bien.
-      toast.success('Campus actualizado', {
+      notify.success({
+        title: 'Campus actualizado',
         description: 'Se guardaron los cambios correctamente.',
       });
 
@@ -100,7 +101,8 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
           : 'Error desconocido';
 
       // Informamos al usuario del problema mediante un toast.
-      toast.error('No se pudo actualizar el campus', {
+      notify.error({
+        title: 'No se pudo actualizar el campus',
         description,
       });
     } finally {
@@ -206,4 +208,3 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
     </Form>
   );
 }
-

@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import Link from "next/link";
 import { z } from 'zod';
 
@@ -56,8 +56,9 @@ export default function CampusCreatePage() {
         json: values,
       });
 
-      toast.success("Campus creado", {
-        description: "Se registro correctamente.",
+      notify.success({
+        title: "Campus creado",
+        description: "Se registró correctamente.",
       });
 
       form.reset({
@@ -68,7 +69,8 @@ export default function CampusCreatePage() {
       });
     } catch (err: any) {
       const details = Array.isArray(err?.details) ? err.details : undefined;
-      toast.error("Error al crear el campus", {
+      notify.error({
+        title: "No se pudo crear el campus",
         description:
           details?.join("\n") ?? err?.message ?? "Error desconocido.",
       });
