@@ -1,18 +1,19 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { toast } from 'sonner';
 import { apiFetch } from '@/lib/api';
+import { notify } from '@/lib/notify';
 import CampusListPage from '../page';
 
 vi.mock('@/lib/api', () => ({
   apiFetch: vi.fn(),
 }));
 
-vi.mock('sonner', () => ({
-  toast: {
+vi.mock('@/lib/notify', () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -147,8 +148,9 @@ describe('CampusListPage edit flow', () => {
     });
 
     // Verificamos que se haya mostrado un mensaje de exito para la persona usuaria.
-    expect(toast.success).toHaveBeenCalledWith('Campus eliminado', {
-      description: 'El registro se elimino correctamente.',
+    expect(notify.success).toHaveBeenCalledWith({
+      title: 'Campus eliminado',
+      description: 'El registro se eliminó correctamente.',
     });
 
     // Confirmamos que se volvio a pedir el listado para refrescar la tabla.
@@ -186,7 +188,8 @@ describe('CampusListPage edit flow', () => {
 
     // Validamos que se informe el error mediante un toast adecuado.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('No se pudo eliminar el campus', {
+      expect(notify.error).toHaveBeenCalledWith({
+        title: 'No se pudo eliminar el campus',
         description: 'Fallo al eliminar',
       });
     });

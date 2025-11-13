@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { toast } from 'sonner';
 import { apiFetch } from '@/lib/api';
+import { notify } from '@/lib/notify';
 import CampusEditForm from '../CampusEditForm';
 import type { CampusRow } from '../../list/columns';
 
@@ -10,10 +10,11 @@ vi.mock('@/lib/api', () => ({
   apiFetch: vi.fn(),
 }));
 
-vi.mock('sonner', () => ({
-  toast: {
+vi.mock('@/lib/notify', () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -80,7 +81,10 @@ describe('CampusEditForm', () => {
     });
 
     // Verificamos que se haya mostrado un toast de exito.
-    expect(toast.success).toHaveBeenCalled();
+    expect(notify.success).toHaveBeenCalledWith({
+      title: 'Campus actualizado',
+      description: 'Se guardaron los cambios correctamente.',
+    });
 
     // Confirmamos que se notifico al componente padre para refrescar datos o cerrar el modal.
     expect(onSubmitSuccess).toHaveBeenCalled();
@@ -117,7 +121,8 @@ describe('CampusEditForm', () => {
 
     // Verificamos que se haya mostrado un toast de error con el mensaje esperado.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('No se pudo actualizar el campus', {
+      expect(notify.error).toHaveBeenCalledWith({
+        title: 'No se pudo actualizar el campus',
         description: 'Fallo al actualizar',
       });
     });
