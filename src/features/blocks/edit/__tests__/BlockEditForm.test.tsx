@@ -5,15 +5,15 @@ import userEvent from "@testing-library/user-event"; // Simulamos las acciones d
 import { vi } from "vitest"; // Utilizamos los helpers para crear mocks y espiar llamadas.
 import BlockEditForm from "../BlockEditForm"; // Componente que estamos validando.
 import { apiFetch } from "@/lib/api"; // Cliente HTTP centralizado que vamos a espiar.
-import { toast } from "sonner"; // Sistema de notificaciones utilizado por el formulario.
+import { notify } from "@/lib/notify"; // Sistema de notificaciones utilizado por el formulario.
 import type { BlockRow } from "../../list/columns"; // Tipado de las filas que provienen del listado.
 
 vi.mock("@/lib/api", () => ({
   apiFetch: vi.fn(),
 }));
 
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("@/lib/notify", () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("sonner", () => ({
 }));
 
 const mockedApiFetch = vi.mocked(apiFetch);
-const mockedToast = vi.mocked(toast);
+const mockedNotify = vi.mocked(notify);
 
 const baseBlock: BlockRow = {
   id: 44,
@@ -113,7 +113,8 @@ describe("BlockEditForm", () => {
       });
     }); // Confirmamos que solo se envíen los campos que realmente cambiaron.
 
-    expect(mockedToast.success).toHaveBeenCalledWith("Bloque actualizado", {
+    expect(mockedNotify.success).toHaveBeenCalledWith({
+      title: "Bloque actualizado",
       description:
         "Los datos del bloque se guardaron y los ambientes dependientes reflejarán su nuevo estado.",
     }); // Validamos el mensaje amigable mostrado a la persona usuaria.

@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from "@testing-library/react"; // Imp
 import userEvent from "@testing-library/user-event"; // Esta utilidad nos permite simular las acciones que haría una persona usando la interfaz.
 import { vi } from "vitest"; // Vitest nos aporta las funciones para crear mocks y escribir pruebas.
 import { apiFetch } from "@/lib/api"; // apiFetch es el cliente que utiliza la app para hablar con el backend; lo vamos a espiar.
-import { toast } from "sonner"; // Espiamos las notificaciones para verificar los mensajes de éxito o error.
+import { notify } from "@/lib/notify"; // Espiamos las notificaciones para verificar los mensajes de éxito o error.
 import BlockListPage from "../page"; // Importamos la página que vamos a probar.
 
 // También simulamos el helper apiFetch para controlar completamente las respuestas del backend.
@@ -12,13 +12,15 @@ vi.mock("@/lib/api", () => ({
   apiFetch: vi.fn(), // Creamos una función espiada que podremos configurar en cada escenario.
 }));
 
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("@/lib/notify", () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
   },
 }));
+
+const mockedNotify = vi.mocked(notify);
 
 const { blockEditFormMock } = vi.hoisted(() => ({
   blockEditFormMock: vi.fn(
@@ -373,7 +375,8 @@ describe("BlockListPage", () => {
     });
 
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Bloque eliminado", {
+      expect(mockedNotify.success).toHaveBeenCalledWith({
+        title: "Bloque eliminado",
         description: "El bloque se eliminó correctamente.",
       }); // Confirmamos el mensaje de éxito mostrado a la persona usuaria.
     });
@@ -455,12 +458,10 @@ describe("BlockListPage", () => {
     await user.click(confirmButton); // Intentamos eliminar sabiendo que fallará.
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "No se pudo eliminar el bloque",
-        {
-          description: "El backend falló",
-        }
-      ); // Se informa el error devuelto por la API.
+      expect(mockedNotify.error).toHaveBeenCalledWith({
+        title: "No se pudo eliminar el bloque",
+        description: "El backend falló",
+      }); // Se informa el error devuelto por la API.
     });
 
     expect(

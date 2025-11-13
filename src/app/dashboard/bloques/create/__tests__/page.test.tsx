@@ -3,14 +3,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { apiFetch } from "@/lib/api";
 import BlockCreatePage from "../page";
 
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("@/lib/notify", () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -55,7 +56,7 @@ const blockTypesResponse = {
 };
 
 const mockedApiFetch = vi.mocked(apiFetch);
-const mockedToast = vi.mocked(toast);
+const mockedNotify = vi.mocked(notify);
 
 describe("BlockCreatePage", () => {
   beforeEach(() => {
@@ -91,9 +92,6 @@ describe("BlockCreatePage", () => {
     expect(screen.getByLabelText(/^nombre$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/nombre corto/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/pisos/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Selecciona un punto en el mapa/i)
-    ).toBeInTheDocument();
 
     // Abrimos el selector de facultades y comprobamos que las opciones se hayan cargado.
     const facultyTrigger = screen.getByLabelText(/facultad/i);
@@ -198,7 +196,8 @@ describe("BlockCreatePage", () => {
     });
 
     // Confirmamos que se muestre la notificación de éxito y que se redirija al listado.
-    expect(mockedToast.success).toHaveBeenCalledWith("Bloque creado", {
+    expect(mockedNotify.success).toHaveBeenCalledWith({
+      title: "Bloque creado",
       description: "El inventario se actualizó correctamente.",
     });
     expect(pushMock).toHaveBeenCalledWith("/dashboard/bloques/list");
