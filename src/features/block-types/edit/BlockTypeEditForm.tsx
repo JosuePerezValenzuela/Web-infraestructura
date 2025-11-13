@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiFetch } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import {
   blockTypeUpdateSchema,
   type BlockTypeUpdateInput,
@@ -69,7 +69,8 @@ export default function BlockTypeEditForm({
       });
 
       // Mostramos un mensaje que confirme el exito de la operacion.
-      toast.success("Tipo de bloque actualizado", {
+      notify.success({
+        title: "Tipo de bloque actualizado",
         description: "Se guardaron los cambios correctamente.",
       });
 
@@ -89,7 +90,8 @@ export default function BlockTypeEditForm({
           : "Error desconocido.";
 
       // Informamos la situacion mediante un toast de error.
-      toast.error("No se pudo actualizar el tipo de bloque", {
+      notify.error({
+        title: "No se pudo actualizar el tipo de bloque",
         description,
       });
     } finally {

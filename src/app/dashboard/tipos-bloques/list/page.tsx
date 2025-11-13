@@ -20,7 +20,7 @@ import {
 import BlockTypeForm from "@/features/block-types/BlockTypeForm";
 import BlockTypeEditForm from "@/features/block-types/edit/BlockTypeEditForm";
 import { apiFetch } from "@/lib/api";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { X } from "lucide-react";
 
 const TAKE = 6;
@@ -133,7 +133,8 @@ export default function BlockTypeListPage() {
       });
 
       // Notificamos que la eliminacion se realizo correctamente.
-      toast.success("Tipo de bloque eliminado", {
+      notify.success({
+        title: "Tipo de bloque eliminado",
         description: "El registro se elimino correctamente.",
       });
 
@@ -154,7 +155,8 @@ export default function BlockTypeListPage() {
           : "Error desconocido.";
 
       // Indicamos que algo salio mal para que la persona usuaria pueda reintentar.
-      toast.error("No se pudo eliminar el tipo de bloque", {
+      notify.error({
+        title: "No se pudo eliminar el tipo de bloque",
         description,
       });
     } finally {
@@ -330,3 +332,4 @@ export default function BlockTypeListPage() {
     </section>
   );
 }
+

@@ -8,7 +8,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { apiFetch } from "@/lib/api";
 
 type BlockTypeFormProps = {
@@ -48,7 +48,8 @@ export default function BlockTypeForm({ onSuccess, onClose }: BlockTypeFormProps
         body: JSON.stringify(payload),
       });
       // Mostramos un mensaje de éxito que confirme la creación del registro.
-      toast.success("Tipo de bloque creado", {
+      notify.success({
+        title: "Tipo de bloque creado",
         description: "El catalogo se actualizo correctamente.",
       });
       // Restablecemos el formulario para dejarlo listo para un nuevo registro.
@@ -64,7 +65,8 @@ export default function BlockTypeForm({ onSuccess, onClose }: BlockTypeFormProps
       onClose?.();
     } catch (error: any) {
       // Si ocurre un problema informamos con un mensaje claro y acción sugerida.
-      toast.error("No se pudo crear el tipo de bloque", {
+      notify.error({
+        title: "No se pudo crear el tipo de bloque",
         description: "Revisa los datos e intentalo nuevamente.",
       });
     } finally {
