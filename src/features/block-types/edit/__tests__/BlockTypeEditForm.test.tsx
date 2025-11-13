@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { apiFetch } from "@/lib/api";
 import BlockTypeEditForm from "../BlockTypeEditForm";
 import type { BlockTypeRow } from "../../list/columns";
@@ -10,10 +10,11 @@ vi.mock("@/lib/api", () => ({
   apiFetch: vi.fn(),
 }));
 
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("@/lib/notify", () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -100,7 +101,8 @@ describe("BlockTypeEditForm", () => {
     });
 
     // Confirmamos que se haya mostrado un mensaje de exito informando el resultado.
-    expect(toast.success).toHaveBeenCalledWith("Tipo de bloque actualizado", {
+    expect(notify.success).toHaveBeenCalledWith({
+      title: "Tipo de bloque actualizado",
       description: "Se guardaron los cambios correctamente.",
     });
 
@@ -140,12 +142,10 @@ describe("BlockTypeEditForm", () => {
 
     // Esperamos a que el toast muestre un mensaje de error claro.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "No se pudo actualizar el tipo de bloque",
-        {
-          description: "No se pudo actualizar el registro.",
-        }
-      );
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo actualizar el tipo de bloque",
+        description: "No se pudo actualizar el registro.",
+      });
     });
   });
 });

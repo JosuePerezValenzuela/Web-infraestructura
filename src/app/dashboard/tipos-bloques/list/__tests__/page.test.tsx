@@ -1,14 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import BlockTypeListPage from "../page";
 
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("@/lib/notify", () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -152,7 +153,8 @@ describe("BlockTypeListPage", () => {
     });
 
     // Verificamos que se muestre un mensaje de exito al completar la operacion.
-    expect(toast.success).toHaveBeenCalledWith("Tipo de bloque creado", {
+    expect(notify.success).toHaveBeenCalledWith({
+      title: "Tipo de bloque creado",
       description: "El catalogo se actualizo correctamente.",
     });
 
@@ -228,12 +230,10 @@ describe("BlockTypeListPage", () => {
 
     // Esperamos a que el mensaje de error sea mostrado mediante un toast.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "No se pudo crear el tipo de bloque",
-        {
-          description: "Revisa los datos e intentalo nuevamente.",
-        }
-      );
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo crear el tipo de bloque",
+        description: "Revisa los datos e intentalo nuevamente.",
+      });
     });
   });
 
@@ -349,7 +349,8 @@ describe("BlockTypeListPage", () => {
     });
 
     // Confirmamos que se muestre un toast de exito informativo.
-    expect(toast.success).toHaveBeenCalledWith("Tipo de bloque actualizado", {
+    expect(notify.success).toHaveBeenCalledWith({
+      title: "Tipo de bloque actualizado",
       description: "Se guardaron los cambios correctamente.",
     });
 
@@ -397,7 +398,8 @@ describe("BlockTypeListPage", () => {
     });
 
     // Confirmamos que se muestre un mensaje de exito informando la eliminacion.
-    expect(toast.success).toHaveBeenCalledWith("Tipo de bloque eliminado", {
+    expect(notify.success).toHaveBeenCalledWith({
+      title: "Tipo de bloque eliminado",
       description: "El registro se elimino correctamente.",
     });
 
@@ -441,12 +443,10 @@ describe("BlockTypeListPage", () => {
 
     // Esperamos a que se muestre un mensaje claro notificando el problema.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "No se pudo eliminar el tipo de bloque",
-        {
-          description: "No se pudo eliminar el registro.",
-        }
-      );
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo eliminar el tipo de bloque",
+        description: "No se pudo eliminar el registro.",
+      });
     });
 
     // Comprobamos que el dialogo siga abierto permitiendo reintentar o cancelar la accion.
