@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import {
   Form,
   FormControl,
@@ -90,7 +90,8 @@ export default function BlockEditForm({
     const payload = diffPayload(parsed, baseline); // Identificamos qué campos realmente varían.
 
     if (!Object.keys(payload).length) {
-      toast.info("Sin cambios para guardar", {
+      notify.info({
+        title: "Sin cambios para guardar",
         description: "Realiza alguna modificacion antes de enviar la solicitud.",
       }); // Evitamos llamadas vacías cuando la persona usuaria no modificó nada.
       return;
@@ -106,7 +107,8 @@ export default function BlockEditForm({
       const becameInactive =
         payload.activo === false && baseline.activo !== false; // Detectamos si el bloque pasó de activo a inactivo.
 
-      toast.success("Bloque actualizado", {
+      notify.success({
+        title: "Bloque actualizado",
         description: becameInactive
           ? "Los datos del bloque se guardaron y los ambientes dependientes reflejarán su nuevo estado."
           : "Los datos del bloque se guardaron correctamente.",
@@ -129,7 +131,8 @@ export default function BlockEditForm({
         typeof (error as { message?: unknown }).message === "string"
           ? String((error as { message?: unknown }).message)
           : "Error desconocido."; // Traducimos la excepción en un mensaje comprensible.
-      toast.error("No se pudo actualizar el bloque", {
+      notify.error({
+        title: "No se pudo actualizar el bloque",
         description,
       }); // Mostramos el fallo sin exponer detalles sensibles.
     } finally {

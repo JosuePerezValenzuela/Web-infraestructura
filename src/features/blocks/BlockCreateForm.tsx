@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { apiFetch } from "@/lib/api";
 import { blockCreateSchema, type BlockCreateInput } from "./schema";
 import CatalogSearchSelect, {
@@ -64,11 +64,6 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
       ? lngValue
       : Number.parseFloat(lngValue || "") || DEFAULT_POSITION.lng;
 
-  const coordinatesLabel =
-    latValue && lngValue
-      ? `Lat: ${latValue} | Lng: ${lngValue}`
-      : "Selecciona un punto en el mapa para obtener las coordenadas.";
-
   async function handleSubmit(values: BlockCreateInput) {
     const payload = blockCreateSchema.parse(values);
 
@@ -79,12 +74,14 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
         json: payload,
       });
 
-      toast.success("Bloque creado", {
+      notify.success({
+        title: "Bloque creado",
         description: "El inventario se actualizó correctamente.",
       });
       router.push("/dashboard/bloques/list");
     } catch {
-      toast.error("No se pudo crear el bloque", {
+      notify.error({
+        title: "No se pudo crear el bloque",
         description: "Revisa los datos e intentalo nuevamente.",
       });
     } finally {
@@ -240,7 +237,6 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
               }}
             />
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">{coordinatesLabel}</p>
           {form.formState.errors.lat?.message ||
           form.formState.errors.lng?.message ? (
             <p className="mt-1 text-sm text-destructive">

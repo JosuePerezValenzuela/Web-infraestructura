@@ -35,7 +35,7 @@ import {
 } from "@/features/blocks/list/columns"; // Columnas específicas de la entidad Bloques.
 import BlockEditForm from "@/features/blocks/edit/BlockEditForm";
 import { apiFetch } from "@/lib/api"; // Cliente centralizado para hablar con el backend.
-import { toast } from "sonner"; // Notificaciones amigables para informar el estado de las operaciones.
+import { notify } from "@/lib/notify"; // Notificaciones amigables para informar el estado de las operaciones.
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
 
 // Describimos el shape de la respuesta paginada del backend para el listado de bloques.
@@ -342,9 +342,10 @@ export default function BlockListPage() {
         if (error instanceof DOMException && error.name === "AbortError") {
           return; // Si abortamos manualmente salimos silenciosamente.
         }
-        toast.error(
-          "No se pudieron cargar los catálogos de facultades y tipos de bloque."
-        ); // Mostramos un mensaje amable cuando falla la carga.
+        notify.error({
+          title: "No se pudieron cargar los catálogos",
+          description: "Facultades y tipos de bloque no están disponibles. Intenta nuevamente.",
+        }); // Mostramos un mensaje amable cuando falla la carga.
       } finally {
         setLoadingCatalogs(false); // Restablecemos el indicador en cualquier caso.
       }
@@ -405,9 +406,10 @@ export default function BlockListPage() {
         if (error instanceof DOMException && error.name === "AbortError") {
           return; // Si abortamos manualmente no mostramos errores.
         }
-        toast.error(
-          "No pudimos cargar el listado de bloques. Reintenta en unos segundos."
-        ); // Comunicamos el fallo a la persona usuaria de manera controlada.
+        notify.error({
+          title: "No pudimos cargar el listado de bloques",
+          description: "Reintenta en unos segundos.",
+        }); // Comunicamos el fallo a la persona usuaria de manera controlada.
       } finally {
         setIsFetching(false); // Siempre restablecemos el indicador.
       }
@@ -460,7 +462,8 @@ export default function BlockListPage() {
         method: "DELETE",
       }); // Invocamos el endpoint definido en HU 16.
 
-      toast.success("Bloque eliminado", {
+      notify.success({
+        title: "Bloque eliminado",
         description: "El bloque se eliminó correctamente.",
       }); // Avisamos a la persona usuaria que la operación concluyó.
 
@@ -481,7 +484,8 @@ export default function BlockListPage() {
         ? errorDetails.join("\n")
         : errorMessage || "Revisa los datos e inténtalo nuevamente.";
 
-      toast.error("No se pudo eliminar el bloque", {
+      notify.error({
+        title: "No se pudo eliminar el bloque",
         description,
       }); // Mostramos el detalle del fallo.
     } finally {
