@@ -4,16 +4,17 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 // Importamos vi desde Vitest para crear dobles (mocks) de funciones globales como fetch.
 import { vi } from "vitest";
-// Importamos toast para validar los mensajes mostrados en la interfaz.
-import { toast } from "sonner";
+// Importamos notify para validar los mensajes mostrados en la interfaz.
+import { notify } from "@/lib/notify";
 // Importamos la pÃ¡gina que vamos a probar; las pruebas seguirÃ¡n fallando hasta implementar la ediciÃ³n real.
 import FacultyListPage from "../page";
 
 // Reemplazamos el mÃ³dulo sonner para poder espiar los mensajes sin mostrar UI real.
-vi.mock("sonner", () => ({
-  toast: {
+vi.mock("@/lib/notify", () => ({
+  notify: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -442,7 +443,8 @@ describe("FacultyListPage interactions", () => {
 
     // Validamos que el mensaje de Ã©xito se notifique a la persona usuaria.
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Facultad actualizada", {
+      expect(notify.success).toHaveBeenCalledWith({
+        title: "Facultad actualizada",
         description: "Se guardaron los cambios correctamente.",
       });
     });
@@ -495,7 +497,8 @@ describe("FacultyListPage interactions", () => {
 
     // Confirmamos que se muestre un mensaje de error al usuario.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("No se pudo actualizar la facultad", {
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo actualizar la facultad",
         description: "No se pudo actualizar",
       });
     });
@@ -568,7 +571,8 @@ describe("FacultyListPage interactions", () => {
 
     // Corroboramos que aparezca un mensaje de exito alineado a UX.
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Facultad eliminada", {
+      expect(notify.success).toHaveBeenCalledWith({
+        title: "Facultad eliminada",
         description: "La facultad y sus dependencias se eliminaron correctamente.",
       });
     });
@@ -624,7 +628,8 @@ describe("FacultyListPage interactions", () => {
 
     // Confirmamos que se haya mostrado un toast de error con el detalle del backend.
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("No se pudo eliminar la facultad", {
+      expect(notify.error).toHaveBeenCalledWith({
+        title: "No se pudo eliminar la facultad",
         description: "El backend fallo",
       });
     });
@@ -635,4 +640,3 @@ describe("FacultyListPage interactions", () => {
     ).toBeInTheDocument();
   });
 });
-
