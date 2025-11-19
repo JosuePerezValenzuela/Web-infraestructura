@@ -27,7 +27,7 @@ type EnvironmentEditDialogProps = {
 
 function resolveRelatedLabel(
   environment: EnvironmentDetail,
-  options: { directKeys: string[]; relationKeys: string[]; fallback: string }
+  options: { directKeys: string[]; relationKeys: string[]; fallback?: string }
 ): string {
   const record = environment as Record<string, unknown>;
   for (const key of options.directKeys) {
@@ -51,7 +51,21 @@ function resolveRelatedLabel(
       }
     }
   }
-  return options.fallback;
+  return options.fallback ?? "-";
+}
+
+function findOptionIdByLabel(
+  options: CatalogOption[],
+  label: string
+): string | null {
+  const normalized = label.trim().toLowerCase();
+  if (!normalized.length) {
+    return null;
+  }
+  const match = options.find(
+    (option) => option.nombre.trim().toLowerCase() === normalized
+  );
+  return match ? String(match.id) : null;
 }
 
 export function EnvironmentEditDialog({
@@ -62,7 +76,11 @@ export function EnvironmentEditDialog({
   onClose,
   onSuccess,
 }: EnvironmentEditDialogProps) {
-  // Cuando recibimos un ambiente construimos los valores iniciales del formulario.
+  if (environment) {
+    // eslint-disable-next-line no-console
+    console.log("EDIT ENVIRONMENT DATA", environment);
+  }
+
   const formValues = useMemo(() => {
     if (!environment) {
       return null;
@@ -120,7 +138,88 @@ export function EnvironmentEditDialog({
     ];
   }, [environmentTypes, environment]);
 
-  // Cuando el formulario informa exito, refrescamos el listado y cerramos el modal.
+  const environmentBlockLabel = useMemo(() => {
+    if (!environment) {
+      return "";
+    }
+    return resolveRelatedLabel(environment, {
+      directKeys: [
+        "bloque",
+        "bloque_nombre",
+        "bloqueNombre",
+        "bloque_label",
+      ],
+      relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
+      fallback: "",
+    });
+  }, [environment]);
+
+  const environmentTypeLabel = useMemo(() => {
+    if (!environment) {
+      return "";
+    }
+    return resolveRelatedLabel(environment, {
+      directKeys: [
+        "tipo_ambiente",
+        "tipo_ambiente_nombre",
+        "tipoAmbienteNombre",
+      ],
+      relationKeys: [
+        "tipo_ambiente_detalle",
+        "tipoAmbienteDetalle",
+        "tipoAmbiente",
+      ],
+      fallback: "",
+    });
+  }, [environment]);
+
+  const resolvedBlockId = useMemo(() => {
+    if (!formValues) {
+      return "";
+    }
+    if (formValues.bloque_id) {
+      return formValues.bloque_id;
+    }
+    if (!environmentBlockLabel.trim().length) {
+      return "";
+    }
+    return (
+      findOptionIdByLabel(blockOptions, environmentBlockLabel) ??
+      formValues.bloque_id ??
+      ""
+    );
+  }, [formValues, environmentBlockLabel, blockOptions]);
+
+  const resolvedTypeId = useMemo(() => {
+    if (!formValues) {
+      return "";
+    }
+    if (formValues.tipo_ambiente_id) {
+      return formValues.tipo_ambiente_id;
+    }
+    if (!environmentTypeLabel.trim().length) {
+      return "";
+    }
+    return (
+      findOptionIdByLabel(environmentTypeOptions, environmentTypeLabel) ??
+      formValues.tipo_ambiente_id ??
+      ""
+    );
+  }, [formValues, environmentTypeLabel, environmentTypeOptions]);
+
+  const finalDefaultValues = useMemo(() => {
+    if (!formValues) {
+      return null;
+    }
+    return {
+      ...formValues,
+      bloque_id:
+        resolvedBlockId.length > 0 ? resolvedBlockId : formValues.bloque_id,
+      tipo_ambiente_id:
+        resolvedTypeId.length > 0 ? resolvedTypeId : formValues.tipo_ambiente_id,
+    };
+  }, [formValues, resolvedBlockId, resolvedTypeId]);
+
   function handleSuccess() {
     onSuccess?.();
     onClose();
@@ -160,10 +259,10 @@ export function EnvironmentEditDialog({
               </p>
             ) : null}
 
-            {environmentId && formValues ? (
+            {environmentId && finalDefaultValues ? (
               <EnvironmentEditForm
                 environmentId={environmentId}
-                defaultValues={formValues}
+                defaultValues={finalDefaultValues}
                 blocks={blockOptions}
                 environmentTypes={environmentTypeOptions}
                 onSuccess={handleSuccess}

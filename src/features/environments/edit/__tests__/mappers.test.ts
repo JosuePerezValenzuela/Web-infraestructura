@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mapEnvironmentDetailToFormValues } from "../mappers";
+import {
+  mapEnvironmentDetailToFormValues,
+  type EnvironmentDetail,
+} from "../mappers";
 
 describe("mapEnvironmentDetailToFormValues", () => {
   it("normaliza los campos numericos y anidados del ambiente", () => {
@@ -83,5 +86,20 @@ describe("mapEnvironmentDetailToFormValues", () => {
 
     expect(values.tipo_ambiente_id).toBe("11");
     expect(values.bloque_id).toBe("15");
+  });
+
+  it("extrae los IDs desde relaciones cuando la fila solo trae objetos anidados", () => {
+    const values = mapEnvironmentDetailToFormValues({
+      id: 4,
+      codigo: "AMB-400",
+      nombre: "Laboratorio distribuido",
+      clases: true,
+      activo: true,
+      tipo_ambiente: { id: 21, nombre: "Laboratorio" },
+      bloque: { id: 31, nombre: "Bloque Norte" },
+    } as EnvironmentDetail);
+
+    expect(values.tipo_ambiente_id).toBe("21");
+    expect(values.bloque_id).toBe("31");
   });
 });

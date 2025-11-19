@@ -102,6 +102,25 @@ function resolveNumber(value: unknown): number | null {
   return null;
 }
 
+function resolveRelationId(
+  record: Record<string, unknown>,
+  relationKeys: string[]
+): number | null {
+  for (const relationKey of relationKeys) {
+    const relation = record[relationKey];
+    if (relation && typeof relation === "object" && !Array.isArray(relation)) {
+      const relationRecord = relation as Record<string, unknown>;
+      const candidate = resolveNumber(
+        relationRecord.id ?? relationRecord.ID ?? relationRecord.Id
+      );
+      if (candidate !== null) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
 // Esta funcion traduce el detalle del backend en los valores que espera React Hook Form.
 export function mapEnvironmentDetailToFormValues(
   detail: EnvironmentDetail
@@ -163,7 +182,13 @@ export function mapEnvironmentDetailToFormValues(
       const raw =
         detail.tipo_ambiente_id ??
         detail.tipoAmbienteId ??
-        resolveFromRecord(record, ["tipo_ambiente_id", "tipoAmbienteId"]);
+        resolveFromRecord(record, ["tipo_ambiente_id", "tipoAmbienteId"]) ??
+        resolveRelationId(record, [
+          "tipo_ambiente",
+          "tipoAmbiente",
+          "tipo_ambiente_detalle",
+          "tipoAmbienteDetalle",
+        ]);
       const parsed = resolveNumber(raw);
       return parsed !== null ? String(parsed) : "";
     })(),
@@ -171,7 +196,8 @@ export function mapEnvironmentDetailToFormValues(
       const raw =
         detail.bloque_id ??
         detail.bloqueId ??
-        resolveFromRecord(record, ["bloque_id", "bloqueId"]);
+        resolveFromRecord(record, ["bloque_id", "bloqueId"]) ??
+        resolveRelationId(record, ["bloque", "bloque_detalle", "bloqueDetalle"]);
       const parsed = resolveNumber(raw);
       return parsed !== null ? String(parsed) : "";
     })(),

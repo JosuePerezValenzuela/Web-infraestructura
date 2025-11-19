@@ -368,6 +368,94 @@ export default function EnvironmentListPage() {
       );
   }, [catalogs.environmentTypes]);
 
+  function resolveRowLabel(
+    row: EnvironmentRow,
+    options: { directKeys: string[]; relationKeys?: string[] }
+  ): string {
+    const record = row as Record<string, unknown>;
+    for (const key of options.directKeys) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim().length) {
+        return value.trim();
+      }
+    }
+    for (const relationKey of options.relationKeys ?? []) {
+      const relation = record[relationKey];
+      if (
+        relation &&
+        typeof relation === "object" &&
+        !Array.isArray(relation)
+      ) {
+        const relationRecord = relation as Record<string, unknown>;
+        const candidate =
+          relationRecord.nombre ??
+          relationRecord.nombre_corto ??
+          relationRecord.nombreCorto ??
+          relationRecord.descripcion ??
+          relationRecord.codigo;
+        if (typeof candidate === "string" && candidate.trim().length) {
+          return candidate.trim();
+        }
+      }
+    }
+    return "";
+  }
+
+  function findCatalogIdByLabel(
+    options: CatalogSelectOption[],
+    label: string
+  ): number | undefined {
+    const normalized = label.trim().toLowerCase();
+    if (!normalized.length) {
+      return undefined;
+    }
+    const exact = options.find(
+      (option) => option.nombre.trim().toLowerCase() === normalized
+    );
+    if (exact) {
+      return exact.id;
+    }
+    const partial = options.find((option) =>
+      option.nombre.trim().toLowerCase().includes(normalized)
+    );
+    return partial?.id;
+  }
+
+  function guessBlockIdFromRow(row: EnvironmentRow): number | undefined {
+    const label = resolveRowLabel(row, {
+      directKeys: [
+        "bloque",
+        "bloque_nombre",
+        "bloqueNombre",
+        "bloque_label",
+      ],
+      relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
+    });
+    if (!label) {
+      return undefined;
+    }
+    return findCatalogIdByLabel(blockOptionsForForm, label);
+  }
+
+  function guessTypeIdFromRow(row: EnvironmentRow): number | undefined {
+    const label = resolveRowLabel(row, {
+      directKeys: [
+        "tipo_ambiente",
+        "tipo_ambiente_nombre",
+        "tipoAmbienteNombre",
+      ],
+      relationKeys: [
+        "tipo_ambiente_detalle",
+        "tipoAmbienteDetalle",
+        "tipoAmbiente",
+      ],
+    });
+    if (!label) {
+      return undefined;
+    }
+    return findCatalogIdByLabel(environmentTypeOptionsForForm, label);
+  }
+
   // Apenas se monta la pantalla consultamos los catálogos necesarios para los filtros.
   useEffect(() => {
     // Creamos un AbortController para poder cancelar las peticiones si la vista se desmonta.
@@ -558,7 +646,29 @@ export default function EnvironmentListPage() {
 
   // Abre el modal de edicion con el ambiente escogido.
   function handleEdit(row: EnvironmentRow) {
-    setEditingEnvironment(row);
+    const enrichedRow = { ...row } as Record<string, unknown>;
+
+    if (
+      typeof enrichedRow.bloque_id !== "number" ||
+      Number.isNaN(enrichedRow.bloque_id)
+    ) {
+      const matchedBlockId = guessBlockIdFromRow(row);
+      if (typeof matchedBlockId === "number") {
+        enrichedRow.bloque_id = matchedBlockId;
+      }
+    }
+
+    if (
+      typeof enrichedRow.tipo_ambiente_id !== "number" ||
+      Number.isNaN(enrichedRow.tipo_ambiente_id)
+    ) {
+      const matchedTypeId = guessTypeIdFromRow(row);
+      if (typeof matchedTypeId === "number") {
+        enrichedRow.tipo_ambiente_id = matchedTypeId;
+      }
+    }
+
+    setEditingEnvironment(enrichedRow as EnvironmentRow);
     setEditOpen(true);
   }
 
