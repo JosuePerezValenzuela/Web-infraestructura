@@ -18,9 +18,10 @@ import { Button } from "@/components/ui/button";
 import { notify } from "@/lib/notify";
 import { apiFetch } from "@/lib/api";
 import { blockCreateSchema, type BlockCreateInput } from "./schema";
-import CatalogSearchSelect, {
+import {
+  CatalogSearchSelect,
   type CatalogOption,
-} from "./components/CatalogSearchSelect";
+} from "@/components/catalog-search-select";
 
 type BlockCreateFormProps = {
   faculties: CatalogOption[];

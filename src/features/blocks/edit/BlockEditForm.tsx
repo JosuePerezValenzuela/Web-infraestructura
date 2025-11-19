@@ -17,9 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiFetch } from "@/lib/api";
-import CatalogSearchSelect, {
+import {
+  CatalogSearchSelect,
   type CatalogOption,
-} from "../components/CatalogSearchSelect";
+} from "@/components/catalog-search-select";
 import {
   blockUpdateSchema,
   type BlockUpdateInput,
