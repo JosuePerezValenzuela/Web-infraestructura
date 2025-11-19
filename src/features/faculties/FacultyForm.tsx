@@ -190,64 +190,66 @@ export default function FacultyForm({
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(handleSubmit)}
-        className="space-y-4"
-      >
-        <FormField
-          control={form.control}
-          name="codigo"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="codigo-facultad">Codigo de la facultad</FormLabel>
-              <FormControl>
-                <Input
-                  id="codigo-facultad"
-                  placeholder="FAC-001"
-                  type="text"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="codigo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="codigo-facultad">
+                  Codigo de la facultad
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    id="codigo-facultad"
+                    placeholder="FAC-001"
+                    type="text"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="nombre"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="nombre-facultad">Nombre de la facultad</FormLabel>
-              <FormControl>
-                <Input
-                  id="nombre-facultad"
-                  placeholder="Facultad de ciencias y tecnologia"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="nombre"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="nombre-facultad">
+                  Nombre de la facultad
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    id="nombre-facultad"
+                    placeholder="Facultad de ciencias y tecnologia"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="nombre_corto"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="nombre-corto">Nombre corto (opcional)</FormLabel>
-              <FormControl>
-                <Input
-                  id="nombre-corto"
-                  placeholder="FCyT"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="nombre_corto"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="nombre-corto">Nombre corto (opcional)</FormLabel>
+                <FormControl>
+                  <Input
+                    id="nombre-corto"
+                    placeholder="FCyT"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
         <FormField
           control={form.control}
@@ -341,9 +343,13 @@ export default function FacultyForm({
             );
           }}
         />
+        </div>
 
-        <div className="rounded-md border bg-muted/20 p-2">
-          <div className="h-64 overflow-hidden rounded-md">
+        <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+          <p className="text-sm font-medium">
+            Ubicacion dentro del campus
+          </p>
+          <div className="h-56 overflow-hidden rounded-md border border-border/60">
             <MapPicker
               lat={Number(form.watch("lat")) || INITIAL_POSITION.lat}
               lng={Number(form.watch("lng")) || INITIAL_POSITION.lng}
