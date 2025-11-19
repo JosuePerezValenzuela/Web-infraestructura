@@ -351,6 +351,8 @@ export function EnvironmentCreateForm({
                     id="env-unidad"
                     placeholder="Ej. metros"
                     maxLength={16}
+                    readOnly
+                    aria-readonly="true"
                     {...field}
                     value={field.value ?? ""}
                   />
