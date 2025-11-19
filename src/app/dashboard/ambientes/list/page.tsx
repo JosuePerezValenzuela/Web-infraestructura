@@ -32,6 +32,8 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -334,11 +336,18 @@ export default function EnvironmentListPage() {
   // Conserva el ambiente seleccionado para editarlo.
   const [editingEnvironment, setEditingEnvironment] =
     useState<EnvironmentRow | null>(null);
-  // Permite forzar la recarga del listado despues de crear un ambiente.
+  // Permite forzar la recarga del listado despues de crear o eliminar un ambiente.
   const [reloadKey, setReloadKey] = useState(0);
   // Guardamos la instancia de la tabla para exponer las opciones de vista en el formulario.
   const [tableInstance, setTableInstance] =
     useState<ReactTableInstance<EnvironmentRow> | null>(null);
+  // Controla la apertura del dialogo de confirmacion de eliminacion.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Almacena el ambiente que la persona desea eliminar.
+  const [environmentToDelete, setEnvironmentToDelete] =
+    useState<EnvironmentRow | null>(null);
+  // Indica cuando la peticion DELETE esta en curso para deshabilitar acciones repetidas.
+  const [deleting, setDeleting] = useState(false);
 
   const blockOptionsForForm = useMemo<CatalogSelectOption[]>(() => {
     return catalogs.blocks
@@ -631,6 +640,101 @@ export default function EnvironmentListPage() {
     setPage(1);
   }
 
+  function formatEnvironmentLabel(row: EnvironmentRow | null): string {
+    // Si no recibimos un ambiente simplemente devolvemos una cadena vacía para evitar errores.
+    if (!row) {
+      return "";
+    }
+    // Convertimos la fila a un registro genérico para poder leer campos adicionales sin romper el tipado.
+    const record = row as Record<string, unknown>;
+    // Tomamos el nombre principal cuando viene definido y lo limpiamos de espacios extra.
+    const nameCandidate =
+      typeof record.nombre === "string" ? record.nombre.trim() : "";
+    // Revisamos si existe un nombre corto en cualquiera de los formatos usados por la API.
+    const shortCandidateRaw =
+      typeof record.nombre_corto === "string"
+        ? record.nombre_corto
+        : typeof record.nombreCorto === "string"
+          ? record.nombreCorto
+          : null;
+    // Normalizamos el nombre corto que encontramos para que no contenga espacios sobrantes.
+    const shortCandidate =
+      typeof shortCandidateRaw === "string"
+        ? shortCandidateRaw.trim()
+        : "";
+    // Obtenemos el código del ambiente, que también actúa como identificador legible.
+    const codeCandidate =
+      typeof record.codigo === "string" ? record.codigo.trim() : "";
+
+    // Si tenemos nombre y código, los combinamos para darle más contexto a la persona usuaria.
+    if (nameCandidate && codeCandidate) {
+      return `${nameCandidate} (${codeCandidate})`;
+    }
+
+    // Si sólo hay nombre, lo retornamos tal cual porque ya es suficientemente descriptivo.
+    if (nameCandidate) {
+      return nameCandidate;
+    }
+
+    // Cuando sólo tenemos nombre corto y código, también los combinamos para no perder información.
+    if (shortCandidate && codeCandidate) {
+      return `${shortCandidate} (${codeCandidate})`;
+    }
+
+    // Como último recurso devolvemos el dato disponible (nombre corto o código).
+    return shortCandidate || codeCandidate;
+  }
+
+  function resolveDeleteErrorMessage(error: unknown): string {
+    // Validamos que el error sea un objeto para poder inspeccionar sus campos.
+    if (error && typeof error === "object") {
+      // Extraemos los campos comunes (message y details) que suele exponer la API.
+      const withMessage = error as {
+        message?: unknown;
+        details?: unknown;
+      };
+
+      // Algunos endpoints devuelven un arreglo de detalles, así que los recorremos para construir un texto legible.
+      if (Array.isArray(withMessage.details)) {
+        const details = withMessage.details
+          .map((detail) => {
+            // Cuando el detalle ya es una cadena la usamos tal cual.
+            if (typeof detail === "string") {
+              return detail;
+            }
+            // Si el detalle es un objeto buscamos una propiedad message y la devolvemos como texto.
+            if (
+              detail &&
+              typeof detail === "object" &&
+              "message" in detail &&
+              typeof (detail as { message?: unknown }).message === "string"
+            ) {
+              return ((detail as { message?: string }).message ?? "").trim();
+            }
+            // Para cualquier otro caso devolvemos una cadena vacía que luego filtraremos.
+            return "";
+          })
+          // Eliminamos los textos vacíos que no aportan información.
+          .filter((detail) => detail.length > 0);
+
+        // Si logramos recolectar mensajes los unimos con saltos de línea para mostrarlos juntos.
+        if (details.length) {
+          return details.join("\n");
+        }
+      }
+
+      // Cuando no hay detalles, usamos el mensaje principal si viene como cadena.
+      if (
+        typeof withMessage.message === "string" &&
+        withMessage.message.trim().length
+      ) {
+        return withMessage.message.trim();
+      }
+    }
+    // Si nada de lo anterior aplica, devolvemos un mensaje genérico para no dejar el texto vacío.
+    return "Intenta nuevamente en unos segundos.";
+  }
+
   function handleCreateClick() {
     setCreateOpen(true);
   }
@@ -672,13 +776,73 @@ export default function EnvironmentListPage() {
     setEditOpen(true);
   }
 
-  // Informa que el flujo de eliminacion aun no esta disponible.
+  // Abre el dialogo de confirmacion con el ambiente seleccionado.
   function handleDelete(row: EnvironmentRow) {
-    // Comunicamos que la eliminacion se agregara en una futura iteracion.
-    notify.info({
-      title: "Eliminar ambiente",
-      description: `La eliminacion de ${row.nombre ?? row.codigo} estara activa mas adelante.`,
-    });
+    // Guardamos el ambiente completo que la persona eligió para poder mostrar sus datos en el modal.
+    setEnvironmentToDelete(row);
+    // Activamos la vista del dialogo de confirmación para que la persona revise su decisión.
+    setDeleteOpen(true);
+  }
+
+  // Restablece los estados relacionados al dialogo de eliminación.
+  function resetDeleteDialog() {
+    // Cerramos el dialogo para ocultar la interfaz de confirmación.
+    setDeleteOpen(false);
+    // Limpiamos el ambiente seleccionado para no mantener referencias innecesarias en memoria.
+    setEnvironmentToDelete(null);
+  }
+
+  // Permite cerrar el dialogo sólo cuando no hay una petición en curso.
+  function handleDeleteDialogClose() {
+    // Si estamos eliminando, bloqueamos el cierre para evitar estados inciertos.
+    if (deleting) {
+      return;
+    }
+    // Si no hay eliminación activa restablecemos el estado como de costumbre.
+    resetDeleteDialog();
+  }
+
+  // Ejecuta el llamado real a la API para eliminar el ambiente.
+  async function confirmDelete() {
+    // Si por alguna razón no hay un ambiente seleccionado, salimos temprano porque no podemos continuar.
+    if (!environmentToDelete) {
+      return;
+    }
+
+    // Generamos la etiqueta amigable que usaremos en las notificaciones de feedback.
+    const labelForNotification = formatEnvironmentLabel(environmentToDelete);
+
+    try {
+      // Marcamos que la eliminación está en curso para deshabilitar botones y dobles clics.
+      setDeleting(true);
+      // Invocamos al backend usando el puerto centralizado apiFetch con el método DELETE.
+      await apiFetch(`/ambientes/${environmentToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      // En caso de éxito avisamos a la persona usuaria con el nombre o código del ambiente eliminado.
+      notify.success({
+        title: "Ambiente eliminado",
+        description:
+          labelForNotification?.length
+            ? `${labelForNotification} se eliminó correctamente.`
+            : "Se eliminó correctamente el ambiente.",
+      });
+
+      // Forzamos la recarga de la tabla para que se refleje la remoción.
+      setReloadKey((value) => value + 1);
+      // Cerramos el dialogo y limpiamos las referencias seleccionadas.
+      resetDeleteDialog();
+    } catch (error) {
+      // Si ocurre un error mostramos una notificación clara con el detalle devuelto por la API.
+      notify.error({
+        title: "No se pudo eliminar el ambiente",
+        description: resolveDeleteErrorMessage(error),
+      });
+    } finally {
+      // Sin importar el resultado regresamos el estado deleting a false para reactivar los controles.
+      setDeleting(false);
+    }
   }
 
   return (
@@ -936,6 +1100,64 @@ export default function EnvironmentListPage() {
           setReloadKey((value) => value + 1);
         }}
       />
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(value) => {
+          if (!value) {
+            handleDeleteDialogClose();
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-full space-y-4 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Eliminar ambiente</DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará el registro seleccionado. Los activos
+              asociados quedaran sin ambiente hasta que los reasignes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {environmentToDelete ? (
+            <div className="rounded-md border border-dashed bg-muted/40 p-3">
+              <p className="text-sm font-semibold">
+                {environmentToDelete.nombre}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Código:{" "}
+                <span className="font-mono">
+                  {environmentToDelete.codigo}
+                </span>
+              </p>
+            </div>
+          ) : null}
+
+          <div className="text-sm text-muted-foreground">
+            Recuerda que esta operación no se puede deshacer y solo debe
+            realizarse cuando estés segura de que el ambiente ya no se
+            utilizará.
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDeleteDialogClose}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminando..." : "Eliminar definitivamente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
