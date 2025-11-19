@@ -24,6 +24,7 @@ import {
   type EnvironmentRow,
 } from "@/features/environments/list/columns";
 import { EnvironmentCreateForm } from "@/features/environments/create/EnvironmentCreateForm";
+import { EnvironmentEditDialog } from "@/features/environments/edit/EnvironmentEditDialog";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
@@ -31,7 +32,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -329,6 +329,11 @@ export default function EnvironmentListPage() {
   const [loadingTable, setLoadingTable] = useState(false);
   // Controla la apertura del modal de creacion.
   const [createOpen, setCreateOpen] = useState(false);
+  // Maneja la apertura del modal de edicion.
+  const [editOpen, setEditOpen] = useState(false);
+  // Conserva el ambiente seleccionado para editarlo.
+  const [editingEnvironment, setEditingEnvironment] =
+    useState<EnvironmentRow | null>(null);
   // Permite forzar la recarga del listado despues de crear un ambiente.
   const [reloadKey, setReloadKey] = useState(0);
   // Guardamos la instancia de la tabla para exponer las opciones de vista en el formulario.
@@ -551,13 +556,10 @@ export default function EnvironmentListPage() {
     setReloadKey((value) => value + 1);
   }
 
-  // Informa que el flujo de edicion aun no esta disponible.
+  // Abre el modal de edicion con el ambiente escogido.
   function handleEdit(row: EnvironmentRow) {
-    // Mostramos un mensaje educativo que menciona el ambiente seleccionado.
-    notify.info({
-      title: "Editar ambiente",
-      description: `La edicion de ${row.nombre ?? row.codigo} estara disponible pronto.`,
-    });
+    setEditingEnvironment(row);
+    setEditOpen(true);
   }
 
   // Informa que el flujo de eliminacion aun no esta disponible.
@@ -810,6 +812,20 @@ export default function EnvironmentListPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <EnvironmentEditDialog
+        open={editOpen}
+        environment={editingEnvironment}
+        blocks={blockOptionsForForm}
+        environmentTypes={environmentTypeOptionsForForm}
+        onClose={() => {
+          setEditOpen(false);
+          setEditingEnvironment(null);
+        }}
+        onSuccess={() => {
+          setReloadKey((value) => value + 1);
+        }}
+      />
     </div>
   );
 }

@@ -39,10 +39,12 @@ const environmentListResponse = {
       id: 10,
       codigo: "AMB-100",
       nombre: "Laboratorio de redes",
+      nombre_corto: "Lab redes",
       piso: 2,
       clases: true,
       activo: true,
       capacidad: { total: 40, examen: 30 },
+      dimension: { largo: 10, ancho: 8, alto: 4, unid_med: "metros" },
       tipo_ambiente_id: 3,
       bloque_id: 5,
       tipo_ambiente: { nombre: "Laboratorio" },
@@ -57,6 +59,8 @@ const environmentListResponse = {
     take: 8,
   },
 };
+
+const mainEnvironment = environmentListResponse.items[0];
 
 // Respuesta simplificada para el catalogo de bloques.
 const blockCatalogResponse = {
@@ -88,15 +92,29 @@ const facultyCatalogResponse = {
   ],
 };
 
+let shouldPatchFail = false;
+let patchErrorMessage = "No se pudo actualizar";
+
 describe("EnvironmentListPage", () => {
   // Antes de cada prueba configuramos el mock del cliente HTTP.
   beforeEach(() => {
+    shouldPatchFail = false;
+    patchErrorMessage = "No se pudo actualizar";
     apiFetchMock.mockReset();
     notifyMock.success.mockReset();
     notifyMock.error.mockReset();
     notifyMock.info.mockReset();
     apiFetchMock.mockImplementation(
       async (path: string, options?: { method?: string }) => {
+        if (
+          path === `/ambientes/${mainEnvironment.id}` &&
+          options?.method === "PATCH"
+        ) {
+          if (shouldPatchFail) {
+            throw { message: patchErrorMessage };
+          }
+          return { id: mainEnvironment.id } as unknown;
+        }
         if (path.startsWith("/ambientes") && options?.method === "POST") {
           return { id: 99 } as unknown;
         }
@@ -376,6 +394,141 @@ describe("EnvironmentListPage", () => {
         ([path]) => typeof path === "string" && path.startsWith("/ambientes?")
       ).length
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("abre el dialogo de edicion y precarga los datos del ambiente seleccionado", async () => {
+    const user = userEvent.setup();
+
+    render(<EnvironmentListPage />);
+
+    await screen.findByText("Laboratorio de redes");
+
+    await user.click(screen.getByRole("button", { name: /editar ambiente/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    const dialogUtils = within(dialog);
+
+    await dialogUtils.findByRole("heading", { name: /editar ambiente/i });
+
+    expect(dialogUtils.getByLabelText(/^Codigo$/i)).toHaveDisplayValue(
+      mainEnvironment.codigo
+    );
+    expect(dialogUtils.getByLabelText(/^Nombre$/i)).toHaveDisplayValue(
+      mainEnvironment.nombre
+    );
+    expect(dialogUtils.getByLabelText(/^Piso$/i)).toHaveDisplayValue(
+      String(mainEnvironment.piso)
+    );
+    expect(
+      dialogUtils.getByLabelText("Capacidad total")
+    ).toHaveDisplayValue(String(mainEnvironment.capacidad.total));
+
+    const getCall = apiFetchMock.mock.calls.find(
+      ([path, options]) =>
+        path === `/ambientes/${mainEnvironment.id}` &&
+        (!options || !("method" in (options as { method?: string })))
+    );
+    expect(getCall).toBeUndefined();
+  });
+
+  it("actualiza un ambiente existente y refresca el listado tras guardar", async () => {
+    const user = userEvent.setup();
+
+    render(<EnvironmentListPage />);
+
+    await screen.findByText("Laboratorio de redes");
+
+    await user.click(screen.getByRole("button", { name: /editar ambiente/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    const dialogUtils = within(dialog);
+
+    const nameInput = dialogUtils.getByLabelText(/^Nombre$/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Laboratorio actualizado");
+
+    const examCapacity = dialogUtils.getByLabelText("Capacidad examen");
+    await user.clear(examCapacity);
+    await user.type(examCapacity, "28");
+
+    const activeCheckbox = dialogUtils.getByLabelText(/^Activo$/i);
+    await user.click(activeCheckbox);
+
+    await user.click(
+      dialogUtils.getByRole("button", { name: /guardar cambios/i })
+    );
+
+    await waitFor(() => {
+      const patchCall = apiFetchMock.mock.calls.find(
+        ([path, options]) =>
+          path === `/ambientes/${mainEnvironment.id}` &&
+          Boolean(options) &&
+          typeof options === "object" &&
+          "method" in (options as { method?: string }) &&
+          (options as { method?: string }).method === "PATCH"
+      );
+      expect(patchCall).toBeTruthy();
+      const [, options] = patchCall as [
+        string,
+        { method?: string; json?: unknown }
+      ];
+      expect(options.json).toMatchObject({
+        codigo: mainEnvironment.codigo,
+        nombre: "Laboratorio actualizado",
+        capacidad: expect.objectContaining({ examen: 28 }),
+        activo: false,
+      });
+    });
+
+    await waitFor(() => {
+      expect(notifyMock.success).toHaveBeenCalledWith({
+        title: "Ambiente actualizado",
+        description: "Se guardaron los cambios correctamente.",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    expect(
+      apiFetchMock.mock.calls.filter(
+        ([path]) => typeof path === "string" && path.startsWith("/ambientes?")
+      ).length
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("mantiene abierto el dialogo y muestra un error cuando el PATCH falla", async () => {
+    shouldPatchFail = true;
+    patchErrorMessage = "Conflicto con el codigo";
+
+    const user = userEvent.setup();
+
+    render(<EnvironmentListPage />);
+
+    await screen.findByText("Laboratorio de redes");
+
+    await user.click(screen.getByRole("button", { name: /editar ambiente/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    const dialogUtils = within(dialog);
+
+    const nameInput = dialogUtils.getByLabelText(/^Nombre$/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Laboratorio conflictivo");
+
+    await user.click(
+      dialogUtils.getByRole("button", { name: /guardar cambios/i })
+    );
+
+    await waitFor(() => {
+      expect(notifyMock.error).toHaveBeenCalledWith({
+        title: "No se pudo actualizar el ambiente",
+        description: patchErrorMessage,
+      });
+    });
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("pide una nueva pagina cuando la persona usa la paginacion", async () => {

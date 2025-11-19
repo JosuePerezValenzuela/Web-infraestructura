@@ -22,7 +22,7 @@ const optionalString = z
 const boundedDecimal = (min: number, max: number, message: string) =>
   z.coerce.number().min(min, message).max(max, message);
 
-export const environmentCreateSchema = z
+const environmentFormSchema = z
   .object({
     codigo: z
       .string()
@@ -121,5 +121,10 @@ export const environmentCreateSchema = z
     bloque_id: data.bloque_id as number,
   }));
 
+export const environmentCreateSchema = environmentFormSchema;
+export const environmentUpdateSchema = environmentFormSchema;
+
 export type EnvironmentCreateInput = z.input<typeof environmentCreateSchema>;
 export type EnvironmentCreateOutput = z.output<typeof environmentCreateSchema>;
+export type EnvironmentUpdateInput = z.input<typeof environmentUpdateSchema>;
+export type EnvironmentUpdateOutput = z.output<typeof environmentUpdateSchema>;
