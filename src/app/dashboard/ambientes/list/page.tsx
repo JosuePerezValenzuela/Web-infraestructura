@@ -23,9 +23,20 @@ import {
   environmentColumns,
   type EnvironmentRow,
 } from "@/features/environments/list/columns";
+import { EnvironmentCreateForm } from "@/features/environments/create/EnvironmentCreateForm";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { X } from "lucide-react";
+import type { CatalogOption as CatalogSelectOption } from "@/components/catalog-search-select";
 
 const TAKE = 8;
 const ALL_VALUE = "all";
@@ -50,7 +61,7 @@ const INITIAL_FILTERS: FilterState = {
   pisoMax: "",
 };
 
-type CatalogOption = {
+type FilterOption = {
   value: string;
   label: string;
 };
@@ -81,7 +92,7 @@ type EnvironmentListResponse = {
 function normalizeCatalogOptions(
   items: CatalogApiItem[],
   fallbackPrefix: string
-): CatalogOption[] {
+): FilterOption[] {
   // Recorremos cada elemento recibido desde la API para transformarlo en una opcion util para los selects.
   return items
     .map((item) => {
@@ -105,7 +116,7 @@ function normalizeCatalogOptions(
       return { value: String(item.id), label: finalLabel };
     })
     // Filtramos los elementos nulos que pudieron aparecer por datos incompletos.
-    .filter((option): option is CatalogOption => Boolean(option));
+    .filter((option): option is FilterOption => Boolean(option));
 }
 
 type SearchableSelectProps = {
@@ -117,7 +128,7 @@ type SearchableSelectProps = {
   allLabel: string;
   value: string;
   onChange: (value: string) => void;
-  options: CatalogOption[];
+  options: FilterOption[];
   loading?: boolean;
 };
 
@@ -304,9 +315,9 @@ export default function EnvironmentListPage() {
     useState<FilterState>(INITIAL_FILTERS);
   // Guardamos las opciones de los selects (bloques, tipos y facultades) en un unico objeto.
   const [catalogs, setCatalogs] = useState<{
-    blocks: CatalogOption[];
-    environmentTypes: CatalogOption[];
-    faculties: CatalogOption[];
+    blocks: FilterOption[];
+    environmentTypes: FilterOption[];
+    faculties: FilterOption[];
   }>({
     blocks: [],
     environmentTypes: [],
@@ -316,9 +327,41 @@ export default function EnvironmentListPage() {
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   // Señalamos cuando la tabla esta actualizando sus datos.
   const [loadingTable, setLoadingTable] = useState(false);
+  // Controla la apertura del modal de creacion.
+  const [createOpen, setCreateOpen] = useState(false);
+  // Permite forzar la recarga del listado despues de crear un ambiente.
+  const [reloadKey, setReloadKey] = useState(0);
   // Guardamos la instancia de la tabla para exponer las opciones de vista en el formulario.
   const [tableInstance, setTableInstance] =
     useState<ReactTableInstance<EnvironmentRow> | null>(null);
+
+  const blockOptionsForForm = useMemo<CatalogSelectOption[]>(() => {
+    return catalogs.blocks
+      .map((option) => {
+        const id = Number(option.value);
+        if (Number.isNaN(id)) {
+          return null;
+        }
+        return { id, nombre: option.label };
+      })
+      .filter(
+        (option): option is CatalogSelectOption => option !== null
+      );
+  }, [catalogs.blocks]);
+
+  const environmentTypeOptionsForForm = useMemo<CatalogSelectOption[]>(() => {
+    return catalogs.environmentTypes
+      .map((option) => {
+        const id = Number(option.value);
+        if (Number.isNaN(id)) {
+          return null;
+        }
+        return { id, nombre: option.label };
+      })
+      .filter(
+        (option): option is CatalogSelectOption => option !== null
+      );
+  }, [catalogs.environmentTypes]);
 
   // Apenas se monta la pantalla consultamos los catálogos necesarios para los filtros.
   useEffect(() => {
@@ -465,7 +508,7 @@ export default function EnvironmentListPage() {
     void loadEnvironments();
     // Abortamos la solicitud si el efecto se limpia antes de completar.
     return () => controller.abort();
-  }, [queryString]);
+  }, [queryString, reloadKey]);
 
   // Aplica los filtros visibles y evita que el formulario recargue la pagina.
   function handleApplyFilters(event?: FormEvent<HTMLFormElement>) {
@@ -495,13 +538,17 @@ export default function EnvironmentListPage() {
     setPage(1);
   }
 
-  // Informa que el flujo de creacion se implementara en una iteracion posterior.
   function handleCreateClick() {
-    // Mostramos una notificacion amigable explicando el estado de la funcionalidad.
-    notify.info({
-      title: "Crear ambiente",
-      description: "Este flujo estara disponible en la siguiente iteracion.",
-    });
+    setCreateOpen(true);
+  }
+
+  function handleCloseCreateDialog() {
+    setCreateOpen(false);
+  }
+
+  async function handleCreateSuccess() {
+    setPage(1);
+    setReloadKey((value) => value + 1);
   }
 
   // Informa que el flujo de edicion aun no esta disponible.
@@ -731,6 +778,41 @@ export default function EnvironmentListPage() {
           ),
         }}
       />
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent
+          className="max-h-[90vh] w-full max-w-5xl overflow-hidden p-0 sm:max-w-5xl"
+          showCloseButton={false}
+        >
+          <div className="flex max-h-[90vh] flex-col bg-background">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <DialogHeader className="space-y-1 text-left">
+                <DialogTitle>Registrar ambiente</DialogTitle>
+                <DialogDescription>
+                  Captura la informacion clave para sumar el ambiente al inventario.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogClose
+                type="button"
+                className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                onClick={handleCloseCreateDialog}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Cerrar</span>
+              </DialogClose>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <EnvironmentCreateForm
+                blocks={blockOptionsForForm}
+                environmentTypes={environmentTypeOptionsForForm}
+                onSuccess={handleCreateSuccess}
+                onClose={handleCloseCreateDialog}
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
