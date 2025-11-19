@@ -251,189 +251,193 @@ export default function FacultyEditForm({ faculty, onSubmitSuccess }: Props) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className="space-y-4"
+        className="space-y-5"
       >
-        <FormField
-          control={form.control}
-          name="codigo"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="codigo-facultad-edit">Codigo de la facultad</FormLabel>
-              <FormControl>
-                <Input
-                  id="codigo-facultad-edit"
-                  placeholder="FAC-001"
-                  type="text"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="nombre"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="nombre-facultad-edit">Nombre de la facultad</FormLabel>
-              <FormControl>
-                <Input
-                  id="nombre-facultad-edit"
-                  placeholder="Facultad de Ingenieria"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="nombre_corto"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="nombre-corto-edit">Nombre corto (opcional)</FormLabel>
-              <FormControl>
-                <Input
-                  id="nombre-corto-edit"
-                  placeholder="FI"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="campus_id"
-          render={({ field }) => {
-            const resolvedCampusId =
-              typeof currentCampusValue === "number" && Number.isFinite(currentCampusValue)
-                ? currentCampusValue
-                : Number(currentCampusValue);
-
-            const selectedCampusId =
-              Number.isFinite(resolvedCampusId) && resolvedCampusId > 0
-                ? resolvedCampusId
-                : faculty.campus_id;
-            const selectedCampus =
-              campusOptions.find((option) => option.id === selectedCampusId) ??
-              campusOptions.find((option) => option.id === faculty.campus_id);
-
-            const buttonLabel = selectedCampus
-              ? selectedCampus.nombre
-              : faculty.campus_nombre ?? "Seleccionar campus";
-
-            return (
+        <div className="grid gap-1 lg:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="codigo"
+            render={({ field }) => (
               <FormItem>
-                <FormLabel>Seleccione el campus</FormLabel>
-                <div className="relative">
-                  <FormControl>
-                    <input
-                      type="hidden"
-                      name={field.name}
-                      value={String(selectedCampusId)}
-                      onChange={(event) => {
-                        const nextValue = Number(event.target.value);
-                        field.onChange(
-                          Number.isNaN(nextValue) || nextValue <= 0
-                            ? faculty.campus_id
-                            : nextValue
-                        );
-                      }}
-                      onBlur={field.onBlur}
-                      ref={field.ref}
-                    />
-                  </FormControl>
-                  <Button
-                    ref={triggerRef}
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between"
-                    aria-haspopup="listbox"
-                    aria-expanded={campusDropdownOpen}
-                    onClick={() => {
-                      setCampusDropdownOpen((open) => !open);
-                      setCampusSearch("");
-                    }}
-                  >
-                    <span>{buttonLabel}</span>
-                    <span aria-hidden className="text-xs text-muted-foreground">
-                      {campusDropdownOpen ? "Cerrar" : "Abrir"}
-                    </span>
-                  </Button>
-
-                  {campusDropdownOpen ? (
-                    <div
-                      ref={dropdownRef}
-                      className="absolute z-20 mt-2 w-full rounded-md border bg-popover shadow-md"
-                    >
-                      <div className="p-2">
-                        <Input
-                          placeholder="Buscar campus"
-                          value={campusSearch}
-                          onChange={(event) => setCampusSearch(event.target.value)}
-                        />
-                      </div>
-
-                      <ul
-                        role="listbox"
-                        aria-label="Listado de campus"
-                        className="max-h-56 overflow-y-auto px-1 pb-2"
-                      >
-                        {filteredCampusOptions.length ? (
-                          filteredCampusOptions.map((option) => (
-                            <li key={option.id} className="p-1">
-                          <button
-                            type="button"
-                            role="option"
-                                aria-selected={selectedCampusId === option.id}
-                            className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                            onClick={() => {
-                              field.onChange(option.id);
-                              if (typeof option.lat === "number") {
-                                form.setValue("lat", option.lat, {
-                                      shouldValidate: true,
-                                    });
-                                  }
-                                  if (typeof option.lng === "number") {
-                                    form.setValue("lng", option.lng, {
-                                      shouldValidate: true,
-                                    });
-                                  }
-                                  setCampusDropdownOpen(false);
-                                }}
-                              >
-                                {option.nombre}
-                              </button>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="px-3 py-2 text-sm text-muted-foreground">
-                            No se encontraron campus
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
+                <FormLabel htmlFor="codigo-facultad-edit">Codigo de la facultad</FormLabel>
+                <FormControl>
+                  <Input
+                    id="codigo-facultad-edit"
+                    placeholder="FAC-001"
+                    type="text"
+                    {...field}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
-            );
-          }}
-        />
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="nombre"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="nombre-facultad-edit">Nombre de la facultad</FormLabel>
+                <FormControl>
+                  <Input
+                    id="nombre-facultad-edit"
+                    placeholder="Facultad de Ingenieria"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid gap-1 lg:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="nombre_corto"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="nombre-corto-edit">Nombre corto (opcional)</FormLabel>
+                <FormControl>
+                  <Input
+                    id="nombre-corto-edit"
+                    placeholder="FI"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="campus_id"
+            render={({ field }) => {
+              const resolvedCampusId =
+                typeof currentCampusValue === "number" && Number.isFinite(currentCampusValue)
+                  ? currentCampusValue
+                  : Number(currentCampusValue);
+
+              const selectedCampusId =
+                Number.isFinite(resolvedCampusId) && resolvedCampusId > 0
+                  ? resolvedCampusId
+                  : faculty.campus_id;
+              const selectedCampus =
+                campusOptions.find((option) => option.id === selectedCampusId) ??
+                campusOptions.find((option) => option.id === faculty.campus_id);
+
+              const buttonLabel = selectedCampus
+                ? selectedCampus.nombre
+                : faculty.campus_nombre ?? "Seleccionar campus";
+
+              return (
+                <FormItem>
+                  <FormLabel>Seleccione el campus</FormLabel>
+                  <div className="relative">
+                    <FormControl>
+                      <input
+                        type="hidden"
+                        name={field.name}
+                        value={String(selectedCampusId)}
+                        onChange={(event) => {
+                          const nextValue = Number(event.target.value);
+                          field.onChange(
+                            Number.isNaN(nextValue) || nextValue <= 0
+                              ? faculty.campus_id
+                              : nextValue
+                          );
+                        }}
+                        onBlur={field.onBlur}
+                        ref={field.ref}
+                      />
+                    </FormControl>
+                    <Button
+                      ref={triggerRef}
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between"
+                      aria-haspopup="listbox"
+                      aria-expanded={campusDropdownOpen}
+                      onClick={() => {
+                        setCampusDropdownOpen((open) => !open);
+                        setCampusSearch("");
+                      }}
+                    >
+                      <span>{buttonLabel}</span>
+                      <span aria-hidden className="text-xs text-muted-foreground">
+                        {campusDropdownOpen ? "Cerrar" : "Abrir"}
+                      </span>
+                    </Button>
+
+                    {campusDropdownOpen ? (
+                      <div
+                        ref={dropdownRef}
+                        className="absolute z-20 mt-2 w-full rounded-md border bg-popover shadow-md"
+                      >
+                        <div className="p-2">
+                          <Input
+                            placeholder="Buscar campus"
+                            value={campusSearch}
+                            onChange={(event) => setCampusSearch(event.target.value)}
+                          />
+                        </div>
+
+                        <ul
+                          role="listbox"
+                          aria-label="Listado de campus"
+                          className="max-h-56 overflow-y-auto px-1 pb-2"
+                        >
+                          {filteredCampusOptions.length ? (
+                            filteredCampusOptions.map((option) => (
+                              <li key={option.id} className="p-1">
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={selectedCampusId === option.id}
+                                  className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                  onClick={() => {
+                                    field.onChange(option.id);
+                                    if (typeof option.lat === "number") {
+                                      form.setValue("lat", option.lat, {
+                                        shouldValidate: true,
+                                      });
+                                    }
+                                    if (typeof option.lng === "number") {
+                                      form.setValue("lng", option.lng, {
+                                        shouldValidate: true,
+                                      });
+                                    }
+                                    setCampusDropdownOpen(false);
+                                  }}
+                                >
+                                  {option.nombre}
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="px-3 py-2 text-sm text-muted-foreground">
+                              No se encontraron campus
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
 
         <FormField
           control={form.control}
           name="activo"
           render={({ field }) => (
-            <FormItem className="space-y-2 rounded-md border p-3">
-              <div className="flex items-center gap-3">
+            <FormItem className="rounded-md border border-border/60 p-2">
+              <div className="flex flex-wrap items-center gap-3">
                 <FormControl>
                   <Checkbox
                     id="activo-facultad"
@@ -441,20 +445,22 @@ export default function FacultyEditForm({ faculty, onSubmitSuccess }: Props) {
                     onCheckedChange={(value) => field.onChange(value === true)}
                   />
                 </FormControl>
-                <FormLabel htmlFor="activo-facultad" className="cursor-pointer text-base">
-                  Facultad activa
-                </FormLabel>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <FormLabel htmlFor="activo-facultad" className="cursor-pointer text-base">
+                    Facultad activa
+                  </FormLabel>
+                  <span className="text-muted-foreground">
+                    (Desmarca para deshabilitar la facultad y sus dependencias)
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Desmarca esta opcion para deshabilitar la facultad y sus dependencias.
-              </p>
               <FormMessage />
             </FormItem>
           )}
         />
 
         <div className="rounded-md border bg-muted/20 p-2">
-          <div className="h-64 overflow-hidden rounded-md">
+          <div className="h-56 overflow-hidden rounded-md">
             <MapPicker
               lat={
                 Number.isFinite(Number(form.watch("lat")))
