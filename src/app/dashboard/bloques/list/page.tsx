@@ -315,6 +315,105 @@ export default function BlockListPage() {
   const [blockToEdit, setBlockToEdit] = useState<BlockRow | null>(null); // Mantiene el bloque que se está editando.
   const [reloadKey, setReloadKey] = useState(0); // Permite forzar la recarga del listado tras eliminar.
 
+  function resolveRowLabel(
+    row: BlockRow,
+    options: { directKeys: string[]; relationKeys?: string[] }
+  ): string {
+    const record = row as Record<string, unknown>;
+    for (const key of options.directKeys) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim().length) {
+        return value.trim();
+      }
+    }
+    for (const relationKey of options.relationKeys ?? []) {
+      const relation = record[relationKey];
+      if (
+        relation &&
+        typeof relation === "object" &&
+        !Array.isArray(relation)
+      ) {
+        const relationRecord = relation as Record<string, unknown>;
+        const candidate =
+          relationRecord.nombre ??
+          relationRecord.nombre_corto ??
+          relationRecord.nombreCorto ??
+          relationRecord.descripcion ??
+          relationRecord.codigo;
+        if (typeof candidate === "string" && candidate.trim().length) {
+          return candidate.trim();
+        }
+      }
+    }
+    return "";
+  }
+
+  function findCatalogIdByLabel(
+    options: CatalogOption[],
+    label: string
+  ): number | undefined {
+    const normalized = label.trim().toLowerCase();
+    if (!normalized.length) {
+      return undefined;
+    }
+    const exact = options.find(
+      (option) => option.nombre.trim().toLowerCase() === normalized
+    );
+    if (exact) {
+      return exact.id;
+    }
+    const partial = options.find((option) =>
+      option.nombre.trim().toLowerCase().includes(normalized)
+    );
+    return partial?.id;
+  }
+
+  function guessFacultyIdFromRow(row: BlockRow): number | undefined {
+    const label = resolveRowLabel(row, {
+      directKeys: [
+        "facultad",
+        "facultad_nombre",
+        "facultadName",
+        "facultad_label",
+      ],
+      relationKeys: [
+        "facultad_detalle",
+        "facultadInfo",
+        "facultad_relacion",
+        "facultadData",
+      ],
+    });
+    if (!label) {
+      return undefined;
+    }
+    return findCatalogIdByLabel(faculties, label);
+  }
+
+  function guessBlockTypeIdFromRow(row: BlockRow): number | undefined {
+    const label = resolveRowLabel(row, {
+      directKeys: [
+        "tipo_bloque",
+        "tipoBloque",
+        "tipo_bloque_nombre",
+        "tipoBloqueNombre",
+      ],
+      relationKeys: [
+        "tipo_bloque_detalle",
+        "tipoBloqueInfo",
+        "tipo_bloque_relacion",
+        "tipoBloqueData",
+      ],
+    });
+    if (!label) {
+      return undefined;
+    }
+    return findCatalogIdByLabel(blockTypes, label);
+  }
+
+  function isValidId(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
   // Esta función auxilia se encarga de consultar los catálogos necesarios apenas carga la pantalla.
   useEffect(() => {
     // Creamos un abort controller para cancelar la petición si la persona abandona la vista.
@@ -442,9 +541,26 @@ export default function BlockListPage() {
   }
 
   function handleEdit(block: BlockRow) {
-    setBlockToEdit(block); // Guardamos la fila seleccionada para popular el formulario.
-    setEditOpen(true); // Abrimos el diálogo de edición.
+    const enriched = { ...block } as Record<string, unknown>;
+
+    if (!isValidId(enriched.facultad_id)) {
+      const guessedFaculty = guessFacultyIdFromRow(block);
+      if (typeof guessedFaculty === "number") {
+        enriched.facultad_id = guessedFaculty;
+      }
+    }
+
+    if (!isValidId(enriched.tipo_bloque_id)) {
+      const guessedBlockType = guessBlockTypeIdFromRow(block);
+      if (typeof guessedBlockType === "number") {
+        enriched.tipo_bloque_id = guessedBlockType;
+      }
+    }
+
+    setBlockToEdit(enriched as BlockRow); // Guardamos la fila seleccionada para popular el formulario.
+    setEditOpen(true); // Abrimos el dialogo de edicion.
   }
+
 
   function handleDelete(block: BlockRow) {
     setBlockToDelete(block); // Guardamos el bloque que se desea eliminar.
