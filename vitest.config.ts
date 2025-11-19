@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
@@ -16,6 +16,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
     },
+    exclude: [...configDefaults.exclude, 'tests/**'],
   },
 });
 
