@@ -571,9 +571,7 @@ export default function EnvironmentListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="border-b pb-4">
-        <h1 className="text-xl font-semibold">Ambientes</h1>
-      </div>
+      <h1 className="text-xl font-semibold">Ambientes</h1>
 
       <form
         onSubmit={handleApplyFilters}
@@ -691,48 +689,50 @@ export default function EnvironmentListPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="classes-filter">Uso academico</Label>
-            <Select
-              value={filters.clases || ALL_VALUE}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  clases: value === ALL_VALUE ? "" : value,
-                }))
-              }
-            >
-              <SelectTrigger id="classes-filter" aria-label="Uso academico">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>Todos</SelectItem>
-                <SelectItem value="true">Dicta clases</SelectItem>
-                <SelectItem value="false">No dicta clases</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="classes-filter">Uso academico</Label>
+              <Select
+                value={filters.clases || ALL_VALUE}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    clases: value === ALL_VALUE ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger id="classes-filter" aria-label="Uso academico">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>Todos</SelectItem>
+                  <SelectItem value="true">Dicta clases</SelectItem>
+                  <SelectItem value="false">No dicta clases</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="status-filter">Estado</Label>
-            <Select
-              value={filters.activo || ALL_VALUE}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  activo: value === ALL_VALUE ? "" : value,
-                }))
-              }
-            >
-              <SelectTrigger id="status-filter" aria-label="Estado">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>Todos</SelectItem>
-                <SelectItem value="true">Activos</SelectItem>
-                <SelectItem value="false">Inactivos</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label htmlFor="status-filter">Estado</Label>
+              <Select
+                value={filters.activo || ALL_VALUE}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    activo: value === ALL_VALUE ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger id="status-filter" aria-label="Estado">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>Todos</SelectItem>
+                  <SelectItem value="true">Activos</SelectItem>
+                  <SelectItem value="false">Inactivos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
