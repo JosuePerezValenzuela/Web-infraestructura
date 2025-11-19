@@ -94,12 +94,16 @@ const facultyCatalogResponse = {
 
 let shouldPatchFail = false;
 let patchErrorMessage = "No se pudo actualizar";
+let shouldDeleteFail = false;
+let deleteErrorMessage = "No se pudo eliminar";
 
 describe("EnvironmentListPage", () => {
   // Antes de cada prueba configuramos el mock del cliente HTTP.
   beforeEach(() => {
     shouldPatchFail = false;
     patchErrorMessage = "No se pudo actualizar";
+    shouldDeleteFail = false;
+    deleteErrorMessage = "No se pudo eliminar";
     apiFetchMock.mockReset();
     notifyMock.success.mockReset();
     notifyMock.error.mockReset();
@@ -114,6 +118,15 @@ describe("EnvironmentListPage", () => {
             throw { message: patchErrorMessage };
           }
           return { id: mainEnvironment.id } as unknown;
+        }
+        if (
+          path === `/ambientes/${mainEnvironment.id}` &&
+          options?.method === "DELETE"
+        ) {
+          if (shouldDeleteFail) {
+            throw { message: deleteErrorMessage };
+          }
+          return undefined as unknown;
         }
         if (path.startsWith("/ambientes") && options?.method === "POST") {
           return { id: 99 } as unknown;
@@ -529,6 +542,150 @@ describe("EnvironmentListPage", () => {
     });
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("muestra un dialogo informativo antes de eliminar un ambiente", async () => {
+    // Creamos una persona usuaria virtual para imitar los clics reales de la interfaz.
+    const user = userEvent.setup();
+
+    // Renderizamos la pagina completa para interactuar con la tabla igual que en produccion.
+    render(<EnvironmentListPage />);
+
+    // Esperamos a que aparezca el nombre del ambiente como confirmacion de que la data cargo.
+    await screen.findByText("Laboratorio de redes");
+
+    // Simulamos el clic sobre el boton de eliminar que se encuentra en la fila principal.
+    await user.click(screen.getByRole("button", { name: /eliminar ambiente/i }));
+
+    // Buscamos el dialogo modal que debe abrirse tras el clic anterior.
+    const dialog = await screen.findByRole("dialog");
+
+    // Usamos utilidades de Testing Library para consultar elementos dentro del dialogo.
+    const dialogUtils = within(dialog);
+
+    // Validamos que el encabezado del modal comunique claramente la accion que realizara.
+    await dialogUtils.findByRole("heading", { name: /eliminar ambiente/i });
+
+    // Confirmamos que el nombre del ambiente este visible para evitar eliminaciones equivocadas.
+    expect(dialogUtils.getByText(/Laboratorio de redes/i)).toBeInTheDocument();
+
+    // Tambien verificamos que el codigo del ambiente se muestre como dato complementario.
+    expect(dialogUtils.getByText(/AMB-100/i)).toBeInTheDocument();
+
+    // Revisamos que la advertencia sobre los activos asociados se despliegue en el cuerpo del dialogo.
+    expect(
+      dialogUtils.getByText(
+        /Los activos asociados quedaran sin ambiente/i
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("elimina el ambiente seleccionado y refresca la tabla tras confirmar", async () => {
+    // Preparamos la persona usuaria virtual encargada de interactuar con los botones.
+    const user = userEvent.setup();
+
+    // Renderizamos la vista principal que lista los ambientes disponibles.
+    render(<EnvironmentListPage />);
+
+    // Esperamos a que el ambiente inicial se muestre para asegurar que la tabla termino de cargar.
+    await screen.findByText("Laboratorio de redes");
+
+    // Abrimos el dialogo de confirmacion mediante el boton de eliminar de la fila.
+    await user.click(screen.getByRole("button", { name: /eliminar ambiente/i }));
+
+    // Capturamos el dialogo que debe aparecer despues del clic anterior.
+    const dialog = await screen.findByRole("dialog");
+
+    // Obtenemos un helper para realizar consultas concentradas dentro del dialogo.
+    const dialogUtils = within(dialog);
+
+    // Identificamos el boton de confirmacion que ejecuta la eliminacion definitiva.
+    const confirmButton = dialogUtils.getByRole("button", {
+      name: /eliminar definitivamente/i,
+    });
+
+    // Ejecutamos el clic que confirma la eliminacion.
+    await user.click(confirmButton);
+
+    // Esperamos a que el cliente HTTP reciba la llamada DELETE con el id correcto.
+    await waitFor(() => {
+      const deleteCall = apiFetchMock.mock.calls.find(
+        ([path, options]) =>
+          path === `/ambientes/${mainEnvironment.id}` &&
+          Boolean(options) &&
+          typeof options === "object" &&
+          "method" in (options as { method?: string }) &&
+          (options as { method?: string }).method === "DELETE"
+      );
+      expect(deleteCall).toBeTruthy();
+    });
+
+    // Verificamos que se muestre una notificacion positiva al completar la eliminacion.
+    await waitFor(() => {
+      expect(notifyMock.success).toHaveBeenCalledWith({
+        title: "Ambiente eliminado",
+        description: expect.stringContaining("Laboratorio de redes"),
+      });
+    });
+
+    // Confirmamos que el dialogo se cierre automaticamente al terminar el flujo.
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // Revisamos que el listado vuelva a consultarse al menos una vez para reflejar los cambios.
+    await waitFor(() => {
+      const listCalls = apiFetchMock.mock.calls.filter(
+        ([path]) => typeof path === "string" && path.startsWith("/ambientes?")
+      );
+      expect(listCalls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it("muestra un error y mantiene abierto el dialogo cuando la eliminacion falla", async () => {
+    // Forzamos el escenario de error para validar la experiencia negativa.
+    shouldDeleteFail = true;
+    deleteErrorMessage = "Conflicto con activos asociados";
+
+    // Generamos a la persona usuaria virtual responsable de los clics.
+    const user = userEvent.setup();
+
+    // Montamos la pagina para reproducir el flujo completo.
+    render(<EnvironmentListPage />);
+
+    // Esperamos a que se muestre el nombre del ambiente para garantizar que la informacion ya esta disponible.
+    await screen.findByText("Laboratorio de redes");
+
+    // Abrimos el dialogo de confirmacion seleccionando la accion de eliminar.
+    await user.click(screen.getByRole("button", { name: /eliminar ambiente/i }));
+
+    // Identificamos el dialogo que aparece luego del clic anterior.
+    const dialog = await screen.findByRole("dialog");
+
+    // Obtenemos las utilidades de Testing Library enfocadas en el dialogo abierto.
+    const dialogUtils = within(dialog);
+
+    // Localizamos el boton de confirmacion que dispara la eliminacion.
+    const confirmButton = dialogUtils.getByRole("button", {
+      name: /eliminar definitivamente/i,
+    });
+
+    // Simulamos el clic de confirmacion que hara fallar la llamada por la bandera configurada.
+    await user.click(confirmButton);
+
+    // Esperamos a que aparezca la notificacion de error con el mensaje controlado por la prueba.
+    await waitFor(() => {
+      expect(notifyMock.error).toHaveBeenCalledWith({
+        title: "No se pudo eliminar el ambiente",
+        description: deleteErrorMessage,
+      });
+    });
+
+    // Confirmamos que el dialogo continue abierto para que la persona pueda reintentar o cancelar.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Revisamos que el boton de confirmacion vuelva a estar habilitado tras el error.
+    expect(confirmButton).not.toBeDisabled();
   });
 
   it("pide una nueva pagina cuando la persona usa la paginacion", async () => {
