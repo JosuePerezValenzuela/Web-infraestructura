@@ -113,41 +113,36 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="codigo"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Codigo del campus</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="CAMP-001"
-                  type='text'
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="codigo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Codigo del campus</FormLabel>
+                <FormControl>
+                  <Input placeholder="CAMP-001" type="text" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="nombre"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nombre del campus</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Campus Central"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="nombre"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre del campus</FormLabel>
+                <FormControl>
+                  <Input placeholder="Campus Central" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -171,8 +166,10 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
           control={form.control}
           name="activo"
           render={({ field }) => (
-            <FormItem className="flex items-center gap-3 space-y-0">
-              <FormLabel>Estado del campus:</FormLabel>
+            <FormItem className="flex flex-wrap items-center gap-3 rounded-md border border-border/60 p-3">
+              <FormLabel className="text-sm font-semibold">
+                Estado del campus:
+              </FormLabel>
               <FormControl>
                 <Checkbox
                   id="activo"
@@ -180,7 +177,7 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
                   onCheckedChange={(checked) => field.onChange(checked === true)}
                 />
               </FormControl>
-              <FormLabel htmlFor="activo" className="cursor-pointer">
+              <FormLabel htmlFor="activo" className="cursor-pointer text-sm">
                 Activo
               </FormLabel>
               <FormMessage />
@@ -188,15 +185,18 @@ export default function CampusEditForm({ campus, onSubmitSuccess }: Props) {
           )}
         />
 
-        <div className="h-64 rounded-md overflow-hidden">
-          <MapPicker
-            lat={Number(form.watch('lat'))}
-            lng={Number(form.watch('lng'))}
-            onChange={(coords) => {
-              form.setValue('lat', coords.lat, { shouldValidate: true });
-              form.setValue('lng', coords.lng, { shouldValidate: true });
-            }}
-          />
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Ubicacion en el mapa</p>
+          <div className="h-56 rounded-md border border-border/60 overflow-hidden">
+            <MapPicker
+              lat={Number(form.watch('lat'))}
+              lng={Number(form.watch('lng'))}
+              onChange={(coords) => {
+                form.setValue('lat', coords.lat, { shouldValidate: true });
+                form.setValue('lng', coords.lng, { shouldValidate: true });
+              }}
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-2">
