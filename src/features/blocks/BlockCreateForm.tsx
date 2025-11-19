@@ -222,7 +222,7 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
         </div>
 
         <div className="rounded-md border bg-muted/20 p-1">
-          <div className="h-64 overflow-hidden rounded-md">
+          <div className="h-54 overflow-hidden rounded-md">
             <MapPicker
               lat={mapLat}
               lng={mapLng}
