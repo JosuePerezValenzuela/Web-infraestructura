@@ -20,7 +20,7 @@ type CatalogSearchSelectProps = {
   onChange: (value: string) => void;
 };
 
-export default function CatalogSearchSelect({
+export function CatalogSearchSelect({
   buttonId,
   labelId,
   placeholder,
@@ -29,24 +29,24 @@ export default function CatalogSearchSelect({
   value,
   onChange,
 }: CatalogSearchSelectProps) {
-  const [open, setOpen] = useState(false); // Controla si el desplegable está visible.
-  const [searchTerm, setSearchTerm] = useState(""); // Texto que se usa para filtrar las opciones.
-  const dropdownRef = useRef<HTMLDivElement | null>(null); // Referencia al contenedor de opciones para detectar clicks externos.
-  const triggerRef = useRef<HTMLButtonElement | null>(null); // Referencia al botón que abre/cierra el selector.
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   const filteredOptions = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase(); // Normalizamos el texto de búsqueda.
+    const term = searchTerm.trim().toLowerCase();
     if (!term) {
-      return options; // Si no hay búsqueda devolvemos la lista original.
+      return options;
     }
     return options.filter((option) =>
       option.nombre.toLowerCase().includes(term)
-    ); // Filtramos por coincidencia simple sin distinguir mayúsculas.
+    );
   }, [options, searchTerm]);
 
   useEffect(() => {
     if (!open) {
-      return; // Solo registramos listeners cuando el desplegable está abierto.
+      return;
     }
 
     function handlePointerDown(event: MouseEvent) {
@@ -55,14 +55,14 @@ export default function CatalogSearchSelect({
         dropdownRef.current?.contains(target) ||
         triggerRef.current?.contains(target)
       ) {
-        return; // Ignoramos los clicks que ocurren dentro del componente.
+        return;
       }
-      setOpen(false); // Cerramos el selector cuando se hace click fuera.
+      setOpen(false);
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setOpen(false); // Permitimos cerrar el selector con la tecla Escape.
+        setOpen(false);
       }
     }
 
@@ -76,7 +76,7 @@ export default function CatalogSearchSelect({
 
   const selectedOption = options.find(
     (option) => String(option.id) === value
-  ); // Identificamos la opción actualmente seleccionada.
+  );
 
   return (
     <div className="relative w-full">
@@ -90,8 +90,8 @@ export default function CatalogSearchSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => {
-          setOpen((prev) => !prev); // Alternamos el estado de apertura.
-          setSearchTerm(""); // Limpiamos el filtro cada vez que se vuelve a abrir.
+          setOpen((previous) => !previous);
+          setSearchTerm("");
         }}
       >
         <span className="truncate">
@@ -133,8 +133,8 @@ export default function CatalogSearchSelect({
                     aria-selected={value === String(option.id)}
                     className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                     onClick={() => {
-                      onChange(String(option.id)); // Propagamos el id seleccionado al formulario padre.
-                      setOpen(false); // Cerramos el selector al elegir una opción.
+                      onChange(String(option.id));
+                      setOpen(false);
                     }}
                   >
                     {option.nombre}
