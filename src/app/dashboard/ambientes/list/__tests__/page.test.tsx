@@ -309,8 +309,10 @@ describe("EnvironmentListPage", () => {
     await user.type(dialogUtils.getByLabelText("Largo"), "12");
     await user.type(dialogUtils.getByLabelText("Ancho"), "9");
     await user.type(dialogUtils.getByLabelText("Alto"), "4");
-    await user.clear(dialogUtils.getByLabelText("Unidad de medida"));
-    await user.type(dialogUtils.getByLabelText("Unidad de medida"), "metros");
+
+    const unitInput = dialogUtils.getByLabelText("Unidad de medida");
+    expect(unitInput).toHaveAttribute("readonly");
+    expect(unitInput).toHaveValue("metros");
 
     const classesCheckbox = dialogUtils.getByLabelText(/Dicta clases/i);
     await user.click(classesCheckbox);
