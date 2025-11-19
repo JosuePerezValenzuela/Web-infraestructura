@@ -14,6 +14,7 @@ import {
 } from "./mappers";
 import { EnvironmentEditForm } from "./EnvironmentEditForm";
 import type { CatalogOption } from "@/components/catalog-search-select";
+import { DialogClose } from "@radix-ui/react-dialog";
 
 type EnvironmentEditDialogProps = {
   open: boolean;
@@ -239,6 +240,14 @@ export function EnvironmentEditDialog({
             <DialogHeader className="space-y-1 text-left">
               <DialogTitle>Editar ambiente</DialogTitle>
             </DialogHeader>
+            <DialogClose
+                type="button"
+                className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                onClick={onClose}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Cerrar</span>
+              </DialogClose>
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
