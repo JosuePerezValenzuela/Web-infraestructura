@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -76,11 +75,6 @@ export function EnvironmentEditDialog({
   onClose,
   onSuccess,
 }: EnvironmentEditDialogProps) {
-  if (environment) {
-    // eslint-disable-next-line no-console
-    console.log("EDIT ENVIRONMENT DATA", environment);
-  }
-
   const formValues = useMemo(() => {
     if (!environment) {
       return null;
@@ -236,20 +230,15 @@ export function EnvironmentEditDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[90vh] w-full max-w-5xl overflow-hidden p-0 sm:max-w-5xl">
+      <DialogContent 
+        className="max-h-[90vh] w-full max-w-5xl overflow-hidden p-0 sm:max-w-5xl" 
+        showCloseButton={false}
+      >
         <div className="flex max-h-[90vh] flex-col bg-background">
           <div className="flex items-center justify-between border-b px-6 py-2">
             <DialogHeader className="space-y-1 text-left">
               <DialogTitle>Editar ambiente</DialogTitle>
             </DialogHeader>
-            <DialogClose
-              type="button"
-              className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Cerrar</span>
-            </DialogClose>
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
