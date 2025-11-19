@@ -3,11 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from "@/components/ui/collapsible";
-import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -22,13 +17,31 @@ import {
 } from "@/components/ui/sidebar";
 import { ChevronDown } from "lucide-react";
 import { NAV_GROUPS } from "@/config/nav";
+import { useState } from "react";
 
 export default function AppSidebar() {
+  const [logoError, setLogoError] = useState(false);
+
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar-primary text-primary-foreground">
       <SidebarHeader className="bg-sidebar-primary text-primary-foreground">
         <div className="flex items-center gap-3 px-4 py-4">
-          <Image src="/logo_UMSS.png" alt="UMSS" width={36} height={36}/>
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-md">
+            {logoError ? (
+              <span className="text-xs font-semibold text-primary-foreground">
+                UMSS
+              </span>
+            ) : (
+              <Image
+                src="/logo_UMSS.png"
+                alt="UMSS"
+                width={36}
+                height={36}
+                priority={process.env.NODE_ENV === "production"}
+                onError={() => setLogoError(true)}
+              />
+            )}
+          </div>
           <div className="leading-tight">
             <p className="text-sm font-medium uppercase">Universidad Mayor</p>
             <p className="text-sm font-medium uppercase">de San Simon</p>
