@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { apiFetch } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import EnvironmentListPage from "../page";
 
 vi.mock("@/lib/notify", () => ({
@@ -28,6 +29,7 @@ if (!Element.prototype.scrollIntoView) {
 }
 
 const apiFetchMock = vi.mocked(apiFetch);
+const notifyMock = vi.mocked(notify);
 
 // Esta estructura simula el contrato real del backend para el listado principal.
 const environmentListResponse = {
@@ -90,21 +92,29 @@ describe("EnvironmentListPage", () => {
   // Antes de cada prueba configuramos el mock del cliente HTTP.
   beforeEach(() => {
     apiFetchMock.mockReset();
-    apiFetchMock.mockImplementation(async (path: string) => {
-      if (path.startsWith("/ambientes")) {
-        return environmentListResponse as unknown;
+    notifyMock.success.mockReset();
+    notifyMock.error.mockReset();
+    notifyMock.info.mockReset();
+    apiFetchMock.mockImplementation(
+      async (path: string, options?: { method?: string }) => {
+        if (path.startsWith("/ambientes") && options?.method === "POST") {
+          return { id: 99 } as unknown;
+        }
+        if (path.startsWith("/ambientes")) {
+          return environmentListResponse as unknown;
+        }
+        if (path.startsWith("/bloques")) {
+          return blockCatalogResponse as unknown;
+        }
+        if (path.startsWith("/tipo_ambientes")) {
+          return environmentTypeCatalogResponse as unknown;
+        }
+        if (path.startsWith("/facultades")) {
+          return facultyCatalogResponse as unknown;
+        }
+        throw new Error(`Unexpected endpoint ${path}`);
       }
-      if (path.startsWith("/bloques")) {
-        return blockCatalogResponse as unknown;
-      }
-      if (path.startsWith("/tipo_ambientes")) {
-        return environmentTypeCatalogResponse as unknown;
-      }
-      if (path.startsWith("/facultades")) {
-        return facultyCatalogResponse as unknown;
-      }
-      throw new Error(`Unexpected endpoint ${path}`);
-    });
+    );
   });
 
   // Despues de cada prueba limpiamos los mocks para no compartir estado.
@@ -160,6 +170,37 @@ describe("EnvironmentListPage", () => {
     expect(
       screen.getByRole("button", { name: /eliminar ambiente/i })
     ).toBeInTheDocument();
+  });
+
+  it("abre el modal de creacion sin scroll visible y expone los campos requeridos", async () => {
+    const user = userEvent.setup();
+
+    render(<EnvironmentListPage />);
+
+    await screen.findByText("Laboratorio de redes");
+
+    await user.click(screen.getByRole("button", { name: /nuevo ambiente/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    const dialogUtils = within(dialog);
+
+    expect(dialog).toHaveClass("overflow-hidden");
+    expect(dialog).toHaveClass("max-h-[90vh]");
+
+    expect(dialogUtils.getByLabelText(/^Codigo$/i)).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText(/^Nombre$/i)).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText(/Nombre corto/i)).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText(/^Piso$/i)).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Bloque")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Tipo de ambiente")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Capacidad total")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Capacidad examen")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Largo")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Ancho")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Alto")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText("Unidad de medida")).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText(/Dicta clases/i)).toBeInTheDocument();
+    expect(dialogUtils.getByLabelText(/^Activo$/i)).toBeInTheDocument();
   });
 
   it("incluye los filtros y la busqueda dentro de la consulta enviada al backend", async () => {
@@ -234,6 +275,105 @@ describe("EnvironmentListPage", () => {
       expect(lastCall?.[0]).toContain("pisoMin=1");
       expect(lastCall?.[0]).toContain("pisoMax=3");
     });
+  });
+
+  it("crea un ambiente, cierra el modal y refresca el listado tras guardar", async () => {
+    const user = userEvent.setup();
+
+    render(<EnvironmentListPage />);
+
+    await screen.findByText("Laboratorio de redes");
+
+    await user.click(screen.getByRole("button", { name: /nuevo ambiente/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    const dialogUtils = within(dialog);
+
+    await dialogUtils.findByRole("heading", { name: /registrar ambiente/i });
+
+    await user.type(dialogUtils.getByLabelText(/^Codigo$/i), "AMB-200");
+    await user.type(dialogUtils.getByLabelText(/^Nombre$/i), "Laboratorio IoT");
+    await user.type(dialogUtils.getByLabelText(/Nombre corto/i), "IoT");
+    await user.type(dialogUtils.getByLabelText(/^Piso$/i), "2");
+
+    const blockSelect = dialogUtils.getByLabelText("Bloque");
+    await user.click(blockSelect);
+    await user.click(dialogUtils.getByRole("option", { name: "Bloque Central" }));
+
+    const typeSelect = dialogUtils.getByLabelText("Tipo de ambiente");
+    await user.click(typeSelect);
+    await user.click(dialogUtils.getByRole("option", { name: "Laboratorio" }));
+
+    await user.type(dialogUtils.getByLabelText("Capacidad total"), "80");
+    await user.type(dialogUtils.getByLabelText("Capacidad examen"), "40");
+    await user.type(dialogUtils.getByLabelText("Largo"), "12");
+    await user.type(dialogUtils.getByLabelText("Ancho"), "9");
+    await user.type(dialogUtils.getByLabelText("Alto"), "4");
+    await user.clear(dialogUtils.getByLabelText("Unidad de medida"));
+    await user.type(dialogUtils.getByLabelText("Unidad de medida"), "metros");
+
+    const classesCheckbox = dialogUtils.getByLabelText(/Dicta clases/i);
+    await user.click(classesCheckbox);
+
+    const activeCheckbox = dialogUtils.getByLabelText(/^Activo$/i);
+    await user.click(activeCheckbox);
+
+    await user.click(
+      dialogUtils.getByRole("button", { name: /registrar ambiente/i })
+    );
+
+    await waitFor(() => {
+      const postCall = apiFetchMock.mock.calls.find(
+        ([path, options]) =>
+          path === "/ambientes" &&
+          options &&
+          typeof options === "object" &&
+          "method" in options &&
+          (options as { method?: string }).method === "POST"
+      );
+      expect(postCall).toBeTruthy();
+      const [, options] = postCall as [
+        string,
+        { method?: string; json?: unknown }
+      ];
+      expect(options).toMatchObject({
+        method: "POST",
+        json: expect.objectContaining({
+          codigo: "AMB-200",
+          nombre: "Laboratorio IoT",
+          nombre_corto: "IoT",
+          piso: 2,
+          clases: false,
+          activo: false,
+          capacidad: { total: 80, examen: 40 },
+          dimension: {
+            largo: 12,
+            ancho: 9,
+            alto: 4,
+            unid_med: "metros",
+          },
+          bloque_id: 5,
+          tipo_ambiente_id: 3,
+        }),
+      });
+    });
+
+    await waitFor(() => {
+      expect(notifyMock.success).toHaveBeenCalledWith({
+        title: "Ambiente registrado",
+        description: "El inventario se actualizo correctamente.",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    expect(
+      apiFetchMock.mock.calls.filter(
+        ([path]) => typeof path === "string" && path.startsWith("/ambientes?")
+      ).length
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("pide una nueva pagina cuando la persona usa la paginacion", async () => {
