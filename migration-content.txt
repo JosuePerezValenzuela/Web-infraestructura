@@ -1,0 +1,72 @@
+ IDs and foreign keys below follow los INSERT de las migraciones seed (src/migrations/1760000000001‑0006). TypeORM deja que cada tabla use SERIAL/
+  IDENTITY, así que el orden de inserción controla los ID autogenerados (1‑based consecutivos). Describo cada fila con el nombre de la columna     
+  => valor.                                                                                                                                        
+                                                                                                                                                   
+  tipo_bloques                                                                                                                                     
+                                                                                                                                                   
+  - (id=1) nombre=>Administrativo; descripcion=>Edificio con oficinas y servicios administrativos                                                  
+  - (2) nombre=>Laboratorios; descripcion=>Bloque equipados para practicas cientificas y de computacion                                            
+  - (3) nombre=>Aulas; descripcion=>Bloque con aulas para clases convencionales                                                                    
+  - (4) nombre=>Investigacion; descripcion=>Bloque destinado a centros de investigacion y desarrollo tecnologico                                   
+  - (5) nombre=>Servicios estudiantiles; descripcion=>Edificios que brindan servicios de bienestar y apoyo al estudiante                           
+                                                                                                                                                   
+  tipo_ambientes                                                                                                                                   
+                                                                                                                                                   
+  - (id=1) nombre=>Clases; descripcion=>Aula para clases de pizarra; descripcion_corta=>Basica                                                     
+  - (2) nombre=>Laboratorio de computacion; descripcion=>Aula equipada con computadoras personales; descripcion_corta=>Laboratorio de computadoras 
+  - (3) nombre=>Laboratorio de redes; descripcion=>Aula equipada con routers; descripcion_corta=>NULL                                              
+  - (4) nombre=>Auditorio; descripcion=>Espacio amplio para conferencias y eventos institucionales; descripcion_corta=>Auditorio
+  - (5) nombre=>Sala de reuniones; descripcion=>Ambiente destinado a reuniones administrativas o academicas; descripcion_corta=>Sala de reuniones  
+
+  campus                                                                                                                                           
+
+  - (id=1) codigo=>123456789; nombre=>Campus central; direccion=>Av Sucre entre Belzu y Oquendo; coordenadas=>POINT(-66.5 -17.39)                  
+  - (2) codigo=>987654321; nombre=>Valle Sacta; direccion=>Zona sacta; coordenadas=>POINT(-63 -18)                                                 
+  - (3) codigo=>555555555; nombre=>Quillacollo; direccion=>Blanco galindo; coordenadas=>POINT(-70 -20)                                             
+  - (4) codigo=>222222222; nombre=>Campus Sacaba; direccion=>Av Villazon Km 12, Sacaba; coordenadas=>POINT(-65.99 -17.41)                          
+  - (5) codigo=>888888888; nombre=>Campus Tiquipaya; direccion=>Av Ecologica s/n, Tiquipaya; coordenadas=>POINT(-65.73 -17.32)                     
+  - (6) codigo=>444444444; nombre=>Campus Cercado Norte; direccion=>Calle Independencia esquina Aroma; coordenadas=>POINT(-66.16 -17.37)
+                                                                                                                                                   
+  facultades                                                                                                                                       
+                                                                                                                                                   
+  - (id=1) codigo=>12345; nombre=>Facultad de Ciencias y Tecnologia; nombre_corto=>FCyT; coordenadas=>POINT(-66.5 -18); campus_id=>1               
+  - (2) codigo=>54321; nombre=>Facultad de Ciencias Economicas; nombre_corto=>FCE; coordenadas=>POINT(-66 -18); campus_id=>1                       
+  - (3) codigo=>11225; nombre=>Facultad Villa Sacta; nombre_corto=>NULL; coordenadas=>POINT(-63 -18); campus_id=>2
+  - (4) codigo=>66789; nombre=>Facultad de Arquitectura y Urbanismo; nombre_corto=>FAU; coordenadas=>POINT(-66.52 -17.41); campus_id=>3            
+  - (5) codigo=>77889; nombre=>Facultad de Agronomia; nombre_corto=>FA; coordenadas=>POINT(-65.98 -17.43); campus_id=>4                            
+  - (6) codigo=>88990; nombre=>Facultad de Artes y Cultura; nombre_corto=>FAC; coordenadas=>POINT(-65.73 -17.30); campus_id=>5                     
+  - (7) codigo=>99887; nombre=>Facultad de Derecho y Ciencias Politicas; nombre_corto=>FDCP; coordenadas=>POINT(-66.15 -17.36); campus_id=>6       
+                                                                                                                                                   
+  bloques                                                                                                                                          
+                                                                                                                                                   
+  - (id=1) nombre=>Edificio Nuevo de aulas; nombre_corto=>Edifico nuevo; codigo=>123456789; pisos=>3; coordenadas=>POINT(-66 -18); facultad_id=>1; 
+    tipo_bloque_id=>3 (Aulas)                                                                                                                      
+  - (2) nombre=>Edifico de laboratorios; nombre_corto=>Edificio labos; codigo=>987654321; pisos=>4; coordenadas=>POINT(-66 -19); facultad_id=>1;   
+    tipo_bloque_id=>2 (Laboratorios)                                                                                                               
+  - (3) nombre=>Pasillo de gallineros; nombre_corto=>Edificio de aulas; codigo=>111112222; pisos=>1; coordenadas=>POINT(-62 -18); facultad_id=>2;  
+    tipo_bloque_id=>3                                                                                                                              
+  - (4) nombre=>Centro de Innovacion Tecnologica; nombre_corto=>Innovacion; codigo=>INN-001; pisos=>5; coordenadas=>POINT(-66.48 -17.40);          
+    facultad_id=>1; tipo_bloque_id=>4 (Investigacion)                                                                                              
+  - (5) nombre=>Complejo Deportivo Universitario; nombre_corto=>Deportivo; codigo=>DEP-002; pisos=>2; coordenadas=>POINT(-66.47 -17.42);           
+    facultad_id=>2; tipo_bloque_id=>5 (Servicios estudiantiles)
+  - (6) nombre=>Bloque Agroindustrial; nombre_corto=>Agroindustrial; codigo=>AGR-003; pisos=>3; coordenadas=>POINT(-65.97 -17.44); facultad_id=>5; 
+    tipo_bloque_id=>2                                                                                                                              
+  - (7) nombre=>Bloque Talleres Arquitectura; nombre_corto=>Talleres Arq; codigo=>ARQ-004; pisos=>4; coordenadas=>POINT(-66.53 -17.42);            
+    facultad_id=>4; tipo_bloque_id=>3                                                                                                              
+
+  ambientes                                                                                                                                        
+                                                                                                                                                   
+  - (id=1) nombre=>691A; nombre_corto=>691; codigo=>69111; piso=>1; capacidad=>{"total":45,"examen":35};                                           
+    dimension=>{"largo":30,"ancho":8,"alto":3.4,"unid_med":"metros"}; clases=>TRUE; tipo_ambiente_id=>1 (Clases); bloque_id=>1                     
+  - (2) nombre=>Laboratorio; nombre_corto=>LAbo; codigo=>77777; piso=>0; capacidad=>{"total":30,"examen":15};                                      
+    dimension=>{"largo":20,"ancho":6,"alto":3.4,"unid_med":"metros"}; clases=>TRUE; tipo_ambiente_id=>1; bloque_id=>2                              
+  - (3) nombre=>Laboratorio de redes 1; nombre_corto=>LabRed; codigo=>55555; piso=>0; capacidad=>{"total":15,"examen":1};                          
+    dimension=>{"largo":15,"ancho":8,"alto":3.4,"unid_med":"metros"}; clases=>TRUE; tipo_ambiente_id=>3 (Laboratorio de redes); bloque_id=>2       
+  - (4) nombre=>Auditorio Central; nombre_corto=>AudCentral; codigo=>AUD-001; piso=>0; capacidad=>{"total":250,"examen":200};
+    dimension=>{"largo":40,"ancho":20,"alto":8,"unid_med":"metros"}; clases=>FALSE; tipo_ambiente_id=>4 (Auditorio); bloque_id=>4                  
+  - (5) nombre=>Sala Consejo Academico; nombre_corto=>Consejo; codigo=>CON-001; piso=>1; capacidad=>{"total":40,"examen":0};                       
+    dimension=>{"largo":18,"ancho":10,"alto":4,"unid_med":"metros"}; clases=>FALSE; tipo_ambiente_id=>5 (Sala de reuniones); bloque_id=>4          
+  - (6) nombre=>Laboratorio de Suelos; nombre_corto=>LabSuelos; codigo=>LAB-AGR-01; piso=>0; capacidad=>{"total":20,"examen":10};                  
+    dimension=>{"largo":18,"ancho":9,"alto":3.8,"unid_med":"metros"}; clases=>TRUE; tipo_ambiente_id=>2 (Laboratorio de computacion); bloque_id=>6 
+  - (7) nombre=>Taller de Maquetas; nombre_corto=>Maquetas; codigo=>TALL-ARQ-1; piso=>1; capacidad=>{"total":35,"examen":25};                      
+    dimension=>{"largo":25,"ancho":12,"alto":4,"unid_med":"metros"}; clases=>TRUE; tipo_ambiente_id=>1 (Clases); bloque_id=>7 

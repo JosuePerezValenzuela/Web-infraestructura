@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest",
     "test:verbose": "vitest --reporter=verbose",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2eReal": "cross-env E2E_USE_API=true playwright test -c playwright.config.real.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -53,6 +54,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "jsdom": "^27.0.0",

@@ -1,4 +1,22 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
+
+function loadDotEnv(file: string) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const dotenv = require('dotenv') as typeof import('dotenv');
+    dotenv.config({ path: path.resolve(process.cwd(), file) });
+  } catch {
+    // If dotenv is not installed, skip loading and rely on process.env as-is.
+  }
+}
+
+['.env.local', '.env'].forEach(loadDotEnv);
+
+const resolvedBaseUrl =
+  process.env.NEXT_PUBLIC_FRONTEND_URL ??
+  process.env.E2E_BASE_URL ??
+  'http://localhost:3001';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -8,7 +26,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3001',
+    baseURL: resolvedBaseUrl,
     trace: 'on-first-retry',
   },
   projects: [
@@ -19,7 +37,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm dev',
-    url: process.env.E2E_BASE_URL ?? 'http://localhost:3001',
+    url: resolvedBaseUrl,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     stderr: 'pipe',
