@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, Shapes, Warehouse } from "lucide-react";
+import { Building2, Warehouse } from "lucide-react";
 
 export type ClassifierEntry = {
   slug: string;
@@ -23,12 +23,5 @@ export const CLASSIFIERS: ClassifierEntry[] = [
     description: "Organiza los tipos de ambientes que se asignan a cada espacio.",
     href: "/dashboard/tipos-ambientes/list",
     icon: Warehouse,
-  },
-  {
-    slug: "tipos-activos",
-    title: "Tipos de activos",
-    description: "Administra los tipos de activos que se registran en la infraestructura.",
-    href: "/dashboard/tipos-activos/list",
-    icon: Shapes,
   },
 ];
