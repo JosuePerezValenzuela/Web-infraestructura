@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { shouldMock } from './utils/mocks';
 
 type EnvironmentRow = {
   id: number;
@@ -138,6 +139,7 @@ function interceptList(page: Page, rows: EnvironmentRow[] | ((query: URLSearchPa
 }
 
 test.describe('Eliminacion de ambientes', () => {
+  test.skip(!shouldMock, 'Estas pruebas usan mocks del backend.');
   test.describe.configure({ mode: 'serial' });
   test('abre el dialogo de confirmacion y muestra los datos del ambiente', async ({ page }) => {
     await mockCatalogRequests(page);

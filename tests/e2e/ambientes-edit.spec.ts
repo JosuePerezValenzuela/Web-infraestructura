@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { shouldMock } from './utils/mocks';
 
 type EnvironmentRow = {
   id: number;
@@ -136,6 +137,7 @@ async function openEditDialog(page: Page, index = 0) {
 }
 
 test.describe('Edicion de ambientes', () => {
+  test.skip(!shouldMock, 'Estas pruebas dependen de mocks del backend.');
   test('abre el modal desde la tabla y precarga los campos', async ({ page }) => {
     await mockCatalogRequests(page);
     const row = buildEnvironmentRow();

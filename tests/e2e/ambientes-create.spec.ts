@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { shouldMock } from './utils/mocks';
 
 type EnvironmentApiItem = {
   id: number;
@@ -104,7 +105,8 @@ async function mockCatalogRequests(page: Page) {
 
 async function fillEnvironmentForm(
   dialog: Locator,
-  overrides: Partial<typeof baseFormValues> = {}
+  overrides: Partial<typeof baseFormValues> = {},
+  options: { skipCatalogs?: boolean } = {}
 ) {
   const values = { ...baseFormValues, ...overrides };
   await dialog.getByLabel('Codigo').fill(values.codigo);
@@ -115,8 +117,10 @@ async function fillEnvironmentForm(
   await dialog.getByLabel('Largo').fill(values.largo);
   await dialog.getByLabel('Ancho').fill(values.ancho);
   await dialog.getByLabel('Alto').fill(values.alto);
-  await selectCatalogOption(dialog, '#env-bloque', values.bloque);
-  await selectCatalogOption(dialog, '#env-tipo', values.tipo);
+  if (!options.skipCatalogs) {
+    await selectCatalogOption(dialog, '#env-bloque', values.bloque);
+    await selectCatalogOption(dialog, '#env-tipo', values.tipo);
+  }
 }
 
 async function selectCatalogOption(
@@ -129,6 +133,7 @@ async function selectCatalogOption(
 }
 
 test.describe('Creacion de ambientes', () => {
+  test.skip(!shouldMock, 'Estas pruebas dependen de mocks del backend.');
   test('crea un ambiente y actualiza la tabla', async ({ page }) => {
     // Explicamos que interceptamos los catalogos para trabajar con datos fijos.
     await mockCatalogRequests(page);
@@ -523,5 +528,145 @@ test.describe('Creacion de ambientes', () => {
     await expect(page.getByRole('table').getByText('AMB-RESUELTO')).toBeVisible();
     expect(postAttempts).toBe(2);
     expect(listRequestCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('requiere seleccionar bloque y tipo de ambiente antes de enviar', async ({
+    page,
+  }) => {
+    await mockCatalogRequests(page);
+    let postCount = 0;
+    await page.route('**/ambientes**', async (route) => {
+      const request = route.request();
+      if (!matchesApiPath(request.url(), API_PATHS.environments)) {
+        await route.continue();
+        return;
+      }
+      if (request.method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(buildListResponse([])),
+        });
+        return;
+      }
+      if (request.method() === 'POST') {
+        postCount += 1;
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({}),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto('/dashboard/ambientes/list');
+    await page.getByRole('button', { name: /nuevo ambiente/i }).click();
+    const dialog = page.getByRole('dialog');
+    await fillEnvironmentForm(dialog, {}, { skipCatalogs: true });
+    await dialog.getByRole('button', { name: 'Registrar ambiente' }).click();
+
+    await expect(dialog.getByText('Selecciona un bloque')).toBeVisible();
+    await expect(dialog.getByText('Selecciona un tipo de ambiente')).toBeVisible();
+    expect(postCount).toBe(0);
+  });
+
+  test('restablece el formulario despues de crear correctamente', async ({ page }) => {
+    await mockCatalogRequests(page);
+    const createdRow: EnvironmentApiItem = {
+      id: 3,
+      codigo: baseFormValues.codigo,
+      nombre: baseFormValues.nombre,
+      piso: Number(baseFormValues.piso),
+      clases: true,
+      activo: true,
+      bloque_id: 10,
+      tipo_ambiente_id: 20,
+      bloque: 'Bloque Central',
+      tipo_ambiente: 'Laboratorio',
+      capacidad: { total: Number(baseFormValues.capacidadTotal), examen: Number(baseFormValues.capacidadExamen) },
+    };
+    let listCount = 0;
+    await page.route('**/ambientes**', async (route) => {
+      const request = route.request();
+      if (!matchesApiPath(request.url(), API_PATHS.environments)) {
+        await route.continue();
+        return;
+      }
+      if (request.method() === 'GET') {
+        listCount += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(buildListResponse(listCount === 1 ? [] : [createdRow])),
+        });
+        return;
+      }
+      if (request.method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify(createdRow),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto('/dashboard/ambientes/list');
+    const openButton = page.getByRole('button', { name: /nuevo ambiente/i });
+    await openButton.click();
+    let dialog = page.getByRole('dialog');
+    await fillEnvironmentForm(dialog);
+    await dialog.getByRole('button', { name: 'Registrar ambiente' }).click();
+    await expect(page.getByText('Ambiente registrado')).toBeVisible();
+    await expect(dialog).not.toBeVisible();
+
+    await openButton.click();
+    dialog = page.getByRole('dialog');
+    await expect(dialog.getByLabel('Codigo')).toHaveValue('');
+    await expect(dialog.getByLabel('Nombre', { exact: true })).toHaveValue('');
+    await expect(dialog.getByLabel('Dicta clases')).toBeChecked();
+    await expect(dialog.getByLabel('Activo')).toBeChecked();
+  });
+
+  test('muestra el mensaje del backend cuando falla la solicitud', async ({ page }) => {
+    await mockCatalogRequests(page);
+    await page.route('**/ambientes**', async (route) => {
+      const request = route.request();
+      if (!matchesApiPath(request.url(), API_PATHS.environments)) {
+        await route.continue();
+        return;
+      }
+      if (request.method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(buildListResponse([])),
+        });
+        return;
+      }
+      if (request.method() === 'POST') {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            message: 'La base de datos no respondio',
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto('/dashboard/ambientes/list');
+    await page.getByRole('button', { name: /nuevo ambiente/i }).click();
+    const dialog = page.getByRole('dialog');
+    await fillEnvironmentForm(dialog);
+    await dialog.getByRole('button', { name: 'Registrar ambiente' }).click();
+    await expect(page.getByText('No se pudo registrar el ambiente')).toBeVisible();
+    await expect(page.getByText('La base de datos no respondio')).toBeVisible();
+    await expect(dialog).toBeVisible();
   });
 });
