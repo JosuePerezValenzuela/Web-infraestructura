@@ -70,8 +70,15 @@ describe("EnvironmentTypeListPage", () => {
     vi.restoreAllMocks();
     // Limpiamos los contadores de llamadas para iniciar el siguiente escenario en cero.
     vi.clearAllMocks();
-    // Volvemos la pagina actual a 1 para que otras pruebas comiencen desde el primer listado.
-    environmentTypeResponse.meta.page = 1;
+    // Restablecemos la paginacion simulada a su estado base.
+    environmentTypeResponse.meta = {
+      page: 1,
+      take: 8,
+      pages: 3,
+      total: 12,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    };
   });
 
   it("muestra el catalogo inicial con todas las columnas clave", async () => {
@@ -550,5 +557,41 @@ describe("EnvironmentTypeListPage", () => {
     expect(
       screen.getByRole("heading", { name: /eliminar tipo de ambiente/i })
     ).toBeInTheDocument();
+  });
+
+  it("habilita la siguiente pagina cuando meta omite pages pero expone hasNextPage", async () => {
+    environmentTypeResponse.meta = {
+      page: 1,
+      take: 1,
+      total: 7,
+      hasNextPage: true,
+      hasPreviousPage: false,
+    };
+    Reflect.deleteProperty(
+      environmentTypeResponse.meta as Record<string, unknown>,
+      "pages"
+    );
+
+    const user = userEvent.setup();
+    render(<EnvironmentTypeListPage />);
+
+    await screen.findByText("Aula de clases");
+
+    const nextButton = screen.getByRole("button", {
+      name: /go to next page/i,
+    });
+
+    expect(nextButton).not.toBeDisabled();
+
+    environmentTypeResponse.meta.page = 2;
+
+    await user.click(nextButton);
+
+    await waitFor(() => {
+      const fetchMock = vi.mocked(global.fetch);
+      const lastCall = fetchMock.mock.calls.at(-1);
+      const url = lastCall?.[0] as string;
+      expect(url).toContain("page=2");
+    });
   });
 });

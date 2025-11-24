@@ -159,6 +159,14 @@ describe("BlockListPage", () => {
 
   // Después de cada escenario limpiamos los mocks para que no filtren estado a las siguientes pruebas.
   afterEach(() => {
+    blockListResponse.meta = {
+      total: 1,
+      page: 1,
+      take: 8,
+      pages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    };
     vi.clearAllMocks(); // Esta llamada limpia los spies de Vitest, incluyendo el mock de toast.
   });
 
@@ -467,5 +475,39 @@ describe("BlockListPage", () => {
     expect(
       screen.getByRole("heading", { name: /eliminar bloque/i })
     ).toBeInTheDocument(); // El dialogo permanece abierto para permitir reintentar.
+  });
+
+  it("habilita el boton de siguiente pagina cuando el backend no envia pages pero indica hasNextPage", async () => {
+    blockListResponse.meta = {
+      total: 7,
+      page: 1,
+      take: 1,
+      hasNextPage: true,
+      hasPreviousPage: false,
+    }; // Configuramos el meta sin la propiedad pages.
+    Reflect.deleteProperty(
+      blockListResponse.meta as Record<string, unknown>,
+      "pages"
+    ); // Eliminamos pages para replicar la respuesta observada.
+
+    const user = userEvent.setup(); // Usuario virtual para interactuar con la UI.
+    render(<BlockListPage />); // Montamos la página principal.
+
+    await screen.findByText("Bloque Central"); // Esperamos a que cargue la fila inicial.
+
+    const nextButton = screen.getByRole("button", {
+      name: /go to next page/i,
+    }); // Obtenemos el control de avanzar página.
+
+    expect(nextButton).not.toBeDisabled(); // Debe estar habilitado porque meta.hasNextPage es true.
+
+    blockListResponse.meta.page = 2; // Simulamos que el backend responde la siguiente página.
+
+    await user.click(nextButton); // Solicitamos avanzar en la paginación.
+
+    await waitFor(() => {
+      const lastCall = mockedApiFetch.mock.calls.at(-1); // Observamos la última llamada realizada.
+      expect(lastCall?.[0]).toContain("page=2"); // Confirmamos que se pidió la página 2.
+    });
   });
 });

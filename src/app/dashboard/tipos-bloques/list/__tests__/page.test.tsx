@@ -59,6 +59,14 @@ describe("BlockTypeListPage", () => {
 
   // Despues de cada prueba restauraremos la implementacion original de fetch.
   afterEach(() => {
+    blockTypeResponse.meta = {
+      page: 1,
+      take: 8,
+      pages: 1,
+      total: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    };
     // Restauramos todas las funciones espiadas para no afectar otros escenarios.
     vi.restoreAllMocks();
     // Limpiamos los registros de mocks para preparar el siguiente escenario.
@@ -453,5 +461,42 @@ describe("BlockTypeListPage", () => {
     expect(
       screen.getByRole("heading", { name: /eliminar tipo de bloque/i })
     ).toBeInTheDocument();
+  });
+
+  it("habilita la siguiente pagina cuando meta omite pages pero indica hasNextPage", async () => {
+    blockTypeResponse.meta = {
+      page: 1,
+      take: 1,
+      total: 7,
+      hasNextPage: true,
+      hasPreviousPage: false,
+    };
+    Reflect.deleteProperty(
+      blockTypeResponse.meta as Record<string, unknown>,
+      "pages"
+    );
+
+    const user = userEvent.setup();
+    const fetchMock = vi.mocked(global.fetch);
+
+    render(<BlockTypeListPage />);
+
+    await screen.findByText("Laboratorio");
+
+    const nextButton = screen.getByRole("button", {
+      name: /go to next page/i,
+    });
+
+    expect(nextButton).not.toBeDisabled();
+
+    blockTypeResponse.meta.page = 2;
+
+    await user.click(nextButton);
+
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls.at(-1);
+      const url = lastCall?.[0] as string;
+      expect(url).toContain("page=2");
+    });
   });
 });

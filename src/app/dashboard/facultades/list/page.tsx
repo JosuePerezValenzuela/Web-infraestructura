@@ -29,9 +29,11 @@ type FacultyListResponse = {
   items: FacultyRow[];
   meta: {
     page: number;
-    pages: number;
-    total: number;
-    take: number;
+    pages?: number;
+    total?: number;
+    take?: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
   };
 };
 
@@ -64,7 +66,24 @@ export default function FacultyListPage() {
         );
 
         setItems(data.items);
-        setPages(data.meta.pages > 0 ? data.meta.pages : 1);
+        const totalFromMeta =
+          typeof data.meta?.total === "number" ? data.meta.total : null;
+        const takeFromMeta =
+          typeof data.meta?.take === "number" && data.meta.take > 0
+            ? data.meta.take
+            : TAKE;
+        const pagesFromMeta =
+          typeof data.meta?.pages === "number" && data.meta.pages > 0
+            ? data.meta.pages
+            : null;
+        const pagesFromTotal =
+          totalFromMeta !== null
+            ? Math.max(1, Math.ceil(totalFromMeta / takeFromMeta))
+            : null;
+        const basePages = pagesFromMeta ?? pagesFromTotal ?? 1;
+        const resolvedPages =
+          data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
+        setPages(resolvedPages);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;

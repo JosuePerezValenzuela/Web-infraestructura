@@ -42,12 +42,12 @@ import type { Table as ReactTableInstance } from "@tanstack/react-table";
 type BlockListResponse = {
   items: BlockRow[]; // Tipamos cada elemento con la estructura BlockRow.
   meta: {
-    total: number; // Total de registros en la base de datos.
+    total?: number; // Total de registros en la base de datos.
     page: number; // Página actual retornada.
-    pages: number; // Total de páginas disponibles.
-    take: number; // Cantidad de elementos por página.
-    hasNextPage: boolean; // Indicador de paginación hacia adelante.
-    hasPreviousPage: boolean; // Indicador de paginación hacia atrás.
+    pages?: number; // Total de páginas disponibles.
+    take?: number; // Cantidad de elementos por página.
+    hasNextPage?: boolean; // Indicador de paginación hacia adelante.
+    hasPreviousPage?: boolean; // Indicador de paginación hacia atrás.
   };
 };
 
@@ -500,7 +500,24 @@ export default function BlockListPage() {
           }
         ); // Realizamos la consulta principal de bloques.
         setItems(Array.isArray(data.items) ? data.items : []); // Guardamos las filas recibidas.
-        setPages(data.meta.pages > 0 ? data.meta.pages : 1); // Nos aseguramos de tener al menos una página.
+        const totalFromMeta =
+          typeof data.meta?.total === "number" ? data.meta.total : null;
+        const takeFromMeta =
+          typeof data.meta?.take === "number" && data.meta.take > 0
+            ? data.meta.take
+            : TAKE;
+        const pagesFromMeta =
+          typeof data.meta?.pages === "number" && data.meta.pages > 0
+            ? data.meta.pages
+            : null;
+        const pagesFromTotal =
+          totalFromMeta !== null
+            ? Math.max(1, Math.ceil(totalFromMeta / takeFromMeta))
+            : null;
+        const basePages = pagesFromMeta ?? pagesFromTotal ?? 1;
+        const resolvedPages =
+          data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
+        setPages(resolvedPages); // Ajustamos la paginación incluso si el backend omite pages.
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return; // Si abortamos manualmente no mostramos errores.

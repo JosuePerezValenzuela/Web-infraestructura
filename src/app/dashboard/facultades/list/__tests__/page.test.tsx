@@ -177,6 +177,14 @@ describe("FacultyListPage interactions", () => {
 
   // DespuÃ©s de cada prueba restauramos el comportamiento real de fetch y limpiamos los contadores.
   afterEach(() => {
+    facultyResponse.meta = {
+      page: 1,
+      take: 8,
+      pages: 3,
+      total: 12,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    };
     // Limpiamos los contadores de llamadas de todos los dobles usados en el escenario.
     vi.clearAllMocks();
     // Restauramos la implementaciÃ³n original de fetch despuÃ©s de cada prueba.
@@ -638,5 +646,41 @@ describe("FacultyListPage interactions", () => {
     expect(
       screen.getByRole("heading", { name: /eliminar facultad/i })
     ).toBeInTheDocument();
+  });
+
+  it("habilita la siguiente pagina cuando el backend no envia pages pero indica hasNextPage", async () => {
+    facultyResponse.meta = {
+      page: 1,
+      take: 1,
+      total: 7,
+      hasNextPage: true,
+      hasPreviousPage: false,
+    }; // Configuramos la forma observada sin pages.
+    Reflect.deleteProperty(
+      facultyResponse.meta as Record<string, unknown>,
+      "pages"
+    ); // Quitamos la propiedad pages.
+
+    const user = userEvent.setup(); // Persona usuaria virtual.
+
+    render(<FacultyListPage />); // Montamos la pantalla principal.
+
+    await screen.findByText("Facultad de Ciencias y Tecnologia"); // Verificamos que se renderizo la fila inicial.
+
+    const nextButton = screen.getByRole("button", {
+      name: /go to next page/i,
+    }); // Localizamos el control de avance.
+
+    expect(nextButton).not.toBeDisabled(); // Debe seguir habilitado porque hay mas paginas segun meta.
+
+    facultyResponse.meta.page = 2; // Simulamos que el backend responde con la pagina siguiente.
+
+    await user.click(nextButton); // Solicitamos avanzar.
+
+    await waitFor(() => {
+      const lastCall = fetchSpy.mock.calls.at(-1); // Obtenemos la ultima llamada a fetch.
+      const requestedUrl = lastCall?.[0] as string;
+      expect(requestedUrl).toContain("page=2"); // Confirmamos que la query apunto a la pagina 2.
+    });
   });
 });

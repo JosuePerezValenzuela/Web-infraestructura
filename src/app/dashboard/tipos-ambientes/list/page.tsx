@@ -82,7 +82,14 @@ export default function EnvironmentTypeListPage() {
       // Interpretamos el cuerpo como JSON siguiendo el contrato documentado.
       const data = (await res.json()) as {
         items: EnvironmentTypeRow[];
-        meta: { page: number; pages: number };
+        meta: {
+          page: number;
+          pages?: number;
+          total?: number;
+          take?: number;
+          hasNextPage?: boolean;
+          hasPreviousPage?: boolean;
+        };
       };
 
       // Actualizamos la tabla con las filas recibidas.
@@ -90,7 +97,24 @@ export default function EnvironmentTypeListPage() {
       // Sincronizamos la pagina actual con la confirmada por el backend.
       setPage(data.meta.page);
       // Guardamos la cantidad de paginas para el componente de paginacion.
-      setPages(data.meta.pages);
+      const totalFromMeta =
+        typeof data.meta?.total === "number" ? data.meta.total : null;
+      const takeFromMeta =
+        typeof data.meta?.take === "number" && data.meta.take > 0
+          ? data.meta.take
+          : TAKE;
+      const pagesFromMeta =
+        typeof data.meta?.pages === "number" && data.meta.pages > 0
+          ? data.meta.pages
+          : null;
+      const pagesFromTotal =
+        totalFromMeta !== null
+          ? Math.max(1, Math.ceil(totalFromMeta / takeFromMeta))
+          : null;
+      const basePages = pagesFromMeta ?? pagesFromTotal ?? 1;
+      const resolvedPages =
+        data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
+      setPages(resolvedPages);
     } catch (error) {
       // Si abortamos la solicitud manualmente ignoramos el error lanzado por fetch.
       if (error instanceof DOMException && error.name === "AbortError") {

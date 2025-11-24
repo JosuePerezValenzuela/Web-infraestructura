@@ -74,7 +74,14 @@ export default function BlockTypeListPage() {
       // Transformamos la respuesta en JSON siguiendo el formato del backend.
       const data = (await res.json()) as {
         items: BlockTypeRow[];
-        meta: { page: number; take: number; pages: number; total: number };
+        meta: {
+          page: number;
+          take?: number;
+          pages?: number;
+          total?: number;
+          hasNextPage?: boolean;
+          hasPreviousPage?: boolean;
+        };
       };
 
       // Actualizamos la tabla con los elementos recibidos.
@@ -82,7 +89,24 @@ export default function BlockTypeListPage() {
       // Sincronizamos la pagina actual con la respuesta.
       setPage(data.meta.page);
       // Conservamos la cantidad total de paginas.
-      setPages(data.meta.pages);
+      const totalFromMeta =
+        typeof data.meta?.total === "number" ? data.meta.total : null;
+      const takeFromMeta =
+        typeof data.meta?.take === "number" && data.meta.take > 0
+          ? data.meta.take
+          : TAKE;
+      const pagesFromMeta =
+        typeof data.meta?.pages === "number" && data.meta.pages > 0
+          ? data.meta.pages
+          : null;
+      const pagesFromTotal =
+        totalFromMeta !== null
+          ? Math.max(1, Math.ceil(totalFromMeta / takeFromMeta))
+          : null;
+      const basePages = pagesFromMeta ?? pagesFromTotal ?? 1;
+      const resolvedPages =
+        data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
+      setPages(resolvedPages);
     } catch (error) {
       // Si la peticion fue cancelada manualmente no mostramos nada.
       if (error instanceof DOMException && error.name === "AbortError") {

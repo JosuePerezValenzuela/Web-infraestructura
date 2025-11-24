@@ -49,6 +49,14 @@ describe('CampusListPage edit flow', () => {
   });
 
   afterEach(() => {
+    campusResponse.meta = {
+      page: 1,
+      take: 8,
+      pages: 1,
+      total: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    };
     // Restauramos la implementacion original de fetch despues de cada prueba.
     vi.restoreAllMocks();
   });
@@ -192,6 +200,43 @@ describe('CampusListPage edit flow', () => {
         title: 'No se pudo eliminar el campus',
         description: 'Fallo al eliminar',
       });
+    });
+  });
+
+  it('habilita el boton siguiente cuando meta omite pages pero expone hasNextPage', async () => {
+    campusResponse.meta = {
+      page: 1,
+      take: 1,
+      total: 7,
+      hasNextPage: true,
+      hasPreviousPage: false,
+    };
+    Reflect.deleteProperty(
+      campusResponse.meta as Record<string, unknown>,
+      'pages'
+    );
+
+    const user = userEvent.setup();
+    const fetchMock = vi.mocked(global.fetch);
+
+    render(<CampusListPage />);
+
+    await screen.findByText('Campus Principal');
+
+    const nextButton = screen.getByRole('button', {
+      name: /go to next page/i,
+    });
+
+    expect(nextButton).not.toBeDisabled();
+
+    campusResponse.meta.page = 2;
+
+    await user.click(nextButton);
+
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls.at(-1);
+      const url = lastCall?.[0] as string;
+      expect(url).toContain('page=2');
     });
   });
 });

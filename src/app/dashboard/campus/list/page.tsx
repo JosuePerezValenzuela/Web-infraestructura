@@ -57,12 +57,36 @@ export default function CampusListPage() {
 
       const data = (await res.json()) as {
         items: CampusRow[];
-        meta: { page: number; take: number; pages: number; total: number };
+        meta: {
+          page: number;
+          take?: number;
+          pages?: number;
+          total?: number;
+          hasNextPage?: boolean;
+          hasPreviousPage?: boolean;
+        };
       };
 
       setItems(data.items);
-      setPage(data.meta.page);
-      setPages(data.meta.pages);
+      setPage(typeof data.meta?.page === "number" ? data.meta.page : page);
+      const totalFromMeta =
+        typeof data.meta?.total === "number" ? data.meta.total : null;
+      const takeFromMeta =
+        typeof data.meta?.take === "number" && data.meta.take > 0
+          ? data.meta.take
+          : TAKE;
+      const pagesFromMeta =
+        typeof data.meta?.pages === "number" && data.meta.pages > 0
+          ? data.meta.pages
+          : null;
+      const pagesFromTotal =
+        totalFromMeta !== null
+          ? Math.max(1, Math.ceil(totalFromMeta / takeFromMeta))
+          : null;
+      const basePages = pagesFromMeta ?? pagesFromTotal ?? 1;
+      const resolvedPages =
+        data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
+      setPages(resolvedPages);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         return;
