@@ -57,6 +57,8 @@ const environmentListResponse = {
     pages: 3,
     total: 15,
     take: 8,
+    hasNextPage: true,
+    hasPreviousPage: false,
   },
 };
 
@@ -151,7 +153,14 @@ describe("EnvironmentListPage", () => {
   // Despues de cada prueba limpiamos los mocks para no compartir estado.
   afterEach(() => {
     vi.clearAllMocks();
-    environmentListResponse.meta.page = 1;
+    environmentListResponse.meta = {
+      page: 1,
+      pages: 3,
+      total: 15,
+      take: 8,
+      hasNextPage: true,
+      hasPreviousPage: false,
+    };
   });
 
   it("muestra la tabla con filtros, boton de creacion y acciones por fila", async () => {
@@ -710,6 +719,52 @@ describe("EnvironmentListPage", () => {
     await user.click(nextButton);
 
     // Confirmamos que la llamada mas reciente incluya page=2 en la query.
+    await waitFor(() => {
+      const lastCall =
+        apiFetchMock.mock.calls[apiFetchMock.mock.calls.length - 1];
+      expect(lastCall?.[0]).toContain("page=2");
+    });
+  });
+
+  it("habilita la siguiente pagina cuando el backend no envia pages pero indica hasNextPage", async () => {
+    // Generamos la instancia de usuario virtual que interactuara con la UI.
+    const user = userEvent.setup();
+
+    // Reproducimos la respuesta del backend que omite la propiedad pages pero confirma que hay mas paginas.
+    environmentListResponse.meta = {
+      page: 1,
+      total: 7,
+      take: 1,
+      hasNextPage: true,
+      hasPreviousPage: false,
+    };
+    // Eliminamos pages para emular exactamente la forma de la respuesta real.
+    Reflect.deleteProperty(
+      environmentListResponse.meta as Record<string, unknown>,
+      "pages"
+    );
+
+    // Renderizamos la pantalla para comenzar la interaccion.
+    render(<EnvironmentListPage />);
+
+    // Esperamos a que aparezca la primera fila para confirmar que la data ya esta disponible.
+    await screen.findByText("Laboratorio de redes");
+
+    // Obtenemos el boton que avanza a la pagina siguiente.
+    const nextButton = screen.getByRole("button", {
+      name: /go to next page/i,
+    });
+
+    // Validamos que el boton siga habilitado a pesar de no contar con la propiedad pages.
+    expect(nextButton).not.toBeDisabled();
+
+    // Simulamos que el backend devuelve la pagina siguiente al realizar el request.
+    environmentListResponse.meta.page = 2;
+
+    // Disparamos el click que solicita la siguiente pagina.
+    await user.click(nextButton);
+
+    // Confirmamos que la llamada incluye el parametro page=2 como efecto de la interaccion.
     await waitFor(() => {
       const lastCall =
         apiFetchMock.mock.calls[apiFetchMock.mock.calls.length - 1];

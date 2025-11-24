@@ -85,9 +85,11 @@ type EnvironmentListResponse = {
   items: EnvironmentRow[];
   meta: {
     page: number;
-    pages: number;
-    total: number;
-    take: number;
+    pages?: number;
+    total?: number;
+    take?: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
   };
 };
 
@@ -584,8 +586,28 @@ export default function EnvironmentListPage() {
         );
         // Guardamos las filas recibidas validando que realmente sea un arreglo.
         setItems(Array.isArray(data.items) ? data.items : []);
-        // Calculamos el total de paginas y nos aseguramos de no bajar de 1.
-        setPages(Math.max(1, data.meta?.pages ?? 1));
+        // Calculamos el total de paginas priorizando el valor entregado por el backend o derivandolo desde total y take.
+        const totalFromMeta =
+          typeof data.meta?.total === "number" ? data.meta.total : null;
+        const takeFromMeta =
+          typeof data.meta?.take === "number" && data.meta.take > 0
+            ? data.meta.take
+            : TAKE;
+        const pagesFromMeta =
+          typeof data.meta?.pages === "number" && data.meta.pages > 0
+            ? data.meta.pages
+            : null;
+        const pagesFromTotal =
+          totalFromMeta !== null
+            ? Math.max(1, Math.ceil(totalFromMeta / takeFromMeta))
+            : null;
+        const basePages = pagesFromMeta ?? pagesFromTotal ?? 1;
+        // Si el backend indica que hay mas paginas pero no entrega el total, extendemos una pagina mas para habilitar el boton siguiente.
+        const resolvedPages =
+          data.meta?.hasNextPage && page >= basePages
+            ? page + 1
+            : basePages;
+        setPages(resolvedPages);
         // Sincronizamos la pagina actual por si el backend la ajusto.
         if (typeof data.meta?.page === "number") {
           setPage(data.meta.page);
