@@ -81,14 +81,14 @@ export function DataTable<TData, TValue>({
     density === "compact" ? "h-11 sm:h-12" : "h-14 sm:h-16";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0">
       {showViewOptions ? (
         <div className="flex justify-end">
           <DataTableViewOptions table={table} />
         </div>
       ) : null}
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-hidden">
+        <Table className="min-w-full">
           {/* Encabezado de la tabla */}
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
@@ -99,7 +99,7 @@ export function DataTable<TData, TValue>({
                 {hg.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-normal break-words"
                   >
                     {header.isPlaceholder
                       ? null

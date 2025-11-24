@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -432,40 +433,46 @@ export default function EnvironmentListPage() {
     return partial?.id;
   }
 
-  function guessBlockIdFromRow(row: EnvironmentRow): number | undefined {
-    const label = resolveRowLabel(row, {
-      directKeys: [
-        "bloque",
-        "bloque_nombre",
-        "bloqueNombre",
-        "bloque_label",
-      ],
-      relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
-    });
-    if (!label) {
-      return undefined;
-    }
-    return findCatalogIdByLabel(blockOptionsForForm, label);
-  }
+  const guessBlockIdFromRow = useCallback(
+    (row: EnvironmentRow): number | undefined => {
+      const label = resolveRowLabel(row, {
+        directKeys: [
+          "bloque",
+          "bloque_nombre",
+          "bloqueNombre",
+          "bloque_label",
+        ],
+        relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
+      });
+      if (!label) {
+        return undefined;
+      }
+      return findCatalogIdByLabel(blockOptionsForForm, label);
+    },
+    [blockOptionsForForm]
+  );
 
-  function guessTypeIdFromRow(row: EnvironmentRow): number | undefined {
-    const label = resolveRowLabel(row, {
-      directKeys: [
-        "tipo_ambiente",
-        "tipo_ambiente_nombre",
-        "tipoAmbienteNombre",
-      ],
-      relationKeys: [
-        "tipo_ambiente_detalle",
-        "tipoAmbienteDetalle",
-        "tipoAmbiente",
-      ],
-    });
-    if (!label) {
-      return undefined;
-    }
-    return findCatalogIdByLabel(environmentTypeOptionsForForm, label);
-  }
+  const guessTypeIdFromRow = useCallback(
+    (row: EnvironmentRow): number | undefined => {
+      const label = resolveRowLabel(row, {
+        directKeys: [
+          "tipo_ambiente",
+          "tipo_ambiente_nombre",
+          "tipoAmbienteNombre",
+        ],
+        relationKeys: [
+          "tipo_ambiente_detalle",
+          "tipoAmbienteDetalle",
+          "tipoAmbiente",
+        ],
+      });
+      if (!label) {
+        return undefined;
+      }
+      return findCatalogIdByLabel(environmentTypeOptionsForForm, label);
+    },
+    [environmentTypeOptionsForForm]
+  );
 
   // Apenas se monta la pantalla consultamos los catálogos necesarios para los filtros.
   useEffect(() => {
@@ -771,40 +778,43 @@ export default function EnvironmentListPage() {
   }
 
   // Abre el modal de edicion con el ambiente escogido.
-  function handleEdit(row: EnvironmentRow) {
-    const enrichedRow = { ...row } as Record<string, unknown>;
+  const handleEdit = useCallback(
+    (row: EnvironmentRow) => {
+      const enrichedRow = { ...row } as Record<string, unknown>;
 
-    if (
-      typeof enrichedRow.bloque_id !== "number" ||
-      Number.isNaN(enrichedRow.bloque_id)
-    ) {
-      const matchedBlockId = guessBlockIdFromRow(row);
-      if (typeof matchedBlockId === "number") {
-        enrichedRow.bloque_id = matchedBlockId;
+      if (
+        typeof enrichedRow.bloque_id !== "number" ||
+        Number.isNaN(enrichedRow.bloque_id)
+      ) {
+        const matchedBlockId = guessBlockIdFromRow(row);
+        if (typeof matchedBlockId === "number") {
+          enrichedRow.bloque_id = matchedBlockId;
+        }
       }
-    }
 
-    if (
-      typeof enrichedRow.tipo_ambiente_id !== "number" ||
-      Number.isNaN(enrichedRow.tipo_ambiente_id)
-    ) {
-      const matchedTypeId = guessTypeIdFromRow(row);
-      if (typeof matchedTypeId === "number") {
-        enrichedRow.tipo_ambiente_id = matchedTypeId;
+      if (
+        typeof enrichedRow.tipo_ambiente_id !== "number" ||
+        Number.isNaN(enrichedRow.tipo_ambiente_id)
+      ) {
+        const matchedTypeId = guessTypeIdFromRow(row);
+        if (typeof matchedTypeId === "number") {
+          enrichedRow.tipo_ambiente_id = matchedTypeId;
+        }
       }
-    }
 
-    setEditingEnvironment(enrichedRow as EnvironmentRow);
-    setEditOpen(true);
-  }
+      setEditingEnvironment(enrichedRow as EnvironmentRow);
+      setEditOpen(true);
+    },
+    [guessBlockIdFromRow, guessTypeIdFromRow]
+  );
 
   // Abre el dialogo de confirmacion con el ambiente seleccionado.
-  function handleDelete(row: EnvironmentRow) {
-    // Guardamos el ambiente completo que la persona eligió para poder mostrar sus datos en el modal.
+  const handleDelete = useCallback((row: EnvironmentRow) => {
+    // Guardamos el ambiente completo que la persona eligio para poder mostrar sus datos en el modal.
     setEnvironmentToDelete(row);
-    // Activamos la vista del dialogo de confirmación para que la persona revise su decisión.
+    // Activamos la vista del dialogo de confirmacion para que la persona revise su decision.
     setDeleteOpen(true);
-  }
+  }, []);
 
   // Restablece los estados relacionados al dialogo de eliminación.
   function resetDeleteDialog() {
@@ -825,8 +835,8 @@ export default function EnvironmentListPage() {
   }
 
   // Ejecuta el llamado real a la API para eliminar el ambiente.
-  async function confirmDelete() {
-    // Si por alguna razón no hay un ambiente seleccionado, salimos temprano porque no podemos continuar.
+  const confirmDelete = useCallback(async () => {
+    // Si por alguna razon no hay un ambiente seleccionado, salimos temprano porque no podemos continuar.
     if (!environmentToDelete) {
       return;
     }
@@ -835,28 +845,26 @@ export default function EnvironmentListPage() {
     const labelForNotification = formatEnvironmentLabel(environmentToDelete);
 
     try {
-      // Marcamos que la eliminación está en curso para deshabilitar botones y dobles clics.
+      // Marcamos que la eliminacion esta en curso para deshabilitar botones y dobles clics.
       setDeleting(true);
-      // Invocamos al backend usando el puerto centralizado apiFetch con el método DELETE.
-      await apiFetch(`/ambientes/${environmentToDelete.id}`, {
-        method: "DELETE",
-      });
+      // Invocamos al backend usando el puerto centralizado apiFetch con el metodo DELETE.
+      await apiFetch(`/ambientes/${environmentToDelete.id}`, { method: "DELETE" });
 
-      // En caso de éxito avisamos a la persona usuaria con el nombre o código del ambiente eliminado.
+      // En caso de exito avisamos a la persona usuaria con el nombre o codigo del ambiente eliminado.
       notify.success({
         title: "Ambiente eliminado",
         description:
           labelForNotification?.length
-            ? `${labelForNotification} se eliminó correctamente.`
-            : "Se eliminó correctamente el ambiente.",
+            ? `${labelForNotification} se elimino correctamente.`
+            : "Se elimino correctamente el ambiente.",
       });
 
-      // Forzamos la recarga de la tabla para que se refleje la remoción.
+      // Forzamos la recarga de la tabla para que se refleje la remocion.
       setReloadKey((value) => value + 1);
       // Cerramos el dialogo y limpiamos las referencias seleccionadas.
       resetDeleteDialog();
     } catch (error) {
-      // Si ocurre un error mostramos una notificación clara con el detalle devuelto por la API.
+      // Si ocurre un error mostramos una notificacion clara con el detalle devuelto por la API.
       notify.error({
         title: "No se pudo eliminar el ambiente",
         description: resolveDeleteErrorMessage(error),
@@ -865,7 +873,11 @@ export default function EnvironmentListPage() {
       // Sin importar el resultado regresamos el estado deleting a false para reactivar los controles.
       setDeleting(false);
     }
-  }
+  }, [environmentToDelete, resetDeleteDialog]);
+const columns = useMemo(
+    () => environmentColumns(handleEdit, handleDelete),
+    [handleDelete, handleEdit]
+  );
 
   return (
     <div className="space-y-6">
@@ -898,7 +910,7 @@ export default function EnvironmentListPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
           <SearchableSelect
             id="faculty-filter"
             label="Facultad"
@@ -1059,7 +1071,7 @@ export default function EnvironmentListPage() {
       ) : null}
 
       <DataTable
-        columns={environmentColumns(handleEdit, handleDelete)}
+        columns={columns}
         data={items}
         page={page}
         pages={pages}
