@@ -99,7 +99,7 @@ export function DataTable<TData, TValue>({
                 {hg.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-normal break-words"
+                    className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide whitespace-normal break-words"
                   >
                     {header.isPlaceholder
                       ? null
@@ -128,11 +128,11 @@ export function DataTable<TData, TValue>({
                     <TableCell
                       key={cell.id}
                       className={cn(
-                        "align-middle px-4 text-sm text-foreground",
+                        "align-middle px-4 text-sm text-foreground text-center",
                         wrapCells && "whitespace-normal break-words"
                       )}
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex justify-center">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </div>
                     </TableCell>
