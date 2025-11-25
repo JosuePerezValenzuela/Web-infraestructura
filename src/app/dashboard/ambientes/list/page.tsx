@@ -26,6 +26,7 @@ import {
 } from "@/features/environments/list/columns";
 import { EnvironmentCreateForm } from "@/features/environments/create/EnvironmentCreateForm";
 import { EnvironmentEditDialog } from "@/features/environments/edit/EnvironmentEditDialog";
+import { EnvironmentAssetsDialog } from "@/features/environments/list/EnvironmentAssetsDialog";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
@@ -351,6 +352,11 @@ export default function EnvironmentListPage() {
     useState<EnvironmentRow | null>(null);
   // Indica cuando la peticion DELETE esta en curso para deshabilitar acciones repetidas.
   const [deleting, setDeleting] = useState(false);
+  // Controla la apertura del modal para asociar activos.
+  const [assetsOpen, setAssetsOpen] = useState(false);
+  // Conserva el ambiente sobre el que se asociaran activos.
+  const [environmentForAssets, setEnvironmentForAssets] =
+    useState<EnvironmentRow | null>(null);
 
   const blockOptionsForForm = useMemo<CatalogSelectOption[]>(() => {
     return catalogs.blocks
@@ -813,7 +819,12 @@ export default function EnvironmentListPage() {
     // Guardamos el ambiente completo que la persona eligio para poder mostrar sus datos en el modal.
     setEnvironmentToDelete(row);
     // Activamos la vista del dialogo de confirmacion para que la persona revise su decision.
-    setDeleteOpen(true);
+      setDeleteOpen(true);
+  }, []);
+  // Abre el modal de activos para el ambiente seleccionado.
+  const handleAssociateAssets = useCallback((row: EnvironmentRow) => {
+    setEnvironmentForAssets(row);
+    setAssetsOpen(true);
   }, []);
 
   // Restablece los estados relacionados al dialogo de eliminación.
@@ -874,9 +885,21 @@ export default function EnvironmentListPage() {
       setDeleting(false);
     }
   }, [environmentToDelete, resetDeleteDialog]);
+
+  // Cierra el modal de asociar activos y limpia el ambiente seleccionado.
+  function handleCloseAssetsDialog() {
+    setAssetsOpen(false);
+    setEnvironmentForAssets(null);
+  }
+
+  // Refresca la tabla despues de asociar activos y cierra el modal correspondiente.
+  function handleAssetsSuccess() {
+    setReloadKey((value) => value + 1);
+    handleCloseAssetsDialog();
+  }
 const columns = useMemo(
-    () => environmentColumns(handleEdit, handleDelete),
-    [handleDelete, handleEdit]
+    () => environmentColumns(handleEdit, handleDelete, handleAssociateAssets),
+    [handleAssociateAssets, handleDelete, handleEdit]
   );
 
   return (
@@ -1133,6 +1156,13 @@ const columns = useMemo(
         onSuccess={() => {
           setReloadKey((value) => value + 1);
         }}
+      />
+
+      <EnvironmentAssetsDialog
+        open={assetsOpen}
+        environment={environmentForAssets}
+        onClose={handleCloseAssetsDialog}
+        onSuccess={handleAssetsSuccess}
       />
 
       <Dialog

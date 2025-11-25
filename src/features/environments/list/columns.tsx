@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Link2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -130,7 +130,8 @@ function getCapacityValues(row: EnvironmentRow): CapacityValues | null {
 
 export function environmentColumns(
   onEdit?: (row: EnvironmentRow) => void,
-  onDelete?: (row: EnvironmentRow) => void
+  onDelete?: (row: EnvironmentRow) => void,
+  onAssociateAssets?: (row: EnvironmentRow) => void
 ): ColumnDef<EnvironmentRow>[] {
   // Construimos y devolvemos la configuracion completa de columnas para la tabla de ambientes.
   return [
@@ -268,6 +269,16 @@ export function environmentColumns(
       enableHiding: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Asociar activos"
+            title="Asociar activos"
+            onClick={() => onAssociateAssets?.(row.original)}
+          >
+            <Link2 className="h-4 w-4" aria-hidden />
+          </Button>
           <Button
             type="button"
             variant="ghost"

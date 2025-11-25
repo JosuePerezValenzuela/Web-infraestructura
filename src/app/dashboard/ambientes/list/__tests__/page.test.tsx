@@ -17,6 +17,24 @@ vi.mock("@/lib/api", () => ({
   apiFetch: vi.fn(),
 }));
 
+// Simulamos la respuesta que devuelve el nuevo servicio al consultar un NIA especifico.
+const goodsResponse = [
+  {
+    nia: 12171,
+    descripcion: "MESA DE MADERA",
+    descripcionExt:
+      "MESA PARA COMPUTADORA DE MADERA MARA COLOR CAFE, PARTE SUPERIOR UNA DIVISION, PARTE INFERIOR PORTA TECLADO CORREDIZO Y PORTA CPU DE:  1.12*0.79*0.95 MTS.",
+    estado: "BUENO",
+    marca: null,
+    unidadMedida: "PIEZA",
+    valorInicial: 450,
+    modelo: null,
+    serie: null,
+    fechaCompra: "2006-01-02 00:00:00.0",
+    fechaIncorporacion: "2006-03-14 00:00:00.0",
+  },
+];
+
 // Jsdom no implementa los metodos de puntero que Radix Select necesita, por eso los simulamos.
 if (!Element.prototype.hasPointerCapture) {
   Element.prototype.hasPointerCapture = () => false;
@@ -30,6 +48,7 @@ if (!Element.prototype.scrollIntoView) {
 
 const apiFetchMock = vi.mocked(apiFetch);
 const notifyMock = vi.mocked(notify);
+const fetchMock = vi.fn();
 
 // Esta estructura simula el contrato real del backend para el listado principal.
 const environmentListResponse = {
@@ -106,6 +125,22 @@ describe("EnvironmentListPage", () => {
     patchErrorMessage = "No se pudo actualizar";
     shouldDeleteFail = false;
     deleteErrorMessage = "No se pudo eliminar";
+    process.env.GOODS_API_BASE_URL = "http://bienes.test/v1";
+    fetchMock.mockReset();
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.startsWith("/api/goods/")) {
+        return Promise.resolve(
+          new Response(JSON.stringify(goodsResponse), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+      }
+      throw new Error(`Unexpected fetch call to ${url}`);
+    });
+    // @ts-expect-error - Sobrescribimos fetch con el mock para las pruebas.
+    global.fetch = fetchMock;
     apiFetchMock.mockReset();
     notifyMock.success.mockReset();
     notifyMock.error.mockReset();
@@ -130,6 +165,9 @@ describe("EnvironmentListPage", () => {
           }
           return undefined as unknown;
         }
+        if (path === "/activos" && options?.method === "POST") {
+          return { id: 501 } as unknown;
+        }
         if (path.startsWith("/ambientes") && options?.method === "POST") {
           return { id: 99 } as unknown;
         }
@@ -153,6 +191,8 @@ describe("EnvironmentListPage", () => {
   // Despues de cada prueba limpiamos los mocks para no compartir estado.
   afterEach(() => {
     vi.clearAllMocks();
+    fetchMock.mockReset();
+    delete process.env.GOODS_API_BASE_URL;
     environmentListResponse.meta = {
       page: 1,
       pages: 3,
@@ -210,6 +250,92 @@ describe("EnvironmentListPage", () => {
     expect(
       screen.getByRole("button", { name: /eliminar ambiente/i })
     ).toBeInTheDocument();
+  });
+
+  it("abre el modal para asociar activos, consulta por NIA y guarda la seleccion", async () => {
+    // Activamos temporizadores falsos para poder adelantar manualmente el debounce del buscador.
+    vi.useFakeTimers();
+    // Creamos una persona usuaria virtual que respeta los temporizadores simulados para las interacciones.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    // Renderizamos la pagina principal de ambientes que contiene la nueva accion.
+    render(<EnvironmentListPage />);
+    // Esperamos a que el nombre del ambiente aparezca, lo que confirma que la tabla cargo.
+    await screen.findByText("Laboratorio de redes");
+    // Buscamos el boton de la nueva accion para asociar activos en la fila del ambiente.
+    const associateButton = screen.getByRole("button", {
+      name: /asociar activos/i,
+    });
+    // Verificamos que el boton existe antes de interactuar con el.
+    expect(associateButton).toBeInTheDocument();
+    // Abrimos el modal haciendo clic en el boton de asociar activos.
+    await user.click(associateButton);
+    // Capturamos el dialogo que debe mostrarse luego del clic anterior.
+    const dialog = await screen.findByRole("dialog");
+    // Centralizamos las consultas dentro del dialogo para evitar falsos positivos fuera del modal.
+    const dialogUtils = within(dialog);
+    // Confirmamos que el modal incluye el nombre del ambiente como contexto para la asociacion.
+    await dialogUtils.findByText(/Laboratorio de redes/i);
+    // Ubicamos el campo que recibe el NIA y dispara la consulta al servicio externo.
+    const searchInput = dialogUtils.getByLabelText(/Buscar NIA/i);
+    // Llenamos el campo con el NIA de prueba provisto por el fixture.
+    await user.type(searchInput, "12171");
+    // Adelantamos el tiempo suficiente para que el debounce ejecute la llamada al endpoint.
+    await vi.advanceTimersByTimeAsync(600);
+    // Esperamos a que el mock de fetch confirme que se llamo al servicio de bienes con el NIA digitado.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(`/api/goods/12171`, expect.any(Object));
+    });
+    // Validamos que la descripcion del bien aparezca en los resultados mostrados en el modal.
+    await dialogUtils.findByText("MESA DE MADERA");
+    // Identificamos el boton que agrega el resultado seleccionado a la lista de activos a asociar.
+    const addButton = dialogUtils.getByRole("button", {
+      name: /agregar activo/i,
+    });
+    // Ejecutamos el clic para sumar el activo encontrado a la tabla temporal.
+    await user.click(addButton);
+    // Revisamos que el NIA aparezca ahora dentro de la lista de seleccionados.
+    await dialogUtils.findByText(/12171/);
+    // Localizamos el boton encargado de guardar todos los activos seleccionados en el backend.
+    const saveButton = dialogUtils.getByRole("button", {
+      name: /guardar activos/i,
+    });
+    // Disparamos el guardado para enviar los activos al endpoint interno de activos.
+    await user.click(saveButton);
+    // Esperamos a que se invoque apiFetch con el metodo POST y el cuerpo mapeado segun lo solicitado.
+    await waitFor(() => {
+      const postCall = apiFetchMock.mock.calls.find(
+        ([path, options]) =>
+          path === "/activos" &&
+          options &&
+          typeof options === "object" &&
+          "method" in options &&
+          (options as { method?: string }).method === "POST"
+      );
+      expect(postCall).toBeTruthy();
+      const [, options] = postCall as [
+        string,
+        { method?: string; json?: unknown }
+      ];
+      expect(options.json).toMatchObject({
+        nia: "12171",
+        nombre: "MESA DE MADERA",
+        descripcion: goodsResponse[0].descripcionExt,
+        ambiente_id: mainEnvironment.id,
+      });
+    });
+    // Confirmamos que se muestre una notificacion de exito al completar la asociacion.
+    await waitFor(() => {
+      expect(notifyMock.success).toHaveBeenCalledWith({
+        title: "Activos asociados",
+        description: "Se guardaron 1 activos en el ambiente.",
+      });
+    });
+    // Verificamos que el modal se cierre automaticamente tras guardar la seleccion.
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    // Restauramos los temporizadores reales para no afectar otras pruebas.
+    vi.useRealTimers();
   });
 
   it("abre el modal de creacion sin scroll visible y expone los campos requeridos", async () => {
