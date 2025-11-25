@@ -86,7 +86,7 @@ export default function FacultyForm({
     async function loadCampus() {
       try {
         const data = await apiFetch<CampusListResponse>(
-          "/campus?page=1&limit=1000",
+          "/campus?page=1&limit=1000&activo=true",
           { signal: controller.signal }
         );
         setCampusOptions(
