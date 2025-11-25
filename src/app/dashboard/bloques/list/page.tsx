@@ -892,7 +892,7 @@ export default function BlockListPage() {
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl">
+        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
           <div className="flex max-h-[90vh] flex-col">
             <div className="flex items-center justify-between border-b px-6 py-3">
               <DialogHeader className="space-y-1 text-left">
