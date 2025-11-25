@@ -60,8 +60,8 @@ export default function BlockCreatePage() {
 
     try {
       const [facultiesResponse, blockTypesResponse] = await Promise.all([
-        apiFetch<CatalogResponse>("/facultades?page=1&limit=50"),
-        apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200"),
+        apiFetch<CatalogResponse>("/facultades?page=1&limit=200&activo=True"),
+        apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200&activo=True"),
       ]);
 
       setFaculties(normalizeCatalog(facultiesResponse.items, "Facultad"));

@@ -68,7 +68,6 @@ const blockSharedFields = {
   pisos: z
     .coerce.number()
     .int()
-    .min(1, "Debe tener al menos un piso")
     .max(99, "El limite maximo es 99 pisos"),
   lat: latField,
   lng: lngField,

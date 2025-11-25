@@ -424,10 +424,10 @@ export default function BlockListPage() {
         setLoadingCatalogs(true); // Marcamos que estamos cargando la data de los selects.
         // Consultamos los catálogos en paralelo para ahorrar tiempo y cumplir con la regla de Security by Design (white list).
         const [facultiesData, blockTypesData] = await Promise.all([
-          apiFetch<CatalogResponse>("/facultades?page=1&limit=50", {
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=200&activo=True", {
             signal: controller.signal,
           }),
-          apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200", {
+          apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200&activo=True", {
             signal: controller.signal,
           }),
         ]);
