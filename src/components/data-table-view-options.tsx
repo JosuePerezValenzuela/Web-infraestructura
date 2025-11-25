@@ -18,7 +18,7 @@ export function DataTableViewOptions<TData>({ table }: Props<TData>) {
                     size='sm'
                     className="bg-black text-white hover:bg-black/90"
                 >
-                    Ver
+                    Mostrar/Ocultar columnas
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
