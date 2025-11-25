@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -24,8 +23,10 @@ import {
 } from "@/components/catalog-search-select";
 
 type BlockCreateFormProps = {
-  faculties: CatalogOption[];
+  faculties: Array<CatalogOption & { lat?: number; lng?: number }>;
   blockTypes: CatalogOption[];
+  onSuccess?: () => void | Promise<void>;
+  onCancel?: () => void;
 };
 
 const DEFAULT_POSITION = { lat: -17.3939, lng: -66.157 };
@@ -33,9 +34,17 @@ const MapPicker = dynamic(() => import("@/features/campus/MapPicker"), {
   ssr: false,
 });
 
-export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps) {
+export function BlockCreateForm({
+  faculties,
+  blockTypes,
+  onSuccess,
+  onCancel,
+}: BlockCreateFormProps) {
   const [submitting, setSubmitting] = useState(false);
-  const router = useRouter();
+
+  const facultyLookup = useMemo(() => {
+    return new Map(faculties.map((item) => [String(item.id), item]));
+  }, [faculties]);
 
   const form = useForm<BlockCreateInput>({
     resolver: zodResolver(blockCreateSchema),
@@ -79,7 +88,8 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
         title: "Bloque creado",
         description: "El inventario se actualizó correctamente.",
       });
-      router.push("/dashboard/bloques/list");
+      form.reset();
+      await onSuccess?.();
     } catch {
       notify.error({
         title: "No se pudo crear el bloque",
@@ -193,7 +203,27 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
                   searchPlaceholder="Buscar facultad"
                   options={faculties}
                   value={field.value ? String(field.value) : ""}
-                  onChange={(value) => field.onChange(value)}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    if (!value) {
+                      return;
+                    }
+                    const selected = facultyLookup.get(value);
+                    if (
+                      selected &&
+                      typeof selected.lat === "number" &&
+                      typeof selected.lng === "number"
+                    ) {
+                      form.setValue("lat", String(selected.lat), {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      form.setValue("lng", String(selected.lng), {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
                 />
                 <FormMessage />
               </FormItem>
@@ -276,8 +306,16 @@ export function BlockCreateForm({ faculties, blockTypes }: BlockCreateFormProps)
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button type="reset" variant="outline" onClick={() => form.reset()}>
-            Limpiar
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              form.reset();
+              onCancel?.();
+            }}
+            disabled={submitting}
+          >
+            Cancelar
           </Button>
           <Button type="submit" disabled={submitting}>
             {submitting ? "Guardando..." : "Guardar"}

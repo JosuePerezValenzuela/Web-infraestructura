@@ -7,7 +7,6 @@ import {
   useState,
   type FormEvent,
 } from "react"; // React nos brinda el estado y los efectos necesarios para manejar la UI.
-import Link from "next/link";
 import { Button } from "@/components/ui/button"; // Botones reutilizables con los estilos del sistema.
 import { Input } from "@/components/ui/input"; // Campo de texto accesible y consistente.
 import { Label } from "@/components/ui/label"; // Etiquetas accesibles para todos los controles.
@@ -34,6 +33,7 @@ import {
   type BlockRow,
 } from "@/features/blocks/list/columns"; // Columnas específicas de la entidad Bloques.
 import BlockEditForm from "@/features/blocks/edit/BlockEditForm";
+import { BlockCreateForm } from "@/features/blocks/BlockCreateForm";
 import { apiFetch } from "@/lib/api"; // Cliente centralizado para hablar con el backend.
 import { notify } from "@/lib/notify"; // Notificaciones amigables para informar el estado de las operaciones.
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
@@ -55,6 +55,8 @@ type BlockListResponse = {
 type CatalogOption = {
   id: number; // Identificador del elemento en el backend.
   nombre: string; // Etiqueta ya normalizada para el select.
+  lat?: number;
+  lng?: number;
 };
 
 type CatalogApiItem = {
@@ -64,6 +66,12 @@ type CatalogApiItem = {
   nombreCorto?: string | null;
   descripcion?: string | null;
   codigo?: string | null;
+  lat?: unknown;
+  lng?: unknown;
+  latitud?: unknown;
+  longitud?: unknown;
+  coordenadas?: unknown;
+  coordinates?: unknown;
 };
 
 // Resultado estándar que entrega el backend cuando se consultan catálogos simples.
@@ -88,7 +96,92 @@ const INITIAL_FILTERS: FilterState = {
   pisosMin: "",
   pisosMax: "",
 }; // Estado base que nos permite restaurar los filtros rápidamente.
-const ALL_VALUE = "all"; // Valor centinela requerido por Radix Select para representar la opción de "todos".
+const ALL_VALUE = "all"; // Valor centinela requerido por Radix Select para representar la opcion de "todos".
+
+function toNumberOrUndefined(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length) {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
+function parsePointString(value: string): { lat?: number; lng?: number } {
+  const matches = value.match(/-?\d+(?:\.\d+)?/g);
+  if (!matches || matches.length < 2) {
+    return {};
+  }
+  const numbers = matches
+    .map((item) => Number(item))
+    .filter((num) => Number.isFinite(num));
+  if (numbers.length < 2) {
+    return {};
+  }
+  if (value.trim().toUpperCase().startsWith("POINT")) {
+    return { lng: numbers[0], lat: numbers[1] };
+  }
+  return { lat: numbers[0], lng: numbers[1] };
+}
+
+function resolveCatalogCoordinates(item: CatalogApiItem): {
+  lat?: number;
+  lng?: number;
+} {
+  const record = item as Record<string, unknown>;
+
+  const latDirect =
+    toNumberOrUndefined(item.lat) ??
+    toNumberOrUndefined(item.latitud) ??
+    toNumberOrUndefined(record.y);
+  const lngDirect =
+    toNumberOrUndefined(item.lng) ??
+    toNumberOrUndefined(item.longitud) ??
+    toNumberOrUndefined(record.x);
+
+  if (typeof latDirect === "number" && typeof lngDirect === "number") {
+    return { lat: latDirect, lng: lngDirect };
+  }
+
+  const pointCandidate =
+    (record.coordenadas as unknown) ??
+    (record.coordinates as unknown) ??
+    (record.coordenadas_text as unknown);
+  if (typeof pointCandidate === "string") {
+    const parsed = parsePointString(pointCandidate);
+    return {
+      lat: toNumberOrUndefined(parsed.lat),
+      lng: toNumberOrUndefined(parsed.lng),
+    };
+  }
+  if (Array.isArray(pointCandidate) && pointCandidate.length >= 2) {
+    const [lng, lat] = pointCandidate;
+    return {
+      lat: toNumberOrUndefined(lat),
+      lng: toNumberOrUndefined(lng),
+    };
+  }
+  if (pointCandidate && typeof pointCandidate === "object") {
+    const coords = pointCandidate as Record<string, unknown>;
+    return {
+      lat:
+        toNumberOrUndefined(coords.lat) ??
+        toNumberOrUndefined(coords.latitude) ??
+        toNumberOrUndefined(coords.latitud) ??
+        toNumberOrUndefined(coords.y),
+      lng:
+        toNumberOrUndefined(coords.lng) ??
+        toNumberOrUndefined(coords.lon) ??
+        toNumberOrUndefined(coords.longitude) ??
+        toNumberOrUndefined(coords.longitud) ??
+        toNumberOrUndefined(coords.x),
+    };
+  }
+
+  return { lat: latDirect, lng: lngDirect };
+}
 
 function normalizeCatalogOptions(
   items: CatalogApiItem[],
@@ -111,7 +204,16 @@ function normalizeCatalogOptions(
           ? label.trim()
           : `${fallbackPrefix} ${item.id}`;
 
-      return { id: item.id, nombre: finalLabel };
+      const coordinates = resolveCatalogCoordinates(item);
+
+      return {
+        id: item.id,
+        nombre: finalLabel,
+        ...(typeof coordinates.lat === "number" &&
+        typeof coordinates.lng === "number"
+          ? { lat: coordinates.lat, lng: coordinates.lng }
+          : {}),
+      };
     })
     .filter((option): option is CatalogOption => Boolean(option));
 }
@@ -308,6 +410,7 @@ export default function BlockListPage() {
   const [isFetching, setIsFetching] = useState(false); // Indicador que muestra cuando se consulta el listado principal.
   const [tableInstance, setTableInstance] =
     useState<ReactTableInstance<BlockRow> | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false); // Controla la apertura del diálogo de eliminación.
   const [blockToDelete, setBlockToDelete] = useState<BlockRow | null>(null); // Guarda el registro seleccionado para eliminar.
   const [deleting, setDeleting] = useState(false); // Marca si la petición DELETE está en curso.
@@ -654,17 +757,21 @@ export default function BlockListPage() {
             </Button>
             <Button
               type="button"
-              variant="outline"
-              onClick={handleClearFilters}
-              className="w-full min-[480px]:w-auto"
-            >
-              Limpiar filtros
-            </Button>
-            <Button asChild className="w-full min-[480px]:w-auto">
-              <Link href="/dashboard/bloques/create">Nuevo bloque</Link>
-            </Button>
-          </div>
-        </div>
+          variant="outline"
+          onClick={handleClearFilters}
+          className="w-full min-[480px]:w-auto"
+        >
+          Limpiar filtros
+        </Button>
+        <Button
+          type="button"
+          className="w-full min-[480px]:w-auto"
+          onClick={() => setCreateOpen(true)}
+        >
+          Nuevo bloque
+        </Button>
+      </div>
+    </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SearchableSelect
@@ -764,6 +871,38 @@ export default function BlockListPage() {
         showViewOptions={false}
         onTableReady={setTableInstance}
       />
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl">
+          <div className="flex max-h-[90vh] flex-col">
+            <div className="flex items-center justify-between border-b px-6 py-3">
+              <DialogHeader className="space-y-1 text-left">
+                <DialogTitle>Registrar bloque</DialogTitle>
+                <DialogDescription>
+                  Completa los datos para crear un nuevo bloque en la facultad seleccionada.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogClose className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                <span aria-hidden>&times;</span>
+                <span className="sr-only">Cerrar</span>
+              </DialogClose>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <BlockCreateForm
+                faculties={faculties}
+                blockTypes={blockTypes}
+                onSuccess={async () => {
+                  setPage(1);
+                  setReloadKey((value) => value + 1);
+                  setCreateOpen(false);
+                }}
+                onCancel={() => setCreateOpen(false)}
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={editOpen}
