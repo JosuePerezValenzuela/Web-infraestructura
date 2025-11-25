@@ -200,6 +200,5 @@ describe("BlockCreatePage", () => {
       title: "Bloque creado",
       description: "El inventario se actualizó correctamente.",
     });
-    expect(pushMock).toHaveBeenCalledWith("/dashboard/bloques/list");
   });
 });

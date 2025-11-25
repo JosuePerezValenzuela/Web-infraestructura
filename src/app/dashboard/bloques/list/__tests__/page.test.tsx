@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event"; // Esta utilidad nos permit
 import { vi } from "vitest"; // Vitest nos aporta las funciones para crear mocks y escribir pruebas.
 import { apiFetch } from "@/lib/api"; // apiFetch es el cliente que utiliza la app para hablar con el backend; lo vamos a espiar.
 import { notify } from "@/lib/notify"; // Espiamos las notificaciones para verificar los mensajes de éxito o error.
-import BlockListPage from "../page"; // Importamos la página que vamos a probar.
+import BlockListPage from "../page"; // Importamos la pagina que vamos a probar.
 
 // También simulamos el helper apiFetch para controlar completamente las respuestas del backend.
 vi.mock("@/lib/api", () => ({
@@ -60,9 +60,48 @@ const { blockEditFormMock } = vi.hoisted(() => ({
   ),
 }));
 
+const { blockCreateFormMock } = vi.hoisted(() => ({
+  blockCreateFormMock: vi.fn(
+    ({
+      onSuccess,
+      onCancel,
+    }: {
+      faculties: unknown[];
+      blockTypes: unknown[];
+      onSuccess?: () => void | Promise<void>;
+      onCancel?: () => void;
+    }) => (
+      <div data-testid="mock-create-form">
+        <p>Formulario de creacion de bloque</p>
+        <button
+          type="button"
+          onClick={() => {
+            void onSuccess?.();
+          }}
+        >
+          Simular registro
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onCancel?.();
+          }}
+        >
+          Cancelar creacion
+        </button>
+      </div>
+    )
+  ),
+}));
+
 vi.mock("@/features/blocks/edit/BlockEditForm", () => ({
   __esModule: true,
   default: blockEditFormMock,
+}));
+
+vi.mock("@/features/blocks/BlockCreateForm", () => ({
+  __esModule: true,
+  BlockCreateForm: blockCreateFormMock,
 }));
 
 // Jsdom no implementa hasPointerCapture/releasePointerCapture y Radix Select los requiere para manejar eventos de puntero.
@@ -93,16 +132,16 @@ const blockListResponse = {
       facultad_id: 7, // Identificador interno de la facultad para futuros flujos de edición.
       tipo_bloque: "Academico", // Clasificación del bloque.
       tipo_bloque_id: 2, // ID del tipo de bloque.
-      creado_en: "2025-01-01T12:00:00.000Z", // Fecha de creación que se formateará.
+      creado_en: "2025-01-01T12:00:00.000Z", // Fecha de creacion que se formateará.
     },
   ],
   meta: {
     total: 1, // Total de registros disponibles en el backend.
-    page: 1, // Página actual que devolvió la API.
-    take: 8, // Cantidad de filas solicitadas por página.
-    pages: 1, // Número total de páginas disponibles.
-    hasNextPage: false, // Indicador para deshabilitar el botón de página siguiente.
-    hasPreviousPage: false, // Indicador para deshabilitar el botón de página anterior.
+    page: 1, // pagina actual que devolvió la API.
+    take: 8, // Cantidad de filas solicitadas por pagina.
+    pages: 1, // Número total de paginas disponibles.
+    hasNextPage: false, // Indicador para deshabilitar el boton de pagina siguiente.
+    hasPreviousPage: false, // Indicador para deshabilitar el boton de pagina anterior.
   },
 };
 
@@ -148,13 +187,14 @@ function mockSuccessfulCatalogs() {
   });
 }
 
-// Agrupamos todos los escenarios que validan el comportamiento de la página de bloques.
+// Agrupamos todos los escenarios que validan el comportamiento de la pagina de bloques.
 describe("BlockListPage", () => {
   // Antes de cada prueba dejamos el mock de la API en blanco y luego reponemos las respuestas de éxito.
   beforeEach(() => {
     mockedApiFetch.mockReset(); // Limpiamos cualquier llamada o implementación previa del mock.
     mockSuccessfulCatalogs(); // Registramos la implementación que devuelve los catálogos simulados.
     blockEditFormMock.mockClear(); // Aseguramos que el mock del formulario de edición empiece limpio.
+    blockCreateFormMock.mockClear(); // Reiniciamos el mock de creacion para cada escenario.
   });
 
   // Después de cada escenario limpiamos los mocks para que no filtren estado a las siguientes pruebas.
@@ -171,11 +211,11 @@ describe("BlockListPage", () => {
   });
 
   it("muestra el listado inicial de bloques con los controles de busqueda y filtros", async () => {
-    render(<BlockListPage />); // Renderizamos la página igual que en el navegador.
+    render(<BlockListPage />); // Renderizamos la pagina igual que en el navegador.
 
     await screen.findByRole("table"); // Esperamos a que la tabla aparezca para asegurarnos de que los datos cargaron.
 
-    expect(screen.getByRole("heading", { name: /bloques/i })).toBeInTheDocument(); // Confirmamos que el título principal sea visible.
+    expect(screen.getByRole("heading", { name: /bloques/i })).toBeInTheDocument(); // Confirmamos que el titulo principal sea visible.
     const searchInput = screen.getByRole("textbox", {
       name: /buscar bloques/i,
     }); // Buscamos el campo de búsqueda por su etiqueta accesible.
@@ -194,8 +234,8 @@ describe("BlockListPage", () => {
     });
 
     expect(
-      screen.getByRole("link", { name: /Nuevo bloque/i })
-    ).toBeInTheDocument(); // El enlace para registrar nuevos bloques debe estar disponible.
+      screen.getByRole("button", { name: /Nuevo bloque/i })
+    ).toBeInTheDocument(); // El boton para registrar nuevos bloques debe estar disponible.
 
     // Validamos que todos los filtros solicitados existan en la interfaz.
     expect(
@@ -217,7 +257,7 @@ describe("BlockListPage", () => {
 
   it("envía el termino de búsqueda cuando la persona usuaria confirma el formulario", async () => {
     const user = userEvent.setup(); // Creamos un usuario virtual que simulará las interacciones.
-    render(<BlockListPage />); // Montamos la página.
+    render(<BlockListPage />); // Montamos la pagina.
 
     const searchInput = await screen.findByRole("textbox", {
       name: /buscar bloques/i,
@@ -315,8 +355,8 @@ describe("BlockListPage", () => {
 
     const clearButton = await screen.findByRole("button", {
       name: /limpiar filtros/i,
-    }); // Obtenemos el botón dedicado a restaurar el formulario.
-    await user.click(clearButton); // Ejecutamos la acción de limpiar.
+    }); // Obtenemos el boton dedicado a restaurar el formulario.
+    await user.click(clearButton); // Ejecutamos la accion de limpiar.
 
     await waitFor(() => {
       const blockCalls = mockedApiFetch.mock.calls.filter(([path]) =>
@@ -324,33 +364,62 @@ describe("BlockListPage", () => {
       );
       const lastPath = blockCalls.at(-1)?.[0] as string | undefined;
       expect(lastPath).not.toContain("facultadId="); // Confirmamos que el query param ya no esté presente.
-      expect(lastPath).toContain("page=1"); // A la vez nos aseguramos de regresar a la primera página.
+      expect(lastPath).toContain("page=1"); // A la vez nos aseguramos de regresar a la primera pagina.
     });
   });
 
-  it("ofrece un enlace directo para registrar nuevos bloques", async () => {
-    render(<BlockListPage />); // Renderizamos la página objetivo.
+  it("abre el modal de creacion y permite disparar el guardado desde el formulario", async () => {
+    const user = userEvent.setup();
+    render(<BlockListPage />); // Renderizamos la pagina objetivo.
 
-    const createLink = await screen.findByRole("link", {
+    const createButton = await screen.findByRole("button", {
       name: /nuevo bloque/i,
-    }); // Buscamos el enlace responsable de iniciar la creación.
+    }); // Buscamos el boton responsable de iniciar la creacion.
 
-    expect(createLink).toHaveAttribute(
-      "href",
-      "/dashboard/bloques/create"
-    ); // Confirmamos que lleve a la ruta de creación.
+    await user.click(createButton); // Abrimos el modal.
+
+    const dialog = await screen.findByRole("dialog"); // Capturamos el modal abierto.
+    const dialogUtils = within(dialog);
+
+    expect(
+      dialogUtils.getByRole("heading", { name: /registrar bloque/i })
+    ).toBeInTheDocument(); // Validamos el titulo del modal.
+
+    expect(
+      dialogUtils.getByTestId("mock-create-form")
+    ).toBeInTheDocument(); // Verificamos que el formulario de creacion se haya renderizado.
+
+    await user.click(
+      dialogUtils.getByRole("button", { name: /simular registro/i })
+    ); // Disparamos el exito simulado.
+
+    await waitFor(() => {
+      const blockRequests = mockedApiFetch.mock.calls.filter(([path, options]) => {
+        return (
+          typeof path === "string" &&
+          path.startsWith("/bloques") &&
+          (!options || options.method === undefined)
+        );
+      });
+      expect(blockRequests.length).toBeGreaterThanOrEqual(2); // Debe ejecutar una recarga adicional del listado.
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); // El modal debe cerrarse tras el guardado.
+    });
   });
+
 
   it("muestra el dialogo de confirmacion de eliminacion con los datos del bloque", async () => {
     const user = userEvent.setup(); // Instanciamos al usuario virtual para operar la interfaz.
-    render(<BlockListPage />); // Montamos la página bajo prueba.
+    render(<BlockListPage />); // Montamos la pagina bajo prueba.
 
     await screen.findByText("Bloque Central"); // Esperamos a que la fila inicial esté disponible.
 
-    const deleteButton = screen.getByTitle(/eliminar bloque/i); // Obtenemos el botón de eliminar de la fila.
+    const deleteButton = screen.getByTitle(/eliminar bloque/i); // Obtenemos el boton de eliminar de la fila.
     await user.click(deleteButton); // Abrimos el dialogo de confirmación.
 
-    await screen.findByRole("heading", { name: /eliminar bloque/i }); // Verificamos el título del dialogo.
+    await screen.findByRole("heading", { name: /eliminar bloque/i }); // Verificamos el titulo del dialogo.
     expect(
       screen.getByText(/Confirma el codigo y nombre antes de continuar/i)
     ).toBeInTheDocument(); // Validamos el mensaje de seguridad.
@@ -372,8 +441,8 @@ describe("BlockListPage", () => {
 
     const confirmButton = await screen.findByRole("button", {
       name: /eliminar/i,
-    }); // Localizamos el botón que confirma la eliminación.
-    await user.click(confirmButton); // Ejecutamos la acción.
+    }); // Localizamos el boton que confirma la eliminación.
+    await user.click(confirmButton); // Ejecutamos la accion.
 
     await waitFor(() => {
       expect(mockedApiFetch).toHaveBeenCalledWith(
@@ -454,7 +523,7 @@ describe("BlockListPage", () => {
     }); // Sobrescribimos para simular el error en DELETE.
 
     const user = userEvent.setup(); // Usuario virtual para los clicks.
-    render(<BlockListPage />); // Montamos la página.
+    render(<BlockListPage />); // Montamos la pagina.
 
     await screen.findByText("Bloque Central"); // Esperamos los datos iniciales.
 
@@ -462,7 +531,7 @@ describe("BlockListPage", () => {
 
     const confirmButton = await screen.findByRole("button", {
       name: /eliminar/i,
-    }); // Botón para confirmar.
+    }); // boton para confirmar.
     await user.click(confirmButton); // Intentamos eliminar sabiendo que fallará.
 
     await waitFor(() => {
@@ -491,23 +560,31 @@ describe("BlockListPage", () => {
     ); // Eliminamos pages para replicar la respuesta observada.
 
     const user = userEvent.setup(); // Usuario virtual para interactuar con la UI.
-    render(<BlockListPage />); // Montamos la página principal.
+    render(<BlockListPage />); // Montamos la pagina principal.
 
     await screen.findByText("Bloque Central"); // Esperamos a que cargue la fila inicial.
 
     const nextButton = screen.getByRole("button", {
       name: /go to next page/i,
-    }); // Obtenemos el control de avanzar página.
+    }); // Obtenemos el control de avanzar pagina.
 
     expect(nextButton).not.toBeDisabled(); // Debe estar habilitado porque meta.hasNextPage es true.
 
-    blockListResponse.meta.page = 2; // Simulamos que el backend responde la siguiente página.
+    blockListResponse.meta.page = 2; // Simulamos que el backend responde la siguiente pagina.
 
     await user.click(nextButton); // Solicitamos avanzar en la paginación.
 
     await waitFor(() => {
       const lastCall = mockedApiFetch.mock.calls.at(-1); // Observamos la última llamada realizada.
-      expect(lastCall?.[0]).toContain("page=2"); // Confirmamos que se pidió la página 2.
+      expect(lastCall?.[0]).toContain("page=2"); // Confirmamos que se pidió la pagina 2.
     });
   });
 });
+
+
+
+
+
+
+
+
