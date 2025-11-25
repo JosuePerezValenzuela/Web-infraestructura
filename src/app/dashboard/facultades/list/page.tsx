@@ -169,7 +169,7 @@ export default function FacultyListPage() {
 
         <div className="flex w-full gap-2 sm:w-auto">
           <Input
-            placeholder="Buscar por cod, nom o campus"
+            placeholder="Buscar por codigo, nombre o campus"
             value={search}
             onChange={(event) => {
               const nextValue = event.target.value;
@@ -178,7 +178,7 @@ export default function FacultyListPage() {
                 setPage(1);
               }
             }}
-            className="max-w-sm"
+            className="flex-1 min-w-[270px]"
           />
 
           <Button onClick={() => setOpenCreate(true)}>

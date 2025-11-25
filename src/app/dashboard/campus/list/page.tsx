@@ -154,13 +154,13 @@ export default function CampusListPage() {
 
         <div className="flex gap-2 w-full sm:w-auto">
           <Input
-            placeholder="Buscar por codigo, nombre o dir."
+            placeholder="Buscar por codigo, nombre o direccion"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="flex-1 min-w-[260px]"
+            className="flex-1 min-w-[270px]"
           />
 
           <Button onClick={() => setOpen(true)}>
