@@ -58,6 +58,42 @@ function resolveRelatedLabel(
   return options.fallback ?? "-";
 }
 
+// Obtiene el nombre visible de la facultad para reutilizar en celdas y ordenamiento.
+const getFacultyLabel = (row: BlockRow) =>
+  resolveRelatedLabel(row, {
+    directKeys: [
+      "facultad",
+      "facultad_nombre",
+      "facultadName",
+      "facultad_label",
+    ],
+    relationKeys: [
+      "facultad_detalle",
+      "facultadInfo",
+      "facultad_relacion",
+      "facultadData",
+    ],
+    fallback: "-",
+  });
+
+// Obtiene el nombre visible del tipo de bloque para reutilizar en celdas y ordenamiento.
+const getBlockTypeLabel = (row: BlockRow) =>
+  resolveRelatedLabel(row, {
+    directKeys: [
+      "tipo_bloque",
+      "tipoBloque",
+      "tipo_bloque_nombre",
+      "tipoBloqueNombre",
+    ],
+    relationKeys: [
+      "tipo_bloque_detalle",
+      "tipoBloqueInfo",
+      "tipo_bloque_relacion",
+      "tipoBloqueData",
+    ],
+    fallback: "-",
+  });
+
 // Definimos las columnas que la tabla necesita para representar cada bloque.
 export function blockColumns(
   onEdit: (row: BlockRow) => void,
@@ -93,51 +129,23 @@ export function blockColumns(
     },
     {
       // Facultad propietaria.
-      accessorKey: "facultad",
+      id: "facultad",
+      accessorFn: (row) => getFacultyLabel(row),
       meta: { label: "Facultad" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Facultad" />
       ),
-      cell: ({ row }) =>
-        resolveRelatedLabel(row.original, {
-          directKeys: [
-            "facultad",
-            "facultad_nombre",
-            "facultadName",
-            "facultad_label",
-          ],
-          relationKeys: [
-            "facultad_detalle",
-            "facultadInfo",
-            "facultad_relacion",
-            "facultadData",
-          ],
-          fallback: "-",
-        }),
+      cell: ({ getValue }) => getValue<string>(),
     },
     {
       // Tipo de bloque según el catálogo.
-      accessorKey: "tipo_bloque",
+      id: "tipo_bloque",
+      accessorFn: (row) => getBlockTypeLabel(row),
       meta: { label: "Tipo de bloque" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Tipo de bloque" />
       ),
-      cell: ({ row }) =>
-        resolveRelatedLabel(row.original, {
-          directKeys: [
-            "tipo_bloque",
-            "tipoBloque",
-            "tipo_bloque_nombre",
-            "tipoBloqueNombre",
-          ],
-          relationKeys: [
-            "tipo_bloque_detalle",
-            "tipoBloqueInfo",
-            "tipo_bloque_relacion",
-            "tipoBloqueData",
-          ],
-          fallback: "-",
-        }),
+      cell: ({ getValue }) => getValue<string>(),
     },
     {
       // Estado lógico transformado en un texto fácil de entender.

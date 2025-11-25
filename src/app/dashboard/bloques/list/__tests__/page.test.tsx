@@ -145,20 +145,30 @@ const blockListResponse = {
   },
 };
 
-// Catálogo simulado de facultades para poblar los filtros.
-const facultiesResponse = {
+// Catálogo simulado de facultades para poblar los filtros (todas).
+const facultiesAllResponse = {
   items: [
     { id: 7, nombre: "Facultad de Tecnologia" }, // Opción principal usada por los tests.
-    { id: 9, nombre: "Facultad de Humanidades" }, // Segunda opción para probar cambios.
+    { id: 9, nombre: "Facultad de Humanidades" }, // Segunda opción inactiva para probar filtros.
   ],
 };
 
-// Catálogo de tipos de bloque que alimentará el select correspondiente.
-const blockTypesResponse = {
+// Catálogo de facultades activas para formularios.
+const facultiesActiveResponse = {
+  items: [{ id: 7, nombre: "Facultad de Tecnologia" }],
+};
+
+// Catálogo de tipos de bloque que alimentará el select correspondiente (todos).
+const blockTypesAllResponse = {
   items: [
     { id: 2, nombre: "Academico" }, // Tipo asociado al resultado base.
-    { id: 5, nombre: "Administrativo" }, // Tipo alternativo para probar filtros.
+    { id: 5, nombre: "Administrativo" }, // Tipo alternativo inactivo para probar filtros.
   ],
+};
+
+// Catálogo de tipos de bloque activos para formularios.
+const blockTypesActiveResponse = {
+  items: [{ id: 2, nombre: "Academico" }],
 };
 
 // Obtenemos referencias tipadas a los mocks para usarlas cómodamente.
@@ -167,13 +177,19 @@ const mockedApiFetch = vi.mocked(apiFetch);
 function mockSuccessfulCatalogs() {
   // Reemplazamos la implementación de apiFetch por una versión que inspecciona la ruta solicitada.
   mockedApiFetch.mockImplementation(async (path: string, options?: RequestInit) => {
-    // Si la ruta consulta facultades devolvemos el catálogo preparado.
+    // Si la ruta consulta facultades devolvemos el catálogo completo o el de activos según corresponda.
     if (path.startsWith("/facultades")) {
-      return facultiesResponse as never;
+      if (path.includes("activo=true")) {
+        return facultiesActiveResponse as never;
+      }
+      return facultiesAllResponse as never;
     }
     // Para la lista de tipos de bloque devolvemos el catálogo correspondiente.
     if (path.startsWith("/tipo_bloques")) {
-      return blockTypesResponse as never;
+      if (path.includes("activo=true")) {
+        return blockTypesActiveResponse as never;
+      }
+      return blockTypesAllResponse as never;
     }
     // Siempre que se pidan bloques devolvemos la respuesta base.
     if (path.startsWith("/bloques")) {
@@ -253,6 +269,49 @@ describe("BlockListPage", () => {
     expect(
       screen.getByLabelText(/pisos máximos/i)
     ).toBeInTheDocument();
+  });
+
+  it("usa catálogos completos para filtros y solo los activos en formularios de crear/editar", async () => {
+    const user = userEvent.setup();
+    render(<BlockListPage />);
+
+    // Verificamos que el filtro de facultades incluya opciones inactivas (catalogo completo).
+    const facultyTrigger = await screen.findByLabelText(/filtrar por facultad/i);
+    await user.click(facultyTrigger);
+    expect(
+      await screen.findByRole("option", { name: "Facultad de Humanidades" })
+    ).toBeInTheDocument();
+
+    // Verificamos que el filtro de tipos incluya opciones inactivas.
+    const blockTypeTrigger = await screen.findByLabelText(
+      /filtrar por tipo de bloque/i
+    );
+    await user.click(blockTypeTrigger);
+    expect(
+      await screen.findByRole("option", { name: "Administrativo" })
+    ).toBeInTheDocument();
+
+    // Al crear solo deben pasarse catálogos activos al formulario.
+    await user.click(screen.getByRole("button", { name: /nuevo bloque/i }));
+    await waitFor(() => expect(blockCreateFormMock).toHaveBeenCalled());
+    const createProps = blockCreateFormMock.mock.calls.at(-1)?.[0];
+    expect(createProps?.faculties).toHaveLength(1);
+    expect(createProps?.faculties?.[0]?.nombre).toBe("Facultad de Tecnologia");
+    expect(createProps?.blockTypes).toHaveLength(1);
+    expect(createProps?.blockTypes?.[0]?.nombre).toBe("Academico");
+
+    // Cerramos el modal de creación para continuar con la edición.
+    await user.click(
+      screen.getByRole("button", { name: /cancelar creacion/i })
+    );
+
+    // En edición también deben pasar solo los activos.
+    const editButton = await screen.findByTitle(/editar bloque/i);
+    await user.click(editButton);
+    await waitFor(() => expect(blockEditFormMock).toHaveBeenCalled());
+    const editProps = blockEditFormMock.mock.calls.at(-1)?.[0];
+    expect(editProps?.faculties).toHaveLength(1);
+    expect(editProps?.blockTypes).toHaveLength(1);
   });
 
   it("envía el termino de búsqueda cuando la persona usuaria confirma el formulario", async () => {

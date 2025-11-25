@@ -404,8 +404,10 @@ export default function BlockListPage() {
   const [search, setSearch] = useState(""); // Texto que la persona escribe en el campo de búsqueda.
   const [appliedSearch, setAppliedSearch] = useState(""); // Texto efectivamente aplicado como filtro.
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS); // Estado con los filtros seleccionados.
-  const [faculties, setFaculties] = useState<CatalogOption[]>([]); // Opciones de facultad para el select.
-  const [blockTypes, setBlockTypes] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque.
+  const [facultiesFilter, setFacultiesFilter] = useState<CatalogOption[]>([]); // Opciones de facultad para filtros (todas).
+  const [blockTypesFilter, setBlockTypesFilter] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque para filtros (todas).
+  const [facultiesActive, setFacultiesActive] = useState<CatalogOption[]>([]); // Opciones activas para formularios.
+  const [blockTypesActive, setBlockTypesActive] = useState<CatalogOption[]>([]); // Opciones activas para formularios.
   const [loadingCatalogs, setLoadingCatalogs] = useState(true); // Indicador para mostrar que aún cargamos los catálogos.
   const [isFetching, setIsFetching] = useState(false); // Indicador que muestra cuando se consulta el listado principal.
   const [tableInstance, setTableInstance] =
@@ -489,7 +491,7 @@ export default function BlockListPage() {
     if (!label) {
       return undefined;
     }
-    return findCatalogIdByLabel(faculties, label);
+    return findCatalogIdByLabel(facultiesActive, label);
   }
 
   function guessBlockTypeIdFromRow(row: BlockRow): number | undefined {
@@ -510,7 +512,7 @@ export default function BlockListPage() {
     if (!label) {
       return undefined;
     }
-    return findCatalogIdByLabel(blockTypes, label);
+    return findCatalogIdByLabel(blockTypesActive, label);
   }
 
   function isValidId(value: unknown): value is number {
@@ -525,21 +527,38 @@ export default function BlockListPage() {
     async function loadCatalogs() {
       try {
         setLoadingCatalogs(true); // Marcamos que estamos cargando la data de los selects.
-        // Consultamos los catálogos en paralelo para ahorrar tiempo y cumplir con la regla de Security by Design (white list).
-        const [facultiesData, blockTypesData] = await Promise.all([
-          apiFetch<CatalogResponse>("/facultades?page=1&limit=200&activo=True", {
+        // Consultamos catálogos completos para filtros y solo activos para formularios.
+        const [
+          facultiesAllData,
+          facultiesActiveData,
+          blockTypesAllData,
+          blockTypesActiveData,
+        ] = await Promise.all([
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=200", {
             signal: controller.signal,
           }),
-          apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200&activo=True", {
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=200&activo=true", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200&activo=true", {
             signal: controller.signal,
           }),
         ]);
-        setFaculties(
-          normalizeCatalogOptions(facultiesData.items, "Facultad")
-        ); // Guardamos las facultades para el select con nombres legibles.
-        setBlockTypes(
-          normalizeCatalogOptions(blockTypesData.items, "Tipo de bloque")
-        ); // Guardamos los tipos de bloque normalizados.
+        setFacultiesFilter(
+          normalizeCatalogOptions(facultiesAllData.items, "Facultad")
+        ); // Guardamos las facultades para filtros (incluye inactivas).
+        setFacultiesActive(
+          normalizeCatalogOptions(facultiesActiveData.items, "Facultad")
+        ); // Facultades activas para crear/editar.
+        setBlockTypesFilter(
+          normalizeCatalogOptions(blockTypesAllData.items, "Tipo de bloque")
+        ); // Tipos de bloque para filtros (todos).
+        setBlockTypesActive(
+          normalizeCatalogOptions(blockTypesActiveData.items, "Tipo de bloque")
+        ); // Tipos de bloque activos para formularios.
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return; // Si abortamos manualmente salimos silenciosamente.
@@ -783,7 +802,7 @@ export default function BlockListPage() {
             allLabel="Todas las facultades"
             value={filters.facultadId}
             onChange={(value) => updateFilter("facultadId", value)}
-            options={faculties}
+            options={facultiesFilter}
             loading={loadingCatalogs}
           />
 
@@ -796,7 +815,7 @@ export default function BlockListPage() {
             allLabel="Todos los tipos"
             value={filters.tipoBloqueId}
             onChange={(value) => updateFilter("tipoBloqueId", value)}
-            options={blockTypes}
+            options={blockTypesFilter}
             loading={loadingCatalogs}
           />
 
@@ -890,8 +909,8 @@ export default function BlockListPage() {
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <BlockCreateForm
-                faculties={faculties}
-                blockTypes={blockTypes}
+                faculties={facultiesActive}
+                blockTypes={blockTypesActive}
                 onSuccess={async () => {
                   setPage(1);
                   setReloadKey((value) => value + 1);
@@ -923,8 +942,8 @@ export default function BlockListPage() {
               {blockToEdit ? (
                 <BlockEditForm
                   block={blockToEdit}
-                  faculties={faculties}
-                  blockTypes={blockTypes}
+                  faculties={facultiesActive}
+                  blockTypes={blockTypesActive}
                   onCancel={() => {
                     setEditOpen(false);
                     setBlockToEdit(null);
