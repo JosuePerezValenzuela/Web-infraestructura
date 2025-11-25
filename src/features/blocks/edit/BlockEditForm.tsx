@@ -35,7 +35,7 @@ const MapPicker = dynamic(() => import("@/features/campus/MapPicker"), {
 
 type BlockEditFormProps = {
   block: BlockRow;
-  faculties: CatalogOption[];
+  faculties: Array<CatalogOption & { lat?: number; lng?: number }>;
   blockTypes: CatalogOption[];
   onSubmitSuccess?: () => void | Promise<void>;
   onCancel?: () => void;
@@ -70,19 +70,23 @@ export default function BlockEditForm({
   const lngValue = form.watch("lng"); // Escuchamos la longitud con el mismo fin.
 
   const mapLat = parseCoordinateValue(latValue, DEFAULT_POSITION.lat); // Determinamos el valor numérico final para el mapa.
-  const mapLng = parseCoordinateValue(lngValue, DEFAULT_POSITION.lng); // Repetimos para la longitud.
+const mapLng = parseCoordinateValue(lngValue, DEFAULT_POSITION.lng); // Repetimos para la longitud.
 
-  const coordinatesLabel = latValue && lngValue
-    ? `Lat: ${latValue} | Lng: ${lngValue}`
-    : "Selecciona un punto en el mapa para registrar las coordenadas."; // Texto guía que explica el estado actual de las coordenadas.
+const coordinatesLabel = latValue && lngValue
+  ? `Lat: ${latValue} | Lng: ${lngValue}`
+  : "Selecciona un punto en el mapa para registrar las coordenadas."; // Texto guía que explica el estado actual de las coordenadas.
 
-  const catalogOptions = useMemo(
-    () => ({
-      faculties,
-      blockTypes,
-    }),
-    [faculties, blockTypes]
-  ); // Memoriza los catálogos para evitar renders innecesarios en los selectores personalizados.
+const catalogOptions = useMemo(
+  () => ({
+    faculties,
+    blockTypes,
+  }),
+  [faculties, blockTypes]
+); // Memoriza los catálogos para evitar renders innecesarios en los selectores personalizados.
+const facultyLookup = useMemo(
+  () => new Map(faculties.map((item) => [String(item.id), item])),
+  [faculties]
+);
 
   async function handleSubmit(values: BlockUpdateInput) {
     const parsed = blockUpdateSchema.parse(values); // Convertimos los datos del formulario al formato esperado por la API.
@@ -250,7 +254,24 @@ export default function BlockEditForm({
                   searchPlaceholder="Buscar facultad"
                   options={catalogOptions.faculties}
                   value={field.value ? String(field.value) : ""}
-                  onChange={(value) => field.onChange(value)}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    const selected = facultyLookup.get(value);
+                    if (
+                      selected &&
+                      typeof selected.lat === "number" &&
+                      typeof selected.lng === "number"
+                    ) {
+                      form.setValue("lat", String(selected.lat), {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      form.setValue("lng", String(selected.lng), {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
                 />
                 <FormMessage />
               </FormItem>
