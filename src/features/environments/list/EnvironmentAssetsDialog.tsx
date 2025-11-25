@@ -55,6 +55,8 @@ export function EnvironmentAssetsDialog({
   const [saving, setSaving] = useState(false);
   // Mostramos mensajes cortos de error cuando la busqueda falla.
   const [searchError, setSearchError] = useState<string | null>(null);
+  // Señalamos en el modal cuando se intenta agregar un activo duplicado.
+  const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
 
   // Creamos el formulario que observa el NIA y valida con Zod cada vez que cambia.
   const form = useForm<z.infer<typeof searchSchema>>({
@@ -93,6 +95,7 @@ export function EnvironmentAssetsDialog({
       setSearchError(null);
       setSearching(false);
       setSelectedAssets([]);
+      setDuplicateMessage(null);
       return;
     }
     // Creamos un abort controller para cancelar la peticion si el NIA cambia o el modal se cierra.
@@ -152,15 +155,19 @@ export function EnvironmentAssetsDialog({
       typeof item.nia === "number"
         ? String(item.nia)
         : String(item.nia ?? "").trim();
-    // Usamos la descripcion corta como nombre legible; si falta, mostramos el NIA.
     const nombre =
-      (typeof item.descripcion === "string" && item.descripcion.trim()) ||
-      (nia ? `NIA ${nia}` : "Activo sin nombre");
-    // Aprovechamos la descripcion extendida como detalle principal; si falta, caemos en la descripcion corta.
+      typeof item.descripcion === "string" && item.descripcion.trim().length
+        ? item.descripcion.trim()
+        : 'Sin descripcion'
+    // Tomamos la descripcion extendida y la recortamos a 128 caracteres para el backend.
+    const rawDescripcion =
+      typeof item.descripcionExt === "string" && item.descripcionExt.trim().length
+        ? item.descripcionExt.trim()
+        : nombre;
     const descripcion =
-      (typeof item.descripcionExt === "string" &&
-        item.descripcionExt.trim()) ||
-      nombre;
+      rawDescripcion.length > 128
+        ? rawDescripcion.slice(0, 128)
+        : rawDescripcion;
     // Regresamos la estructura que el endpoint POST /api/activos espera.
     return {
       nia,
@@ -183,9 +190,14 @@ export function EnvironmentAssetsDialog({
         (asset) => asset.nia.toLowerCase() === payload.nia.toLowerCase()
       );
       if (exists) {
+        setDuplicateMessage(
+          `El NIA ${payload.nia} ya está en la lista de activos seleccionados.`
+        );
         return current;
       }
-      return [...current, payload];
+      setDuplicateMessage(null);
+      // Insertamos al inicio para mostrar primero el mas reciente.
+      return [payload, ...current];
     });
   }
 
@@ -196,6 +208,7 @@ export function EnvironmentAssetsDialog({
         (asset) => asset.nia.toLowerCase() !== nia.toLowerCase()
       )
     );
+    setDuplicateMessage(null);
   }
 
   async function handleSaveAssets() {
@@ -248,7 +261,7 @@ export function EnvironmentAssetsDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-hidden">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Asociar activos</DialogTitle>
           <DialogDescription>
@@ -285,7 +298,12 @@ export function EnvironmentAssetsDialog({
 
           <div className="space-y-2 rounded-md border p-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold">Resultados</p>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">Resultados</p>
+                <p className="text-xs text-muted-foreground">
+                  Selecciona un activo para agregarlo a la lista.
+                </p>
+              </div>
               {searching ? (
                 <span className="text-xs text-muted-foreground">
                   Buscando...
@@ -293,35 +311,44 @@ export function EnvironmentAssetsDialog({
               ) : null}
             </div>
             {results.length ? (
-              <ul className="space-y-3">
+              <ul className="space-y-3 max-h-64 overflow-y-auto pr-1">
                 {results.map((item) => (
                   <li
                     key={String(item.nia)}
-                    className="flex flex-col gap-2 rounded-md border bg-card p-3 sm:flex-row sm:items-start sm:justify-between"
+                    className="rounded-lg border bg-card p-3 shadow-sm"
                   >
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                        <span>{item.descripcion}</span>
-                        <Badge variant="outline">
-                          NIA {String(item.nia)}
-                        </Badge>
-                        {item.estado ? (
-                          <Badge variant="secondary">{item.estado}</Badge>
-                        ) : null}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">NIA {String(item.nia)}</Badge>
+                          {item.estado ? (
+                            <Badge variant="secondary">{item.estado}</Badge>
+                          ) : null}
+                          {item.unidadMedida ? (
+                            <Badge variant="outline">{item.unidadMedida}</Badge>
+                          ) : null}
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <p className="font-semibold leading-snug">
+                            {item.descripcion}
+                          </p>
+                          {item.descripcionExt ? (
+                            <p className="text-xs text-muted-foreground leading-snug">
+                              {item.descripcionExt}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-                      {item.descripcionExt ? (
-                        <p className="text-xs text-muted-foreground">
-                          {item.descripcionExt}
-                        </p>
-                      ) : null}
+                      <div className="flex items-start justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleAddAsset(item)}
+                        >
+                          Agregar activo
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => handleAddAsset(item)}
-                    >
-                      Agregar activo
-                    </Button>
                   </li>
                 ))}
               </ul>
@@ -333,36 +360,52 @@ export function EnvironmentAssetsDialog({
           </div>
 
           <div className="space-y-2 rounded-md border p-3">
-            <p className="text-sm font-semibold">
-              Activos seleccionados para asociar
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-semibold">
+                Activos seleccionados para asociar
+              </p>
+              {duplicateMessage ? (
+                <p className="text-xs text-destructive text-right">
+                  {duplicateMessage}
+                </p>
+              ) : null}
+            </div>
             {selectedAssets.length ? (
-              <ul className="space-y-2">
-                {selectedAssets.map((asset) => (
-                  <li
-                    key={asset.nia}
-                    className="flex flex-col gap-2 rounded-md border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="space-y-1 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline">NIA {asset.nia}</Badge>
-                        <span className="font-semibold">{asset.nombre}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {asset.descripcion}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveAsset(asset.nia)}
-                    >
-                      Quitar
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+              <div className="max-h-64 overflow-y-auto rounded-md border">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50 text-xs font-semibold text-muted-foreground">
+                    <tr className="text-left">
+                      <th className="px-3 py-2">NIA</th>
+                      <th className="px-3 py-2">Nombre</th>
+                      <th className="px-3 py-2 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedAssets.map((asset) => (
+                      <tr key={asset.nia} className="border-t">
+                        <td className="px-3 py-2 font-mono text-xs">
+                          {asset.nia}
+                        </td>
+                        <td className="px-3 py-2 leading-snug">
+                          {asset.nombre}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveAsset(asset.nia)}
+                            >
+                              Quitar
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Todavia no agregas activos a la lista.
@@ -371,7 +414,7 @@ export function EnvironmentAssetsDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-3">
           <Button
             type="button"
             variant="outline"

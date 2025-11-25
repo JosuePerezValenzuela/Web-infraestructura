@@ -8,7 +8,7 @@ const GOODS_API_BASE =
 
 export async function GET(
   _request: Request,
-  { params }: { params: { nia: string } }
+  { params }: { params: Promise<{ nia: string }> }
 ) {
   // Validamos que la base de la API externa este configurada en variables de entorno.
   if (!GOODS_API_BASE) {
@@ -18,7 +18,9 @@ export async function GET(
     );
   }
 
-  const nia = decodeURIComponent(params.nia ?? "").trim();
+  // Esperamos los params porque en rutas dinamicas se entregan como promesa.
+  const { nia: rawNia } = await params;
+  const nia = decodeURIComponent(rawNia ?? "").trim();
   // Si no se recibio NIA devolvemos un error claro para el consumidor.
   if (!nia.length) {
     return NextResponse.json(

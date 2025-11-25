@@ -6,6 +6,7 @@ export const goodsItemSchema = z.object({
   descripcion: z.string().nullable().optional(),
   descripcionExt: z.string().nullable().optional(),
   estado: z.string().nullable().optional(),
+  unidadMedida: z.string().nullable().optional(),
 });
 
 // Validamos que la respuesta sea siempre un arreglo de bienes.
