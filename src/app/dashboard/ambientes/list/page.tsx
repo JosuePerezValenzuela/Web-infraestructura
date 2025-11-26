@@ -319,8 +319,18 @@ export default function EnvironmentListPage() {
   // Este estado traduce los filtros confirmados hacia la API.
   const [appliedFilters, setAppliedFilters] =
     useState<FilterState>(INITIAL_FILTERS);
-  // Guardamos las opciones de los selects (bloques, tipos y facultades) en un unico objeto.
-  const [catalogs, setCatalogs] = useState<{
+  // Catálogos para filtros (incluyen registros inactivos).
+  const [filterCatalogs, setFilterCatalogs] = useState<{
+    blocks: FilterOption[];
+    environmentTypes: FilterOption[];
+    faculties: FilterOption[];
+  }>({
+    blocks: [],
+    environmentTypes: [],
+    faculties: [],
+  });
+  // Catálogos activos para formularios de crear/editar.
+  const [activeCatalogs, setActiveCatalogs] = useState<{
     blocks: FilterOption[];
     environmentTypes: FilterOption[];
     faculties: FilterOption[];
@@ -359,7 +369,7 @@ export default function EnvironmentListPage() {
     useState<EnvironmentRow | null>(null);
 
   const blockOptionsForForm = useMemo<CatalogSelectOption[]>(() => {
-    return catalogs.blocks
+    return activeCatalogs.blocks
       .map((option) => {
         const id = Number(option.value);
         if (Number.isNaN(id)) {
@@ -370,10 +380,10 @@ export default function EnvironmentListPage() {
       .filter(
         (option): option is CatalogSelectOption => option !== null
       );
-  }, [catalogs.blocks]);
+  }, [activeCatalogs.blocks]);
 
   const environmentTypeOptionsForForm = useMemo<CatalogSelectOption[]>(() => {
-    return catalogs.environmentTypes
+    return activeCatalogs.environmentTypes
       .map((option) => {
         const id = Number(option.value);
         if (Number.isNaN(id)) {
@@ -384,7 +394,7 @@ export default function EnvironmentListPage() {
       .filter(
         (option): option is CatalogSelectOption => option !== null
       );
-  }, [catalogs.environmentTypes]);
+  }, [activeCatalogs.environmentTypes]);
 
   function resolveRowLabel(
     row: EnvironmentRow,
@@ -489,31 +499,60 @@ export default function EnvironmentListPage() {
       try {
         // Marcamos que estamos cargando la información auxiliar.
         setLoadingCatalogs(true);
-        // Consultamos los catálogos en paralelo para optimizar tiempo.
-        const [blocksResponse, environmentTypesResponse, facultiesResponse] =
-          await Promise.all([
-            apiFetch<CatalogResponse>("/bloques?page=1&limit=50", {
-              signal: controller.signal,
-            }),
-            apiFetch<CatalogResponse>("/tipo_ambientes?page=1&limit=50", {
-              signal: controller.signal,
-            }),
-            apiFetch<CatalogResponse>("/facultades?page=1&limit=50", {
-              signal: controller.signal,
-            }),
-          ]);
-        // Normalizamos las opciones y las guardamos para su uso inmediato.
-        setCatalogs({
+        // Consultamos catálogos completos (para filtros) y activos (para formularios) en paralelo.
+        const [
+          blocksAllResponse,
+          blocksActiveResponse,
+          environmentTypesAllResponse,
+          environmentTypesActiveResponse,
+          facultiesAllResponse,
+          facultiesActiveResponse,
+        ] = await Promise.all([
+          apiFetch<CatalogResponse>("/bloques?page=1&limit=50", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/bloques?page=1&limit=50&activo=true", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/tipo_ambientes?page=1&limit=50", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/tipo_ambientes?page=1&limit=50&activo=true", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=50", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=50&activo=true", {
+            signal: controller.signal,
+          }),
+        ]);
+        // Normalizamos las opciones y las guardamos separando filtros vs formularios.
+        setFilterCatalogs({
           blocks: normalizeCatalogOptions(
-            blocksResponse.items,
+            blocksAllResponse.items,
             "Bloque"
           ),
           environmentTypes: normalizeCatalogOptions(
-            environmentTypesResponse.items,
+            environmentTypesAllResponse.items,
             "Tipo de ambiente"
           ),
           faculties: normalizeCatalogOptions(
-            facultiesResponse.items,
+            facultiesAllResponse.items,
+            "Facultad"
+          ),
+        });
+        setActiveCatalogs({
+          blocks: normalizeCatalogOptions(
+            blocksActiveResponse.items,
+            "Bloque"
+          ),
+          environmentTypes: normalizeCatalogOptions(
+            environmentTypesActiveResponse.items,
+            "Tipo de ambiente"
+          ),
+          faculties: normalizeCatalogOptions(
+            facultiesActiveResponse.items,
             "Facultad"
           ),
         });
@@ -948,7 +987,7 @@ const columns = useMemo(
                 facultadId: value,
               }))
             }
-            options={catalogs.faculties}
+            options={filterCatalogs.faculties}
             loading={loadingCatalogs}
           />
 
@@ -966,7 +1005,7 @@ const columns = useMemo(
                 bloqueId: value,
               }))
             }
-            options={catalogs.blocks}
+            options={filterCatalogs.blocks}
             loading={loadingCatalogs}
           />
 
@@ -984,7 +1023,7 @@ const columns = useMemo(
                 tipoAmbienteId: value,
               }))
             }
-            options={catalogs.environmentTypes}
+            options={filterCatalogs.environmentTypes}
             loading={loadingCatalogs}
           />
 
