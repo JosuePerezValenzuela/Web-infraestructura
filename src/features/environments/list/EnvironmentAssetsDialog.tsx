@@ -33,6 +33,7 @@ type AssetPayload = {
   nombre: string;
   descripcion: string;
   ambiente_id: number;
+  ambiente_origen?: string | null;
 };
 
 const searchSchema = z.object({
@@ -47,6 +48,10 @@ export function EnvironmentAssetsDialog({
 }: EnvironmentAssetsDialogProps) {
   // Guardamos la lista de resultados que vienen del servicio externo.
   const [results, setResults] = useState<GoodsApiItem[]>([]);
+  // Guardamos el ambiente de origen devuelto por la API interna para cada NIA.
+  const [originByNia, setOriginByNia] = useState<Record<string, string | null>>(
+    {}
+  );
   // Mantenemos los activos que la persona va agregando para asociarlos en masa.
   const [selectedAssets, setSelectedAssets] = useState<AssetPayload[]>([]);
   // Indicamos cuando estamos buscando en el servicio externo para mostrar feedback.
@@ -112,12 +117,30 @@ export function EnvironmentAssetsDialog({
       // Marcamos el inicio de la busqueda para mostrar un estado de cargando.
       setSearching(true);
       setSearchError(null);
-      // Ejecutamos la consulta al servicio externo reutilizando el helper centralizado.
-      fetchGoodsByNia(watchedNia, { signal: controller.signal })
-        .then((data) => {
-          // Guardamos los resultados parseados; si no hay datos, mostramos un mensaje amigable.
-          setResults(data);
-          if (!data.length) {
+      // Ejecutamos la consulta al servicio externo y al backend interno en paralelo.
+      Promise.all([
+        fetchGoodsByNia(watchedNia, { signal: controller.signal }),
+        apiFetch<{ id?: number; ambiente_nombre?: string | null; nombre?: string | null; descripcion?: string | null }>(
+          `/activos/buscar_por_nia?nia=${encodeURIComponent(
+            watchedNia.trim()
+          )}`,
+          { signal: controller.signal }
+        ).catch(() => null),
+      ])
+        .then(([externalResults, localAsset]) => {
+          setResults(externalResults);
+          if (localAsset) {
+            const key = watchedNia.trim().toLowerCase();
+            setOriginByNia((prev) => ({
+              ...prev,
+              [key]:
+                typeof localAsset.ambiente_nombre === "string" &&
+                localAsset.ambiente_nombre.trim().length
+                  ? localAsset.ambiente_nombre.trim()
+                  : null,
+            }));
+          }
+          if (!externalResults.length) {
             setSearchError("No encontramos activos con ese NIA.");
           }
         })
@@ -174,6 +197,10 @@ export function EnvironmentAssetsDialog({
       nombre,
       descripcion,
       ambiente_id: environmentId,
+      ambiente_origen:
+        originByNia[nia.toLowerCase()] !== undefined
+          ? originByNia[nia.toLowerCase()]
+          : null,
     };
   }
 
@@ -226,7 +253,14 @@ export function EnvironmentAssetsDialog({
       // Enviamos cada activo al endpoint interno usando el helper centralizado apiFetch.
       await Promise.all(
         selectedAssets.map((asset) =>
-          apiFetch("/activos", { method: "POST", json: asset })
+          apiFetch(`/activos/nia/${asset.nia}`, {
+            method: "PUT",
+            json: {
+              nombre: asset.nombre,
+              descripcion: asset.descripcion,
+              ambiente_id: asset.ambiente_id,
+            },
+          })
         )
       );
       // Mostramos una notificacion clara de exito indicando cuantos activos se asociaron.
@@ -261,7 +295,7 @@ export function EnvironmentAssetsDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Asociar activos</DialogTitle>
           <DialogDescription>
@@ -269,97 +303,116 @@ export function EnvironmentAssetsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="rounded-md border bg-muted/40 p-3 text-sm">
-            <p className="font-semibold">Ambiente seleccionado</p>
-            <p className="text-muted-foreground">{environmentLabel || "-"}</p>
-          </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-4 rounded-md border bg-muted/30 p-4">
+            <div className="rounded-md border bg-muted/40 p-3 text-sm">
+              <p className="font-semibold">Ambiente seleccionado</p>
+              <p className="text-muted-foreground">{environmentLabel || "-"}</p>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="nia-search">Buscar NIA</Label>
-            <Input
-              id="nia-search"
-              aria-label="Buscar NIA"
-              placeholder="Escribe el NIA y espera un instante"
-              {...form.register("nia")}
-            />
-            <p className="text-xs text-muted-foreground">
-              Consultamos automaticamente cuando dejas de escribir.
-            </p>
-            {form.formState.errors.nia ? (
-              <p className="text-xs text-destructive">
-                {form.formState.errors.nia.message}
+            <div className="space-y-2">
+              <Label htmlFor="nia-search">Buscar NIA</Label>
+              <Input
+                id="nia-search"
+                aria-label="Buscar NIA"
+                placeholder="Escribe el NIA y espera un instante"
+                {...form.register("nia")}
+              />
+              <p className="text-xs text-muted-foreground">
+                Consultamos automaticamente cuando dejas de escribir.
               </p>
-            ) : null}
-            {searchError ? (
-              <p className="text-xs text-destructive">{searchError}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2 rounded-md border p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold">Resultados</p>
-                <p className="text-xs text-muted-foreground">
-                  Selecciona un activo para agregarlo a la lista.
+              {form.formState.errors.nia ? (
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.nia.message}
                 </p>
-              </div>
-              {searching ? (
-                <span className="text-xs text-muted-foreground">
-                  Buscando...
-                </span>
+              ) : null}
+              {searchError ? (
+                <p className="text-xs text-destructive">{searchError}</p>
               ) : null}
             </div>
-            {results.length ? (
-              <ul className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                {results.map((item) => (
-                  <li
-                    key={String(item.nia)}
-                    className="rounded-lg border bg-card p-3 shadow-sm"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline">NIA {String(item.nia)}</Badge>
-                          {item.estado ? (
-                            <Badge variant="secondary">{item.estado}</Badge>
-                          ) : null}
-                          {item.unidadMedida ? (
-                            <Badge variant="outline">{item.unidadMedida}</Badge>
-                          ) : null}
+
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">Resultados</p>
+                  <p className="text-xs text-muted-foreground">
+                    Selecciona un activo para agregarlo a la lista.
+                  </p>
+                </div>
+                {searching ? (
+                  <span className="text-xs text-muted-foreground">
+                    Buscando...
+                  </span>
+                ) : null}
+              </div>
+              {results.length ? (
+                <ul className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                  {results.map((item) => {
+                    const originKey = String(item.nia).toLowerCase();
+                    const origin =
+                      originByNia[originKey] === undefined
+                        ? null
+                        : originByNia[originKey];
+                    return (
+                      <li
+                        key={String(item.nia)}
+                        className="rounded-lg border bg-card p-3 shadow-sm"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline">
+                                NIA {String(item.nia)}
+                              </Badge>
+                              {item.estado ? (
+                                <Badge variant="secondary">{item.estado}</Badge>
+                              ) : null}
+                              {item.unidadMedida ? (
+                                <Badge variant="outline">
+                                  {item.unidadMedida}
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <div className="space-y-1 text-sm">
+                              <p className="font-semibold leading-snug">
+                                {item.descripcion}
+                              </p>
+                              {item.descripcionExt ? (
+                                <p className="text-xs text-muted-foreground leading-snug">
+                                  {item.descripcionExt}
+                                </p>
+                              ) : null}
+                              <p className="text-xs text-muted-foreground">
+                                Ambiente origen:{" "}
+                                {origin && origin.trim().length
+                                  ? origin
+                                  : "Sin asignar"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-start justify-end">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => handleAddAsset(item)}
+                            >
+                              Agregar activo
+                            </Button>
+                          </div>
                         </div>
-                        <div className="space-y-1 text-sm">
-                          <p className="font-semibold leading-snug">
-                            {item.descripcion}
-                          </p>
-                          {item.descripcionExt ? (
-                            <p className="text-xs text-muted-foreground leading-snug">
-                              {item.descripcionExt}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="flex items-start justify-end">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => handleAddAsset(item)}
-                        >
-                          Agregar activo
-                        </Button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Escribe un NIA para buscar activos disponibles.
-              </p>
-            )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Escribe un NIA para buscar activos disponibles.
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-2 rounded-md border p-3">
+          <div className="space-y-2 rounded-md border p-4">
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm font-semibold">
                 Activos seleccionados para asociar
@@ -371,12 +424,13 @@ export function EnvironmentAssetsDialog({
               ) : null}
             </div>
             {selectedAssets.length ? (
-              <div className="max-h-64 overflow-y-auto rounded-md border">
+              <div className="max-h-[420px] overflow-y-auto rounded-md border">
                 <table className="min-w-full text-sm">
                   <thead className="sticky top-0 bg-muted/50 text-xs font-semibold text-muted-foreground">
                     <tr className="text-left">
                       <th className="px-3 py-2">NIA</th>
                       <th className="px-3 py-2">Nombre</th>
+                      <th className="px-3 py-2">Ambiente origen</th>
                       <th className="px-3 py-2 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -388,6 +442,11 @@ export function EnvironmentAssetsDialog({
                         </td>
                         <td className="px-3 py-2 leading-snug">
                           {asset.nombre}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-muted-foreground">
+                          {asset.ambiente_origen && asset.ambiente_origen.trim().length
+                            ? asset.ambiente_origen
+                            : "Sin asignar"}
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex justify-end">
