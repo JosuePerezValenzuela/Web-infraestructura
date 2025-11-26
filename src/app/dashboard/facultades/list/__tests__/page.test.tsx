@@ -202,8 +202,8 @@ describe("FacultyListPage interactions", () => {
     // Verificamos que el nombre del campus sea visible en la misma fila.
     expect(screen.getByText("Campus Central")).toBeInTheDocument();
 
-    // Confirmamos que el estado activo se traduzca en el texto legible para la persona usuaria.
-    expect(screen.getByText("Activo")).toBeInTheDocument();
+    // Confirmamos que el estado activo se traduzca en el texto legible para la persona usuaria dentro de la celda.
+    expect(screen.getByRole("cell", { name: /activo/i })).toBeInTheDocument();
 
     // Revisamos que no se muestre el identificador interno de la fila, porque la regla pide ocultarlo.
     expect(screen.queryByText("7")).not.toBeInTheDocument();
@@ -239,7 +239,7 @@ describe("FacultyListPage interactions", () => {
 
     // Ubicamos el campo de bÃºsqueda que filtra la tabla.
     const searchBox = screen.getByPlaceholderText(
-      "Buscar por cod, nom o campus"
+      "Buscar por codigo, nombre o campus"
     );
 
     // Simulamos que la persona escribe un tÃ©rmino nuevo.
@@ -295,16 +295,22 @@ describe("FacultyListPage interactions", () => {
     await screen.findByRole("heading", { name: /registrar nueva facultad/i });
 
     // Llenamos el campo de cÃ³digo con un valor de ejemplo.
-    await user.type(screen.getByLabelText(/codigo de la facultad/i), "FAC-123");
+    await user.type(
+      screen.getByRole("textbox", { name: /codigo de la facultad/i }),
+      "FAC-123"
+    );
 
     // Llenamos el nombre oficial de la facultad.
     await user.type(
-      screen.getByLabelText(/nombre de la facultad/i),
+      screen.getByRole("textbox", { name: /nombre de la facultad/i }),
       "Facultad de Ingenieria"
     );
 
     // Llenamos el nombre corto opcional.
-    await user.type(screen.getByLabelText(/nombre corto/i), "FI");
+    await user.type(
+      screen.getByRole("textbox", { name: /nombre corto/i }),
+      "FI"
+    );
 
     // Abrimos el selector de campus para escoger la relaciÃ³n adecuada.
     await user.click(screen.getByRole("button", { name: /seleccionar campus/i }));
@@ -379,7 +385,9 @@ describe("FacultyListPage interactions", () => {
     ).toHaveValue("Facultad de Ciencias y Tecnologia");
 
     // Revisamos tambiÃ©n el nombre corto para asegurar que no se pierden datos.
-    expect(screen.getByLabelText(/nombre corto/i)).toHaveValue("FCyT");
+    expect(
+      screen.getByRole("textbox", { name: /nombre corto/i })
+    ).toHaveValue("FCyT");
 
     // Corroboramos que el selector de campus despliegue el nombre actual asignado.
     expect(screen.getByRole("button", { name: /campus central/i })).toBeInTheDocument();
@@ -408,12 +416,12 @@ describe("FacultyListPage interactions", () => {
     await screen.findByRole("heading", { name: /editar facultad/i });
 
     // Actualizamos el nombre completo para simular un cambio real.
-    const nameInput = screen.getByLabelText(/nombre de la facultad/i);
+    const nameInput = screen.getByRole("textbox", { name: /nombre de la facultad/i });
     await user.clear(nameInput);
     await user.type(nameInput, "Facultad de Ingenieria Actualizada");
 
     // Modificamos el nombre corto con un nuevo acrÃ³nimo.
-    const shortNameInput = screen.getByLabelText(/nombre corto/i);
+    const shortNameInput = screen.getByRole("textbox", { name: /nombre corto/i });
     await user.clear(shortNameInput);
     await user.type(shortNameInput, "FIA");
 
