@@ -233,7 +233,7 @@ export function environmentColumns(
       accessorKey: "clases",
       meta: { label: "Uso academico" },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Uso academico" />
+        <DataTableColumnHeader column={column} title="Uso" />
       ),
       cell: ({ getValue }) => {
         const teaches = getValue<boolean>();
