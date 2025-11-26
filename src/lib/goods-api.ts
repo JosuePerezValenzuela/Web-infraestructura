@@ -6,6 +6,12 @@ export const goodsItemSchema = z.object({
   descripcion: z.string().nullable().optional(),
   descripcionExt: z.string().nullable().optional(),
   estado: z.string().nullable().optional(),
+  marca: z.string().nullable().optional(),
+  valorInicial: z.number().nullable().optional(),
+  modelo: z.string().nullable().optional(),
+  serie: z.string().nullable().optional(),
+  fechaCompra: z.string().nullable().optional(),
+  fechaIncorporacion: z.string().nullable().optional(),
   unidadMedida: z.string().nullable().optional(),
 });
 
