@@ -295,7 +295,7 @@ export function EnvironmentAssetsDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] w-full max-w-[95vw] sm:max-w-[1200px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Asociar activos</DialogTitle>
           <DialogDescription>
@@ -382,10 +382,10 @@ export function EnvironmentAssetsDialog({
                                   {item.descripcionExt}
                                 </p>
                               ) : null}
-                              <p className="text-xs text-muted-foreground">
-                                Ambiente origen:{" "}
+                              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                                Origen actual:{" "}
                                 {origin && origin.trim().length
-                                  ? origin
+                                  ? `${origin} · Al guardar, este activo se moverá a este ambiente.`
                                   : "Sin asignar"}
                               </p>
                             </div>
