@@ -94,8 +94,8 @@ describe("EnvironmentTypeListPage", () => {
     // Validamos que la descripcion corta se presente para facilitar identificaciones rapidas.
     expect(screen.getByText("Clases")).toBeInTheDocument();
 
-    // Revisamos que el estado booleano se transforme en el texto legible esperado.
-    expect(screen.getByText(/activo/i)).toBeInTheDocument();
+    // Revisamos que el estado booleano se transforme en el texto legible esperado en la celda.
+    expect(screen.getByRole("cell", { name: /activo/i })).toBeInTheDocument();
 
     // Comprobamos que exista el campo de busqueda accesible para filtrar por nombre.
     expect(
@@ -196,9 +196,13 @@ describe("EnvironmentTypeListPage", () => {
     await screen.findByRole("heading", { name: /crear tipo de ambiente/i });
 
     // Verificamos la presencia de cada campo requerido por el formulario.
-    expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Descripcion$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/descripcion corta/i)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /nombre/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /^Descripcion$/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /descripcion corta/i })
+    ).toBeInTheDocument();
 
     // Validamos que exista el boton que enviara el formulario.
     expect(screen.getByRole("button", { name: /guardar/i })).toBeInTheDocument();
@@ -226,13 +230,16 @@ describe("EnvironmentTypeListPage", () => {
     await screen.findByRole("heading", { name: /crear tipo de ambiente/i });
 
     // Llenamos cada campo siguiendo el contrato de la HU.
-    await user.type(screen.getByLabelText(/nombre/i), "Laboratorio verde");
     await user.type(
-      screen.getByLabelText(/^Descripcion$/i),
+      screen.getByRole("textbox", { name: /nombre/i }),
+      "Laboratorio verde"
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /^Descripcion$/i }),
       "Espacios dedicados a investigacion practica."
     );
     await user.type(
-      screen.getByLabelText(/descripcion corta/i),
+      screen.getByRole("textbox", { name: /descripcion corta/i }),
       "Laboratorio"
     );
 
@@ -292,13 +299,16 @@ describe("EnvironmentTypeListPage", () => {
     await screen.findByRole("heading", { name: /crear tipo de ambiente/i });
 
     // Llenamos los campos requeridos.
-    await user.type(screen.getByLabelText(/nombre/i), "Laboratorio verde");
     await user.type(
-      screen.getByLabelText(/^Descripcion$/i),
+      screen.getByRole("textbox", { name: /nombre/i }),
+      "Laboratorio verde"
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /^Descripcion$/i }),
       "Espacios dedicados a investigacion practica."
     );
     await user.type(
-      screen.getByLabelText(/descripcion corta/i),
+      screen.getByRole("textbox", { name: /descripcion corta/i }),
       "Laboratorio"
     );
 
@@ -377,20 +387,20 @@ describe("EnvironmentTypeListPage", () => {
     await screen.findByRole("heading", { name: /editar tipo de ambiente/i });
 
     // Ajustamos los campos para reflejar los cambios requeridos.
-    const nameInput = screen.getByLabelText(/nombre/i);
+    const nameInput = screen.getByRole("textbox", { name: /nombre/i });
     await user.clear(nameInput);
     await user.type(nameInput, "Aula multimedia");
 
-    const descriptionInput = screen.getByLabelText(/^Descripcion$/i);
+    const descriptionInput = screen.getByRole("textbox", { name: /^Descripcion$/i });
     await user.clear(descriptionInput);
     await user.type(
       descriptionInput,
       "Espacios equipados con herramientas multimedia."
     );
 
-    const shortDescriptionInput = screen.getByLabelText(
-      /descripcion corta/i
-    );
+    const shortDescriptionInput = screen.getByRole("textbox", {
+      name: /descripcion corta/i,
+    });
     await user.clear(shortDescriptionInput);
     await user.type(shortDescriptionInput, "Multimedia");
 
@@ -457,7 +467,7 @@ describe("EnvironmentTypeListPage", () => {
     await screen.findByRole("heading", { name: /editar tipo de ambiente/i });
 
     // Realizamos un pequeño ajuste en el nombre para que el formulario se considere modificado.
-    const nameInput = screen.getByLabelText(/nombre/i);
+    const nameInput = screen.getByRole("textbox", { name: /nombre/i });
     await user.clear(nameInput);
     await user.type(nameInput, "Aula de clases 2");
 
