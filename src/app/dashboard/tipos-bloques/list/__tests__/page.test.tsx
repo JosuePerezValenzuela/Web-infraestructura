@@ -85,8 +85,8 @@ describe("BlockTypeListPage", () => {
       screen.getByText("Bloques destinados a laboratorios especializados.")
     ).toBeInTheDocument();
 
-    // Confirmamos que el estado activo se transforme en texto legible.
-    expect(screen.getByText(/activo/i)).toBeInTheDocument();
+    // Confirmamos que el estado activo se transforme en texto legible dentro de la fila.
+    expect(screen.getByRole("cell", { name: /activo/i })).toBeInTheDocument();
 
     // Validamos que la tabla muestre la columna de acciones para futuras operaciones.
     expect(
@@ -131,11 +131,14 @@ describe("BlockTypeListPage", () => {
     await user.click(createButton);
 
     // Llenamos el campo de nombre con un valor valido.
-    await user.type(screen.getByLabelText(/nombre/i), "Edificio academico");
+    await user.type(
+      screen.getByRole("textbox", { name: /nombre/i }),
+      "Edificio academico"
+    );
 
     // Completamos la descripcion con detalles adicionales.
     await user.type(
-      screen.getByLabelText(/descripcion/i),
+      screen.getByRole("textbox", { name: /descripcion/i }),
       "Bloques utilizados para aulas generales y oficinas administrativas."
     );
 
@@ -225,11 +228,14 @@ describe("BlockTypeListPage", () => {
     );
 
     // Completamos el campo de nombre con un valor de prueba.
-    await user.type(screen.getByLabelText(/nombre/i), "Centro cultural");
+    await user.type(
+      screen.getByRole("textbox", { name: /nombre/i }),
+      "Centro cultural"
+    );
 
     // Escribimos una descripcion para el nuevo tipo de bloque.
     await user.type(
-      screen.getByLabelText(/descripcion/i),
+      screen.getByRole("textbox", { name: /descripcion/i }),
       "Bloques destinados a eventos culturales y exposiciones."
     );
 
@@ -309,7 +315,7 @@ describe("BlockTypeListPage", () => {
     await screen.findByRole("heading", { name: /editar tipo de bloque/i });
 
     // Localizamos el campo de nombre para actualizarlo.
-    const nombreInput = screen.getByLabelText(/nombre/i);
+    const nombreInput = screen.getByRole("textbox", { name: /nombre/i });
 
     // Borramos el valor actual del campo.
     await user.clear(nombreInput);
@@ -318,7 +324,7 @@ describe("BlockTypeListPage", () => {
     await user.type(nombreInput, "Laboratorio avanzado");
 
     // Obtenemos el textarea de descripcion para modificarlo.
-    const descripcionTextarea = screen.getByLabelText(/descripcion/i);
+    const descripcionTextarea = screen.getByRole("textbox", { name: /descripcion/i });
 
     // Reemplazamos la descripcion previa.
     await user.clear(descripcionTextarea);
