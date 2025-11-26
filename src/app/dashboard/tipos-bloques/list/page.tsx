@@ -23,7 +23,7 @@ import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { X } from "lucide-react";
 
-const TAKE = 6;
+const TAKE = 5;
 
 export default function BlockTypeListPage() {
   // Guardamos la informacion que llega desde la API para poblar la tabla.
@@ -195,9 +195,6 @@ export default function BlockTypeListPage() {
         <h1 className="text-2xl font-semibold tracking-tight">
           Tipos de bloques
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Administra el catalogo que clasifica los bloques de la institucion.
-        </p>
       </header>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
