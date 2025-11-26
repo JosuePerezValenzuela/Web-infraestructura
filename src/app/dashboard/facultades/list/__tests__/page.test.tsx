@@ -313,7 +313,7 @@ describe("FacultyListPage interactions", () => {
     );
 
     // Abrimos el selector de campus para escoger la relaciÃ³n adecuada.
-    await user.click(screen.getByRole("button", { name: /seleccionar campus/i }));
+    await user.click(screen.getByRole("button", { name: /Seleccione un campus/i }));
 
     // Escribimos un texto de bÃºsqueda para filtrar los campus disponibles.
     const campusSearchInput = screen.getByPlaceholderText(/buscar campus/i);

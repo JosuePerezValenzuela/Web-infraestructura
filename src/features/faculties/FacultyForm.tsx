@@ -191,7 +191,7 @@ export default function FacultyForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2">
           <FormField
             control={form.control}
             name="codigo"
@@ -233,6 +233,12 @@ export default function FacultyForm({
             )}
           />
 
+        </div>
+
+        <div
+          className="grid gap-4 md:grid-cols-2"
+          data-testid="faculty-short-campus-grid"
+        >
           <FormField
             control={form.control}
             name="nombre_corto"
@@ -240,109 +246,106 @@ export default function FacultyForm({
               <FormItem>
                 <FormLabel htmlFor="nombre-corto">Nombre corto (opcional)</FormLabel>
                 <FormControl>
-                  <Input
-                    id="nombre-corto"
-                    placeholder="FCyT"
-                    {...field}
-                  />
+                  <Input id="nombre-corto" placeholder="FCyT" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-        <FormField
-          control={form.control}
-          name="campus_id"
-          render={({ field }) => {
-            const selectedCampus = campusOptions.find(
-              (option) => option.id === field.value
-            );
+          <FormField
+            control={form.control}
+            name="campus_id"
+            render={({ field }) => {
+              const selectedCampus = campusOptions.find(
+                (option) => option.id === field.value
+              );
 
-            return (
-              <FormItem>
-                <FormLabel>Seleccione el campus</FormLabel>
-                <div className="relative">
-                  <Button
-                    ref={triggerRef}
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between"
-                    aria-haspopup="listbox"
-                    aria-expanded={campusDropdownOpen}
-                    onClick={() => {
-                      setCampusDropdownOpen((open) => !open);
-                      setCampusSearch("");
-                    }}
-                  >
-                    <span>
-                      {selectedCampus ? selectedCampus.nombre : "Seleccionar campus"}
-                    </span>
-                    <span aria-hidden className="text-xs text-muted-foreground">
-                      {campusDropdownOpen ? "Cerrar" : "Abrir"}
-                    </span>
-                  </Button>
-
-                  {campusDropdownOpen ? (
-                    <div
-                      ref={dropdownRef}
-                      className="absolute z-20 mt-2 w-full rounded-md border bg-popover shadow-md"
+              return (
+                <FormItem>
+                  <FormLabel htmlFor="campus-select">Seleccione un campus</FormLabel>
+                  <div className="relative">
+                    <Button
+                      ref={triggerRef}
+                      id="campus-select"
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between"
+                      aria-haspopup="listbox"
+                      aria-expanded={campusDropdownOpen}
+                      onClick={() => {
+                        setCampusDropdownOpen((open) => !open);
+                        setCampusSearch("");
+                      }}
                     >
-                      <div className="p-2">
-                        <Input
-                          placeholder="Buscar campus"
-                          value={campusSearch}
-                          onChange={(event) => setCampusSearch(event.target.value)}
-                        />
-                      </div>
+                      <span>
+                        {selectedCampus ? selectedCampus.nombre : "Seleccionar campus"}
+                      </span>
+                      <span aria-hidden className="text-xs text-muted-foreground">
+                        {campusDropdownOpen ? "Cerrar" : "Abrir"}
+                      </span>
+                    </Button>
 
-                      <ul
-                        role="listbox"
-                        aria-label="Listado de campus"
-                        className="max-h-56 overflow-y-auto px-1 pb-2"
+                    {campusDropdownOpen ? (
+                      <div
+                        ref={dropdownRef}
+                        className="absolute z-20 mt-2 w-full rounded-md border bg-popover shadow-md"
                       >
-                        {filteredCampusOptions.length ? (
-                          filteredCampusOptions.map((option) => (
-                            <li key={option.id} className="p-1">
-                              <button
-                                type="button"
-                                role="option"
-                                aria-selected={field.value === option.id}
-                                className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                                onClick={() => {
-                                  field.onChange(option.id);
-                                  if (
-                                    typeof option.lat === "number" &&
-                                    typeof option.lng === "number"
-                                  ) {
-                                    form.setValue("lat", option.lat, {
-                                      shouldValidate: true,
-                                    });
-                                    form.setValue("lng", option.lng, {
-                                      shouldValidate: true,
-                                    });
-                                  }
-                                  setCampusDropdownOpen(false);
-                                }}
-                              >
-                                {option.nombre}
-                              </button>
+                        <div className="p-2">
+                          <Input
+                            placeholder="Buscar campus"
+                            value={campusSearch}
+                            onChange={(event) => setCampusSearch(event.target.value)}
+                          />
+                        </div>
+
+                        <ul
+                          role="listbox"
+                          aria-label="Listado de campus"
+                          className="max-h-56 overflow-y-auto px-1 pb-2"
+                        >
+                          {filteredCampusOptions.length ? (
+                            filteredCampusOptions.map((option) => (
+                              <li key={option.id} className="p-1">
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={field.value === option.id}
+                                  className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                  onClick={() => {
+                                    field.onChange(option.id);
+                                    if (
+                                      typeof option.lat === "number" &&
+                                      typeof option.lng === "number"
+                                    ) {
+                                      form.setValue("lat", option.lat, {
+                                        shouldValidate: true,
+                                      });
+                                      form.setValue("lng", option.lng, {
+                                        shouldValidate: true,
+                                      });
+                                    }
+                                    setCampusDropdownOpen(false);
+                                  }}
+                                >
+                                  {option.nombre}
+                                </button>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="px-3 py-2 text-sm text-muted-foreground">
+                              No se encontraron campus
                             </li>
-                          ))
-                        ) : (
-                          <li className="px-3 py-2 text-sm text-muted-foreground">
-                            No se encontraron campus
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
         </div>
 
         <div className="rounded-md border bg-muted/20 p-3 space-y-2">
