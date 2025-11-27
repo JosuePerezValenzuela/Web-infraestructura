@@ -24,7 +24,7 @@ import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 
 // Definimos la cantidad de filas que solicitaremos por pagina para mantener una altura consistente.
-const TAKE = 8;
+const TAKE = 5;
 
 export default function EnvironmentTypeListPage() {
   // Guardamos las filas recibidas desde la API para mostrarlas en la tabla.
@@ -205,9 +205,6 @@ export default function EnvironmentTypeListPage() {
         <h1 className="text-2xl font-semibold tracking-tight">
           Tipos de ambientes
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Consulta y gestiona los tipos de ambientes que se usan para clasificar los espacios institucionales.
-        </p>
       </header>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
