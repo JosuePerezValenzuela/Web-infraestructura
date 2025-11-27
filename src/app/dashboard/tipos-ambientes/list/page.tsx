@@ -321,7 +321,7 @@ export default function EnvironmentTypeListPage() {
                 <DialogTitle>Eliminar tipo de ambiente</DialogTitle>
                 <DialogDescription>
                   Esta accion eliminara el tipo de ambiente seleccionado y los
-                  ambientes asociados. No se puede deshacer.
+                  ambientes de dicho tipo y dejara libres los activos asociados a esos ambientes. No se puede deshacer.
                 </DialogDescription>
               </div>
               <DialogClose asChild>
