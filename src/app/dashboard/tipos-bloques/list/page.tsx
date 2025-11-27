@@ -305,8 +305,8 @@ export default function BlockTypeListPage() {
               <div className="space-y-2">
                 <DialogTitle>Eliminar tipo de bloque</DialogTitle>
                 <DialogDescription>
-                  Esta accion eliminara el tipo de bloque y sus bloques y
-                  ambientes asociados. No se puede deshacer.
+                  Esta accion eliminara el tipo de bloque, los bloques de ese tipo,
+                  ambientes dentro de esos bloques y los activos de esos ambientes quedaran libres. No se puede deshacer.
                 </DialogDescription>
               </div>
               <DialogClose asChild>
