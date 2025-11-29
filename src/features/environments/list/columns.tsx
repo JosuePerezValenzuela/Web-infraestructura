@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Link2, Pencil, Trash2 } from "lucide-react";
+import { Clock3, Link2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -36,11 +36,8 @@ function resolveRelatedLabel(
   // Si no encontramos nada directo revisamos si existe un objeto relacionado que contenga el nombre.
   for (const relationKey of options.relationKeys ?? []) {
     const relation = record[relationKey];
-    if (
-      relation &&
-      typeof relation === "object" &&
-      !Array.isArray(relation)
-    ) {
+
+    if (relation && typeof relation === "object" && !Array.isArray(relation)) {
       const relationRecord = relation as Record<string, unknown>;
       const candidate =
         relationRecord.nombre ??
@@ -62,7 +59,9 @@ type CapacityValues = {
   exam: number | null;
 };
 
-function parseCapacityRecord(row: EnvironmentRow): Record<string, unknown> | null {
+function parseCapacityRecord(
+  row: EnvironmentRow
+): Record<string, unknown> | null {
   const record = row as Record<string, unknown>;
   const rawValue =
     record.capacidad ??
@@ -115,9 +114,8 @@ function getCapacityValues(row: EnvironmentRow): CapacityValues | null {
 
   const totalValue =
     parsed.total ?? parsed.capacidad_total ?? parsed.totalGeneral;
-  const examValue =
-    parsed.examen ?? parsed.examenes ?? parsed.capacidad_examen;
 
+  const examValue = parsed.examen ?? parsed.examenes ?? parsed.capacidad_examen;
   const total = toNumberOrNull(totalValue);
   const exam = toNumberOrNull(examValue);
 
@@ -131,7 +129,8 @@ function getCapacityValues(row: EnvironmentRow): CapacityValues | null {
 export function environmentColumns(
   onEdit?: (row: EnvironmentRow) => void,
   onDelete?: (row: EnvironmentRow) => void,
-  onAssociateAssets?: (row: EnvironmentRow) => void
+  onAssociateAssets?: (row: EnvironmentRow) => void,
+  onAssignSchedules?: (row: EnvironmentRow) => void
 ): ColumnDef<EnvironmentRow>[] {
   // Construimos y devolvemos la configuracion completa de columnas para la tabla de ambientes.
   return [
@@ -273,12 +272,24 @@ export function environmentColumns(
             type="button"
             variant="ghost"
             size="icon"
+            aria-label="Asignar horarios"
+            title="Asignar horarios"
+            onClick={() => onAssignSchedules?.(row.original)}
+          >
+            <Clock3 className="h-4 w-4" aria-hidden />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             aria-label="Asociar activos"
             title="Asociar activos"
             onClick={() => onAssociateAssets?.(row.original)}
           >
             <Link2 className="h-4 w-4" aria-hidden />
           </Button>
+
           <Button
             type="button"
             variant="ghost"
@@ -289,6 +300,7 @@ export function environmentColumns(
           >
             <Pencil className="h-4 w-4" aria-hidden />
           </Button>
+
           <Button
             type="button"
             variant="ghost"
