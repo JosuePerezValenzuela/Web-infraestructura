@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +26,7 @@ type EnvironmentSchedulesDialogProps = {
 };
 
 type SelectedSlots = Record<number, Set<string>>;
+type LastSelection = { day: number; slot: string } | null;
 
 type ApiError = {
   error?: string;
@@ -61,7 +63,11 @@ function buildSlots(start: string, end: string, period: number): string[] {
   const startMinutes = toMinutes(start);
   const endMinutes = toMinutes(end);
   const slots: string[] = [];
-  for (let current = startMinutes; current < endMinutes; current += period) {
+  for (
+    let current = startMinutes;
+    current <= endMinutes - period;
+    current += period
+  ) {
     slots.push(toTimeString(current));
   }
   return slots;
@@ -85,7 +91,7 @@ function resolveApiError(error: unknown): string {
     const message = apiError.details
       .map((detail) => (typeof detail === "string" ? detail : detail.message))
       .filter(Boolean)
-      .join("");
+      .join("\n");
     if (message) return message;
   }
   if (typeof apiError.message === "string" && apiError.message.trim()) {
@@ -114,6 +120,7 @@ export function EnvironmentSchedulesDialog({
   const [selectedSlots, setSelectedSlots] = useState<SelectedSlots>(() =>
     buildEmptySelection()
   );
+  const [lastSelection, setLastSelection] = useState<LastSelection>(null);
 
   useEffect(() => {
     if (!open) {
@@ -122,25 +129,13 @@ export function EnvironmentSchedulesDialog({
       setPeriodMinutes(45);
       setSlots([]);
       setSelectedSlots(buildEmptySelection());
+      setLastSelection(null);
     }
   }, [open]);
 
-  function toggleSlot(day: number, slot: string) {
-    setSelectedSlots((current) => {
-      const next: SelectedSlots = { ...current };
-      const nextSet = new Set(next[day]);
-      if (nextSet.has(slot)) {
-        nextSet.delete(slot);
-      } else {
-        nextSet.add(slot);
-      }
-      next[day] = nextSet;
-      return next;
-    });
-  }
-
   function clearSelections() {
     setSelectedSlots(buildEmptySelection());
+    setLastSelection(null);
   }
 
   function selectAll() {
@@ -150,6 +145,52 @@ export function EnvironmentSchedulesDialog({
       return acc;
     }, {} as SelectedSlots);
     setSelectedSlots(filled);
+    setLastSelection(null);
+  }
+
+  function handleCellClick(
+    day: number,
+    slot: string,
+    event?: MouseEvent<HTMLButtonElement | HTMLDivElement>
+  ) {
+    const useRange = Boolean(
+      event?.shiftKey && lastSelection && lastSelection.day === day
+    );
+    setSelectedSlots((current) => {
+      const next: SelectedSlots = { ...current };
+      const currentSet = new Set(next[day]);
+
+      if (useRange && lastSelection) {
+        const ordered = [...slots].sort((a, b) => toMinutes(a) - toMinutes(b));
+        const startIndex = ordered.indexOf(lastSelection.slot);
+        const endIndex = ordered.indexOf(slot);
+
+        if (startIndex !== -1 && endIndex !== -1) {
+          const low = Math.min(startIndex, endIndex);
+          const high = Math.max(startIndex, endIndex);
+          const desiredSelected = !currentSet.has(slot);
+
+          for (let i = low; i <= high; i++) {
+            if (desiredSelected) {
+              currentSet.add(ordered[i]);
+            } else {
+              currentSet.delete(ordered[i]);
+            }
+          }
+        }
+      } else {
+        if (currentSet.has(slot)) {
+          currentSet.delete(slot);
+        } else {
+          currentSet.add(slot);
+        }
+      }
+
+      next[day] = currentSet;
+      return next;
+    });
+
+    setLastSelection({ day, slot });
   }
 
   function slotsToRanges(
@@ -164,12 +205,15 @@ export function EnvironmentSchedulesDialog({
       hora_fin: string;
     }> = [];
     if (!times.length) return ranges;
+
     let rangeStart = times[0];
     let previous = times[0];
+
     for (let i = 1; i < times.length; i++) {
       const current = times[i];
       const isContiguous =
         toMinutes(current) - toMinutes(previous) === periodMinutes;
+
       if (!isContiguous) {
         const end = toTimeString(toMinutes(previous) + periodMinutes);
         ranges.push({ dia: day, hora_inicio: rangeStart, hora_fin: end });
@@ -177,8 +221,10 @@ export function EnvironmentSchedulesDialog({
       }
       previous = current;
     }
+
     const finalEnd = toTimeString(toMinutes(previous) + periodMinutes);
     ranges.push({ dia: day, hora_inicio: rangeStart, hora_fin: finalEnd });
+
     return ranges;
   }
 
@@ -190,6 +236,7 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
     if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
       notify.error({
         title: "Formato de hora invalido",
@@ -197,6 +244,7 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
     if (periodMinutes <= 0) {
       notify.error({
         title: "Periodo invalido",
@@ -204,8 +252,10 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
     const start = toMinutes(startTime);
     const end = toMinutes(endTime);
+
     if (start >= end) {
       notify.error({
         title: "Rango de horas invalido",
@@ -213,7 +263,17 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
+    if (end - start < periodMinutes) {
+      notify.info({
+        title: "Rango demasiado corto",
+        description: "Ajusta el periodo o amplia el rango de horas.",
+      });
+      return;
+    }
+
     const totalSlots = buildSlots(startTime, endTime, periodMinutes);
+
     if (!totalSlots.length) {
       notify.info({
         title: "Sin franjas generadas",
@@ -221,8 +281,10 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
     setSlots(totalSlots);
     setSelectedSlots(buildEmptySelection());
+    setLastSelection(null);
   }
 
   async function handleSave() {
@@ -235,6 +297,7 @@ export function EnvironmentSchedulesDialog({
       onClose();
       return;
     }
+
     if (environment.activo === false) {
       notify.info({
         title: "Ambiente inactivo",
@@ -242,6 +305,7 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
     if (!slots.length) {
       notify.info({
         title: "Genera la grilla primero",
@@ -249,7 +313,9 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
     const franjas = DAY_OPTIONS.flatMap((day) => slotsToRanges(day.value));
+
     if (!franjas.length) {
       notify.info({
         title: "Selecciona al menos una franja",
@@ -257,15 +323,18 @@ export function EnvironmentSchedulesDialog({
       });
       return;
     }
+
     try {
       await apiFetch(`/ambientes/${environment.id}/horarios`, {
         method: "PUT",
         json: { franjas },
       });
+
       notify.success({
         title: "Horarios guardados",
         description: `Se asignaron ${franjas.length} franjas al ambiente.`,
       });
+
       onSuccess();
     } catch (error) {
       notify.error({
@@ -277,6 +346,26 @@ export function EnvironmentSchedulesDialog({
 
   const environmentLabel = formatEnvironmentLabel(environment);
 
+  const displaySlots = useMemo(() => {
+    if (!slots.length) return [] as Array<{ value: string; isEnd: boolean }>;
+
+    const rows: Array<{ value: string; isEnd: boolean }> = slots.map(
+      (slot) => ({
+        value: slot,
+        isEnd: false,
+      })
+    );
+
+    const lastStart = slots[slots.length - 1];
+    const endRow = endTime && timeRegex.test(endTime) ? endTime : null;
+
+    if (endRow && lastStart !== endRow) {
+      rows.push({ value: endRow, isEnd: true });
+    }
+
+    return rows;
+  }, [endTime, slots]);
+
   return (
     <Dialog
       open={open}
@@ -284,7 +373,8 @@ export function EnvironmentSchedulesDialog({
         if (!value) onClose();
       }}
     >
-      <DialogContent className="max-h-[90vh] w-full max-w-5xl overflow-y-auto">
+      {/* diálogo fijo a 90vh, footer siempre visible */}
+      <DialogContent className="h-[90vh] w-full max-w-[95vw] sm:max-w-[1200px] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Clock3 className="h-4 w-4" aria-hidden />
@@ -292,135 +382,180 @@ export function EnvironmentSchedulesDialog({
           </DialogTitle>
           <DialogDescription>
             Define hora de inicio, fin y periodo para generar la grilla y
-            selecciona franjas con un clic.
+            selecciona franjas con un clic. Usa Shift + clic para seleccionar
+            rangos continuos en el mismo dia.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
-          <p className="font-semibold">Ambiente seleccionado</p>
-          <p className="text-muted-foreground">
-            {environmentLabel || "Sin seleccionar"}
-          </p>
-        </div>
+        {/* cuerpo con grilla y formulario */}
+        <div className="mt-4 flex-1 min-h-0">
+          <div className="grid h-full gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+            {/* Columna izquierda */}
+            <div className="space-y-3 overflow-y-auto pr-2">
+              <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
+                <p className="font-semibold">Ambiente seleccionado</p>
+                <p className="text-muted-foreground">
+                  {environmentLabel || "Sin seleccionar"}
+                </p>
+              </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
-            <Label htmlFor="schedule-start">Hora inicio</Label>
-            <Input
-              id="schedule-start"
-              type="time"
-              step="900"
-              placeholder="06:45"
-              value={startTime}
-              onChange={(event) => setStartTime(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="schedule-end">Hora fin</Label>
-            <Input
-              id="schedule-end"
-              type="time"
-              step="900"
-              placeholder="21:45"
-              value={endTime}
-              onChange={(event) => setEndTime(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="schedule-period">Periodo (min)</Label>
-            <Input
-              id="schedule-period"
-              type="number"
-              min={1}
-              max={240}
-              step={5}
-              placeholder="45"
-              value={periodMinutes}
-              onChange={(event) => setPeriodMinutes(Number(event.target.value))}
-            />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="schedule-start">Hora inicio</Label>
+                  <Input
+                    id="schedule-start"
+                    type="time"
+                    step="900"
+                    placeholder="06:45"
+                    value={startTime}
+                    onChange={(event) => setStartTime(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="schedule-end">Hora fin</Label>
+                  <Input
+                    id="schedule-end"
+                    type="time"
+                    step="900"
+                    placeholder="21:45"
+                    value={endTime}
+                    onChange={(event) => setEndTime(event.target.value)}
+                  />
+                </div>
+
+                {/* Periodo + botón Generar grilla */}
+                <div className="space-y-1 sm:col-span-2">
+                  <Label htmlFor="schedule-period">Periodo (min)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="schedule-period"
+                      type="number"
+                      min={1}
+                      max={240}
+                      step={5}
+                      placeholder="45"
+                      value={periodMinutes}
+                      onChange={(event) =>
+                        setPeriodMinutes(Number(event.target.value))
+                      }
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleGenerate}
+                      className="whitespace-nowrap"
+                    >
+                      Generar grilla
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Separator orientation="vertical" className="h-6" />
+                  <span>
+                    Completa los campos y presiona &quot;Generar grilla&quot;
+                    para ver las celdas.
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSelections}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                    Limpiar seleccion
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={selectAll}
+                    disabled={!slots.length}
+                  >
+                    Seleccionar todo
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Columna derecha: grilla */}
+            <div className="space-y-3 h-full overflow-hidden">
+              <div className="h-full rounded-md border bg-card overflow-auto">
+                {displaySlots.length ? (
+                  <table className="w-full min-w-[700px] border-collapse text-[11px]">
+                    <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="w-16 px-2 py-1 text-left">Hora</th>
+                        {DAY_OPTIONS.map((day) => (
+                          <th key={day.value} className="px-2 py-1 text-center">
+                            {day.label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displaySlots.map((row) => (
+                        <tr key={row.value} className="border-t">
+                          <th className="px-2 py-1 text-left font-medium">
+                            {row.value}
+                          </th>
+                          {DAY_OPTIONS.map((day) => {
+                            const isSelected = selectedSlots[day.value]?.has(
+                              row.value
+                            );
+
+                            if (row.isEnd) {
+                              return (
+                                <td
+                                  key={`${row.value}-${day.value}`}
+                                  className="px-1 py-1 text-center text-muted-foreground"
+                                >
+                                  -
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td
+                                key={`${row.value}-${day.value}`}
+                                className="px-1 py-1 text-center"
+                              >
+                                <button
+                                  type="button"
+                                  aria-label={`${day.label} ${row.value}`}
+                                  aria-pressed={isSelected}
+                                  onClick={(event) =>
+                                    handleCellClick(day.value, row.value, event)
+                                  }
+                                  className={`h-6 w-full rounded border text-[10px] leading-none transition ${
+                                    isSelected
+                                      ? "border-emerald-500 bg-emerald-500 text-white"
+                                      : "border-muted bg-muted/30 text-foreground hover:border-emerald-400 hover:bg-emerald-50"
+                                  }`}
+                                >
+                                  <span className="sr-only">{`${day.label} ${row.value}`}</span>
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="flex h-full items-center justify-center px-3 text-xs text-muted-foreground">
+                    Ingresa hora inicio, hora fin y periodo para generar la
+                    grilla de horarios.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Separator orientation="vertical" className="h-6" />
-            <span>
-              Completa los campos y presiona "Generar grilla" para ver las
-              celdas.
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={clearSelections}
-            >
-              <Trash2 className="mr-2 h-4 w-4" aria-hidden />
-              Limpiar seleccion
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={selectAll}
-              disabled={!slots.length}
-            >
-              Seleccionar todo
-            </Button>
-            <Button type="button" size="sm" onClick={handleGenerate}>
-              Generar grilla
-            </Button>
-          </div>
-        </div>
-
-        {slots.length ? (
-          <div className="overflow-x-auto rounded-md border bg-card">
-            <table className="min-w-[720px] text-xs">
-              <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="sticky left-0 bg-muted/50 px-3 py-2 text-left">Hora</th>
-                  {DAY_OPTIONS.map((day) => (
-                    <th key={day.value} className="px-3 py-2 text-center">
-                      {day.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {slots.map((slot) => (
-                  <tr key={slot} className="border-t">
-                    <th className="sticky left-0 bg-card px-3 py-2 text-left font-semibold">{slot}</th>
-                    {DAY_OPTIONS.map((day) => {
-                      const isSelected = selectedSlots[day.value]?.has(slot);
-                      return (
-                        <td key={`${slot}-${day.value}`} className="px-1 py-1 text-center">
-                          <button
-                            type="button"
-                            aria-label={`${day.label} ${slot}`}
-                            aria-pressed={isSelected}
-                            onClick={() => toggleSlot(day.value, slot)}
-                            className={`w-20 rounded-md border px-2 py-2 text-[11px] font-medium transition ${
-                              isSelected
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-muted bg-muted/40 text-foreground hover:border-primary/60 hover:bg-primary/10"
-                            }`}
-                          >
-                            Disponible
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
-            Ingresa hora inicio, hora fin y periodo para generar la grilla de horarios.
-          </div>
-        )}
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={onClose}>
