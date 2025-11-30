@@ -306,6 +306,28 @@ export function EnvironmentSchedulesDialog({
       return;
     }
 
+    if (
+      !startTime ||
+      !endTime ||
+      !timeRegex.test(startTime) ||
+      !timeRegex.test(endTime)
+    ) {
+      notify.info({
+        title: "Define hora de apertura y cierre",
+        description:
+          "Completa las horas con el formato HH:mm antes de guardar los horarios.",
+      });
+      return;
+    }
+
+    if (periodMinutes <= 0) {
+      notify.info({
+        title: "Periodo invalido",
+        description: "Define un periodo en minutos mayor que cero.",
+      });
+      return;
+    }
+
     if (!slots.length) {
       notify.info({
         title: "Genera la grilla primero",
@@ -327,7 +349,12 @@ export function EnvironmentSchedulesDialog({
     try {
       await apiFetch(`/ambientes/${environment.id}/horarios`, {
         method: "PUT",
-        json: { franjas },
+        json: {
+          hora_apertura: startTime,
+          hora_cierre: endTime,
+          periodo: periodMinutes,
+          franjas,
+        },
       });
 
       notify.success({
