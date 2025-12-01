@@ -73,6 +73,18 @@ function buildSlots(start: string, end: string, period: number): string[] {
   return slots;
 }
 
+// Normaliza "06:45:00" o "6:45" a "06:45"
+function normalizeTime(value?: string | null): string {
+  if (!value) return "";
+  const parts = value.split(":");
+  const h = parts[0];
+  const m = parts[1];
+
+  if (!h || !m) return "";
+
+  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+}
+
 function formatEnvironmentLabel(environment: EnvironmentRow | null): string {
   if (!environment) return "";
   const name =
@@ -107,6 +119,41 @@ function buildEmptySelection(): SelectedSlots {
   }, {} as SelectedSlots);
 }
 
+// Construye la selección a partir de los items devueltos por el GET,
+// normalizando "HH:mm:ss" a "HH:mm".
+function buildSelectionFromItems(
+  items:
+    | Array<{ dia: number; hora_inicio: string; hora_fin: string }>
+    | undefined,
+  slots: string[]
+): SelectedSlots {
+  const selection = buildEmptySelection();
+  if (!Array.isArray(items) || !slots.length) return selection;
+
+  const orderedSlots = [...slots].sort((a, b) => toMinutes(a) - toMinutes(b));
+
+  items.forEach((item) => {
+    const dia = typeof item.dia === "number" ? item.dia : NaN;
+    if (!Number.isInteger(dia) || dia < 0 || dia > 6) return;
+
+    const start = normalizeTime(item.hora_inicio);
+    const end = normalizeTime(item.hora_fin);
+    if (!timeRegex.test(start) || !timeRegex.test(end)) return;
+
+    const startMinutes = toMinutes(start);
+    const endMinutes = toMinutes(end);
+
+    orderedSlots.forEach((slot) => {
+      const slotMinutes = toMinutes(slot);
+      if (slotMinutes >= startMinutes && slotMinutes < endMinutes) {
+        selection[dia]?.add(slot);
+      }
+    });
+  });
+
+  return selection;
+}
+
 export function EnvironmentSchedulesDialog({
   open,
   environment,
@@ -121,7 +168,13 @@ export function EnvironmentSchedulesDialog({
     buildEmptySelection()
   );
   const [lastSelection, setLastSelection] = useState<LastSelection>(null);
+  const [initialConfig, setInitialConfig] = useState<{
+    start: string;
+    end: string;
+    period: number;
+  } | null>(null);
 
+  // Reset cuando se cierra el diálogo
   useEffect(() => {
     if (!open) {
       setStartTime("");
@@ -130,8 +183,106 @@ export function EnvironmentSchedulesDialog({
       setSlots([]);
       setSelectedSlots(buildEmptySelection());
       setLastSelection(null);
+      setInitialConfig(null);
     }
   }, [open]);
+
+  // Cargar horarios existentes al abrir
+  useEffect(() => {
+    if (!open || !environment?.id) return;
+
+    let active = true;
+
+    (async () => {
+      try {
+        const response = (await apiFetch(
+          `/ambientes/${environment.id}/horarios`,
+          {
+            method: "GET",
+          }
+        )) as {
+          hora_apertura?: string;
+          hora_cierre?: string;
+          periodo?: number | string;
+          items?: Array<{ dia: number; hora_inicio: string; hora_fin: string }>;
+        };
+
+        if (!active) return;
+
+        const start = normalizeTime(
+          typeof response?.hora_apertura === "string"
+            ? response.hora_apertura
+            : ""
+        );
+        const end = normalizeTime(
+          typeof response?.hora_cierre === "string" ? response.hora_cierre : ""
+        );
+        const period = Number(response?.periodo ?? 0);
+
+        if (!start || !end || period <= 0) {
+          setInitialConfig(null);
+          return;
+        }
+
+        const generatedSlots = buildSlots(start, end, period);
+        const selection = buildSelectionFromItems(
+          response?.items,
+          generatedSlots
+        );
+
+        setStartTime(start);
+        setEndTime(end);
+        setPeriodMinutes(period);
+        setSlots(generatedSlots);
+        setSelectedSlots(selection);
+        setLastSelection(null);
+        setInitialConfig({ start, end, period });
+      } catch (error) {
+        if (!active) return;
+        notify.error({
+          title: "No pudimos cargar los horarios",
+          description: resolveApiError(error),
+        });
+        setInitialConfig(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [open, environment?.id]);
+
+  // Si el usuario cambia inicio/fin/periodo (respecto a la config inicial),
+  // regeneramos la grilla y deseleccionamos todo.
+  useEffect(() => {
+    if (!initialConfig) return;
+
+    const changed =
+      startTime !== initialConfig.start ||
+      endTime !== initialConfig.end ||
+      periodMinutes !== initialConfig.period;
+
+    if (!changed) return;
+
+    const hasValidTimes =
+      startTime &&
+      endTime &&
+      timeRegex.test(startTime) &&
+      timeRegex.test(endTime) &&
+      periodMinutes > 0;
+
+    if (!hasValidTimes) {
+      setSlots([]);
+      setSelectedSlots(buildEmptySelection());
+      setLastSelection(null);
+      return;
+    }
+
+    const regeneratedSlots = buildSlots(startTime, endTime, periodMinutes);
+    setSlots(regeneratedSlots);
+    setSelectedSlots(buildEmptySelection());
+    setLastSelection(null);
+  }, [startTime, endTime, periodMinutes, initialConfig]);
 
   function clearSelections() {
     setSelectedSlots(buildEmptySelection());
