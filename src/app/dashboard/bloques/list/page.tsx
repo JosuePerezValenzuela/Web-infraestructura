@@ -403,7 +403,8 @@ export default function BlockListPage() {
   const [pages, setPages] = useState(1); // Cantidad total de páginas disponibles.
   const [search, setSearch] = useState(""); // Texto que la persona escribe en el campo de búsqueda.
   const [appliedSearch, setAppliedSearch] = useState(""); // Texto efectivamente aplicado como filtro.
-  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS); // Estado con los filtros seleccionados.
+  const [filters, setFilters] = useState<FilterState>({ ...INITIAL_FILTERS }); // Estado con los filtros seleccionados en el formulario.
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...INITIAL_FILTERS }); // Filtros efectivamente aplicados al listado.
   const [facultiesFilter, setFacultiesFilter] = useState<CatalogOption[]>([]); // Opciones de facultad para filtros (todas).
   const [blockTypesFilter, setBlockTypesFilter] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque para filtros (todas).
   const [facultiesActive, setFacultiesActive] = useState<CatalogOption[]>([]); // Opciones activas para formularios.
@@ -579,34 +580,35 @@ export default function BlockListPage() {
   // Construimos la query string cada vez que la página, los filtros o la búsqueda cambian.
   const queryString = useMemo(() => {
     const params = new URLSearchParams(); // Preparamos el objeto que traduciremos a ?clave=valor.
-    params.set("page", String(page)); // Siempre enviamos la página actual.
-    params.set("limit", String(TAKE)); // El backend necesita saber cuántos registros devolver.
+    params.set("page", String(page)); // Siempre enviamos la p?gina actual.
+    params.set("limit", String(TAKE)); // El backend necesita saber cu?ntos registros devolver.
     if (appliedSearch) {
-      params.set("search", appliedSearch); // Solo agregamos la búsqueda si la persona la confirmó.
+      params.set("search", appliedSearch); // Solo agregamos la b?squeda si la persona la confirm?.
     }
-    if (filters.facultadId) {
-      params.set("facultadId", filters.facultadId); // Traduce el filtro de facultades.
+    if (appliedFilters.facultadId) {
+      params.set("facultadId", appliedFilters.facultadId); // Traduce el filtro de facultades.
     }
-    if (filters.tipoBloqueId) {
-      params.set("tipoBloqueId", filters.tipoBloqueId); // Traduce el filtro por tipo.
+    if (appliedFilters.tipoBloqueId) {
+      params.set("tipoBloqueId", appliedFilters.tipoBloqueId); // Traduce el filtro por tipo.
     }
-    if (filters.activo) {
-      params.set("activo", filters.activo); // true/false según la opción seleccionada.
+    if (appliedFilters.activo) {
+      params.set("activo", appliedFilters.activo); // true/false seg?n la opci?n seleccionada.
     }
-    if (filters.pisosMin.trim() !== "") {
-      const parsedMin = Number(filters.pisosMin.trim()); // Intentamos convertir el mínimo a número.
+    if (appliedFilters.pisosMin.trim() !== "") {
+      const parsedMin = Number(appliedFilters.pisosMin.trim()); // Intentamos convertir el m?nimo a n?mero.
       if (!Number.isNaN(parsedMin)) {
-        params.set("pisosMin", String(parsedMin)); // Sólo enviamos el valor cuando es válido.
+        params.set("pisosMin", String(parsedMin)); // S?lo enviamos el valor cuando es v?lido.
       }
     }
-    if (filters.pisosMax.trim() !== "") {
-      const parsedMax = Number(filters.pisosMax.trim()); // Repetimos el proceso para el máximo.
+    if (appliedFilters.pisosMax.trim() !== "") {
+      const parsedMax = Number(appliedFilters.pisosMax.trim()); // Repetimos el proceso para el m?ximo.
       if (!Number.isNaN(parsedMax)) {
         params.set("pisosMax", String(parsedMax));
       }
     }
     return params.toString(); // Finalmente devolvemos la cadena para ejecutar la solicitud.
-  }, [page, appliedSearch, filters]);
+  }, [page, appliedSearch, appliedFilters]);
+
 
   // Cada vez que la query string cambia consultamos el backend para actualizar la tabla.
   useEffect(() => {
@@ -660,24 +662,31 @@ export default function BlockListPage() {
   // Handlers auxiliares para mantener el componente ordenado.
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); // Evitamos la recarga del navegador.
-    setAppliedSearch(search.trim()); // Guardamos la versión limpia de la búsqueda.
-    setPage(1); // Volvemos a la primera página según la regla de negocio.
+    const nextFilters = { ...filters }; // Capturamos los filtros elegidos para aplicarlos juntos.
+    setAppliedFilters(nextFilters); // Solo estos filtros se env?an al backend tras confirmar.
+    setAppliedSearch(search.trim()); // Guardamos la versi?n limpia de la b?squeda.
+    setPage(1); // Volvemos a la primera p?gina seg?n la regla de negocio.
   }
+
+  
 
   function updateFilter<Key extends keyof FilterState>(
     key: Key,
     value: string
   ) {
-    setFilters((prev) => ({ ...prev, [key]: value })); // Actualizamos solamente el filtro indicado.
-    setPage(1); // Siempre que cambia un filtro regresamos al inicio de la paginación.
+    setFilters((prev) => ({ ...prev, [key]: value })); // Solo actualizamos el formulario; aplicaremos los filtros al enviar.
   }
 
   function handleClearFilters() {
-    setFilters(INITIAL_FILTERS); // Restauramos los filtros al estado base.
-    setSearch(""); // Limpiamos el campo de búsqueda visible.
+    const resetFilters = { ...INITIAL_FILTERS }; // Reconstruimos el estado base para no reutilizar referencias.
+    setFilters(resetFilters); // Restauramos los filtros visibles.
+    setAppliedFilters(resetFilters); // Sincronizamos los filtros aplicados con el estado inicial.
+    setSearch(""); // Limpiamos el campo de b?squeda visible.
     setAppliedSearch(""); // Eliminamos el filtro aplicado en la query.
-    setPage(1); // Regresamos a la primera página.
+    setPage(1); // Regresamos a la primera p?gina.
   }
+
+  
 
   function handleEdit(block: BlockRow) {
     const enriched = { ...block } as Record<string, unknown>;
