@@ -1472,7 +1472,7 @@ export default function EnvironmentListPage() {
           ) : null}
 
           <Button type="submit" disabled={loadingTable}>
-            {loadingTable ? "Aplicando..." : "Aplicar filtros"}
+            {loadingTable ? "Buscando..." : "Buscar"}
           </Button>
 
           <Button

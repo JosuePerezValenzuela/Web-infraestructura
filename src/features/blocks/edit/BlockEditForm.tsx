@@ -70,23 +70,19 @@ export default function BlockEditForm({
   const lngValue = form.watch("lng"); // Escuchamos la longitud con el mismo fin.
 
   const mapLat = parseCoordinateValue(latValue, DEFAULT_POSITION.lat); // Determinamos el valor numérico final para el mapa.
-const mapLng = parseCoordinateValue(lngValue, DEFAULT_POSITION.lng); // Repetimos para la longitud.
+  const mapLng = parseCoordinateValue(lngValue, DEFAULT_POSITION.lng); // Repetimos para la longitud.
 
-const coordinatesLabel = latValue && lngValue
-  ? `Lat: ${latValue} | Lng: ${lngValue}`
-  : "Selecciona un punto en el mapa para registrar las coordenadas."; // Texto guía que explica el estado actual de las coordenadas.
-
-const catalogOptions = useMemo(
-  () => ({
-    faculties,
-    blockTypes,
-  }),
-  [faculties, blockTypes]
-); // Memoriza los catálogos para evitar renders innecesarios en los selectores personalizados.
-const facultyLookup = useMemo(
-  () => new Map(faculties.map((item) => [String(item.id), item])),
-  [faculties]
-);
+  const catalogOptions = useMemo(
+    () => ({
+      faculties,
+      blockTypes,
+    }),
+    [faculties, blockTypes]
+  ); // Memoriza los catálogos para evitar renders innecesarios en los selectores personalizados.
+  const facultyLookup = useMemo(
+    () => new Map(faculties.map((item) => [String(item.id), item])),
+    [faculties]
+  );
 
   async function handleSubmit(values: BlockUpdateInput) {
     const parsed = blockUpdateSchema.parse(values); // Convertimos los datos del formulario al formato esperado por la API.
@@ -97,7 +93,8 @@ const facultyLookup = useMemo(
     if (!Object.keys(payload).length) {
       notify.info({
         title: "Sin cambios para guardar",
-        description: "Realiza alguna modificacion antes de enviar la solicitud.",
+        description:
+          "Realiza alguna modificacion antes de enviar la solicitud.",
       }); // Evitamos llamadas vacías cuando la persona usuaria no modificó nada.
       return;
     }
@@ -320,11 +317,11 @@ const facultyLookup = useMemo(
                 <label htmlFor="edit-block-active" className="text-sm">
                   Activo
                 </label>
+                <p className="text-sm text-muted-foreground">
+                  Si desactivas un bloque, todos sus ambientes dependientes
+                  quedaran inactivos.
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Si desactivas un bloque, todos sus ambientes dependientes quedaran
-                inactivos para mantener la integridad del inventario.
-              </p>
               <FormMessage />
             </FormItem>
           )}
@@ -347,9 +344,6 @@ const facultyLookup = useMemo(
               }}
             />
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {coordinatesLabel}
-          </p>
           {form.formState.errors.lat?.message ||
           form.formState.errors.lng?.message ? (
             <p className="mt-1 text-sm text-destructive">
@@ -508,17 +502,15 @@ function resolveCoordinate(block: BlockRow, axis: "lat" | "lng"): string {
   return "";
 }
 
-function parsePointString(
-  value: string
-): { lat?: number; lng?: number } {
+function parsePointString(value: string): { lat?: number; lng?: number } {
   const matches = value.match(/-?\d+(\.\d+)?/g);
   if (!matches || matches.length < 2) {
     return {};
   }
 
-  const numbers = matches.map((item) => Number(item)).filter(
-    (num) => !Number.isNaN(num)
-  );
+  const numbers = matches
+    .map((item) => Number(item))
+    .filter((num) => !Number.isNaN(num));
   if (numbers.length < 2) {
     return {};
   }
@@ -530,10 +522,7 @@ function parsePointString(
   return { lng: numbers[0], lat: numbers[1] };
 }
 
-function parseCoordinateValue(
-  value: unknown,
-  fallback: number
-): number {
+function parseCoordinateValue(value: unknown, fallback: number): number {
   if (typeof value === "number" && !Number.isNaN(value)) {
     return value;
   }

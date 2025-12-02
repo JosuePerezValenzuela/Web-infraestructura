@@ -156,7 +156,7 @@ export function environmentColumns(
       id: "tipo_ambiente",
       meta: { label: "Tipo de ambiente" },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Tipo de ambiente" />
+        <DataTableColumnHeader column={column} title="Tipo" />
       ),
       cell: ({ row }) =>
         resolveRelatedLabel(row.original, {
