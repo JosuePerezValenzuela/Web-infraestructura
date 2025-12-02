@@ -155,6 +155,21 @@ export function environmentColumns(
       // Exponemos el tipo de ambiente segun el catalogo para entender su uso.
       id: "tipo_ambiente",
       meta: { label: "Tipo de ambiente" },
+      accessorFn: (row) =>
+        resolveRelatedLabel(row, {
+          directKeys: [
+            "tipo_ambiente",
+            "tipoAmbiente",
+            "tipo_ambiente_nombre",
+            "tipoAmbienteNombre",
+          ],
+          relationKeys: [
+            "tipo_ambiente_detalle",
+            "tipoAmbienteDetalle",
+            "tipoAmbiente",
+          ],
+          fallback: "-",
+        }),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Tipo" />
       ),
@@ -178,6 +193,17 @@ export function environmentColumns(
       // Indicamos el bloque al que pertenece para mantener el contexto fisico.
       id: "bloque",
       meta: { label: "Bloque" },
+      accessorFn: (row) =>
+        resolveRelatedLabel(row, {
+          directKeys: [
+            "bloque",
+            "bloque_nombre",
+            "bloqueNombre",
+            "bloque_label",
+          ],
+          relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
+          fallback: "-",
+        }),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Bloque" />
       ),
@@ -205,6 +231,10 @@ export function environmentColumns(
       // Mostramos la capacidad total y de examenes en un formato compacto.
       id: "capacidad",
       meta: { label: "Capacidad" },
+      accessorFn: (row) => {
+        const capacity = getCapacityValues(row);
+        return capacity?.total ?? capacity?.exam ?? 0; // Usamos la capacidad total como criterio de ordenamiento.
+      },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Capacidad" />
       ),
