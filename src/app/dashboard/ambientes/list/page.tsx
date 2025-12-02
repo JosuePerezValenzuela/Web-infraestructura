@@ -1289,27 +1289,49 @@ export default function EnvironmentListPage() {
         className="space-y-4 rounded-lg border bg-card p-4 shadow-sm"
         noValidate
       >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="environment-search">Buscar ambientes</Label>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          {/* FILA / COLUMNA 1: input + Buscar + Limpiar */}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+            <div className="flex min-w-0 flex-col gap-2">
+              <Label htmlFor="environment-search">Buscar ambientes</Label>
+              <Input
+                id="environment-search"
+                aria-label="Buscar ambientes"
+                placeholder="Buscar por nombre o codigo"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="w-full"
+              />
+            </div>
 
-            <Input
-              id="environment-search"
-              aria-label="Buscar ambientes"
-              placeholder="Buscar por nombre o codigo"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
+            <Button
+              type="submit"
+              disabled={loadingTable}
+              className="w-full sm:w-auto"
+            >
+              {loadingTable ? "Buscando..." : "Buscar"}
+            </Button>
 
-          <div className="flex w-full justify-end lg:w-auto">
             <Button
               type="button"
-              className="w-full lg:w-auto"
-              onClick={handleCreateClick}
+              variant="outline"
+              onClick={handleResetFilters}
+              disabled={loadingTable && !items.length}
+              className="w-full sm:w-auto"
             >
+              Limpiar
+            </Button>
+          </div>
+
+          {/* FILA / COLUMNA 2: Nuevo ambiente + Mostrar/ocultar */}
+          <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+            <Button type="button" onClick={handleCreateClick}>
               Nuevo ambiente
             </Button>
+
+            {tableInstance ? (
+              <DataTableViewOptions table={tableInstance} />
+            ) : null}
           </div>
         </div>
 
@@ -1464,25 +1486,6 @@ export default function EnvironmentListPage() {
               </Select>
             </div>
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {tableInstance ? (
-            <DataTableViewOptions table={tableInstance} />
-          ) : null}
-
-          <Button type="submit" disabled={loadingTable}>
-            {loadingTable ? "Buscando..." : "Buscar"}
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleResetFilters}
-            disabled={loadingTable && !items.length}
-          >
-            Limpiar
-          </Button>
         </div>
       </form>
 
