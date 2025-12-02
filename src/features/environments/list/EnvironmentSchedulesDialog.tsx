@@ -173,6 +173,7 @@ export function EnvironmentSchedulesDialog({
     end: string;
     period: number;
   } | null>(null);
+  const [timeRangeError, setTimeRangeError] = useState<string | null>(null);
 
   // Reset cuando se cierra el diálogo
   useEffect(() => {
@@ -184,6 +185,7 @@ export function EnvironmentSchedulesDialog({
       setSelectedSlots(buildEmptySelection());
       setLastSelection(null);
       setInitialConfig(null);
+      setTimeRangeError(null);
     }
   }, [open]);
 
@@ -283,6 +285,29 @@ export function EnvironmentSchedulesDialog({
     setSelectedSlots(buildEmptySelection());
     setLastSelection(null);
   }, [startTime, endTime, periodMinutes, initialConfig]);
+
+  // Validar que inicio < fin tan pronto ambos campos esten completos.
+  useEffect(() => {
+    const hasBoth = Boolean(startTime && endTime);
+    if (!hasBoth) {
+      setTimeRangeError(null);
+      return;
+    }
+
+    const bothValid = timeRegex.test(startTime) && timeRegex.test(endTime);
+    if (!bothValid) {
+      setTimeRangeError(null);
+      return;
+    }
+
+    const start = toMinutes(startTime);
+    const end = toMinutes(endTime);
+    if (start >= end) {
+      setTimeRangeError("La hora inicio debe ser menor que la hora fin.");
+    } else {
+      setTimeRangeError(null);
+    }
+  }, [startTime, endTime]);
 
   function clearSelections() {
     setSelectedSlots(buildEmptySelection());
@@ -407,11 +432,7 @@ export function EnvironmentSchedulesDialog({
     const start = toMinutes(startTime);
     const end = toMinutes(endTime);
 
-    if (start >= end) {
-      notify.error({
-        title: "Rango de horas invalido",
-        description: "La hora inicio debe ser menor que la hora fin.",
-      });
+    if (timeRangeError) {
       return;
     }
 
@@ -467,6 +488,17 @@ export function EnvironmentSchedulesDialog({
         title: "Define hora de apertura y cierre",
         description:
           "Completa las horas con el formato HH:mm antes de guardar los horarios.",
+      });
+      return;
+    }
+
+    const start = toMinutes(startTime);
+    const end = toMinutes(endTime);
+
+    if (timeRangeError) {
+      notify.error({
+        title: "Rango de horas invalido",
+        description: timeRangeError,
       });
       return;
     }
@@ -588,6 +620,11 @@ export function EnvironmentSchedulesDialog({
                     value={startTime}
                     onChange={(event) => setStartTime(event.target.value)}
                   />
+                  {timeRangeError ? (
+                    <p className="text-[11px] text-destructive/80">
+                      {timeRangeError}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="schedule-end">Hora fin</Label>
