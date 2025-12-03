@@ -22,6 +22,9 @@ import BlockTypeEditForm from "@/features/block-types/edit/BlockTypeEditForm";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { X } from "lucide-react";
+import { env } from "@/lib/env";
+
+export const API_BASE = env.API_BASE_URL;
 
 const TAKE = 5;
 
@@ -62,10 +65,9 @@ export default function BlockTypeListPage() {
         ...(query ? { search: query } : {}),
       });
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/tipo_bloques?${params.toString()}`,
-        { signal }
-      );
+      const res = await fetch(`${API_BASE}/tipo_bloques?${params.toString()}`, {
+        signal,
+      });
 
       if (!res.ok) {
         return;
@@ -206,7 +208,9 @@ export default function BlockTypeListPage() {
             aria-label="Buscar tipos de bloques"
           />
         </div>
-        <Button onClick={() => setCreateOpen(true)}>Nuevo tipo de bloque</Button>
+        <Button onClick={() => setCreateOpen(true)}>
+          Nuevo tipo de bloque
+        </Button>
       </div>
 
       <DataTable
@@ -305,8 +309,9 @@ export default function BlockTypeListPage() {
               <div className="space-y-2">
                 <DialogTitle>Eliminar tipo de bloque</DialogTitle>
                 <DialogDescription>
-                  Esta accion eliminara el tipo de bloque, los bloques de ese tipo,
-                  ambientes dentro de esos bloques y los activos de esos ambientes quedaran libres. No se puede deshacer.
+                  Esta accion eliminara el tipo de bloque, los bloques de ese
+                  tipo, ambientes dentro de esos bloques y los activos de esos
+                  ambientes quedaran libres. No se puede deshacer.
                 </DialogDescription>
               </div>
               <DialogClose asChild>
@@ -353,4 +358,3 @@ export default function BlockTypeListPage() {
     </section>
   );
 }
-

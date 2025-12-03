@@ -20,6 +20,9 @@ import CampusEditForm from "@/features/campus/edit/CampusEditForm";
 import { X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { env } from "@/lib/env";
+
+export const API_BASE = env.API_BASE_URL;
 
 const TAKE = 8;
 
@@ -45,10 +48,9 @@ export default function CampusListPage() {
         ...(query ? { search: query } : {}),
       });
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/campus?${params.toString()}`,
-        { signal }
-      );
+      const res = await fetch(`${API_BASE}/campus?${params.toString()}`, {
+        signal,
+      });
 
       if (!res.ok) {
         console.error("Error cargando campus");
@@ -205,12 +207,15 @@ export default function CampusListPage() {
 
       {/* Modal para editar un campus */}
 
-      <Dialog open={editOpen} onOpenChange={(value) => {
-        setEditOpen(value);
-        if (!value) {
-          setCampusToEdit(null);
-        }
-      }}>
+      <Dialog
+        open={editOpen}
+        onOpenChange={(value) => {
+          setEditOpen(value);
+          if (!value) {
+            setCampusToEdit(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-3xl max-h-[90vh] max-w-full overflow-auto pb-2">
           <DialogHeader>
             <DialogTitle>Editar campus</DialogTitle>
@@ -238,7 +243,7 @@ export default function CampusListPage() {
       </Dialog>
 
       {/* Dialogo para eliminar un campus */}
-      
+
       <Dialog
         open={deleteOpen}
         onOpenChange={(value) => {
@@ -252,7 +257,8 @@ export default function CampusListPage() {
           <DialogHeader>
             <DialogTitle>Eliminar campus</DialogTitle>
             <DialogDescription>
-              Esta accion eliminara el campus y todos sus infraestructuras asociadas. Esta accion no se puede deshacer.
+              Esta accion eliminara el campus y todos sus infraestructuras
+              asociadas. Esta accion no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
 

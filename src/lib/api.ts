@@ -1,4 +1,6 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api';
+import { env } from "@/lib/env";
+
+export const API_BASE = env.API_BASE_URL;
 
 type Options = RequestInit & { json?: unknown };
 

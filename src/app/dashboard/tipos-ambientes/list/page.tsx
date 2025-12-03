@@ -22,6 +22,9 @@ import EnvironmentTypeForm from "@/features/environment-types/EnvironmentTypeFor
 import EnvironmentTypeEditForm from "@/features/environment-types/edit/EnvironmentTypeEditForm";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { env } from "@/lib/env";
+
+export const API_BASE = env.API_BASE_URL;
 
 // Definimos la cantidad de filas que solicitaremos por pagina para mantener una altura consistente.
 const TAKE = 5;
@@ -70,7 +73,7 @@ export default function EnvironmentTypeListPage() {
 
       // Realizamos la peticion GET al endpoint publico configurado.
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/tipo_ambientes?${params.toString()}`,
+        `${API_BASE}/tipo_ambientes?${params.toString()}`,
         { signal }
       );
 
@@ -234,17 +237,15 @@ export default function EnvironmentTypeListPage() {
         showViewOptions
       />
 
-      <Dialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      >
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent showCloseButton={false}>
           <DialogHeader className="space-y-2">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <DialogTitle>Crear tipo de ambiente</DialogTitle>
                 <DialogDescription>
-                  Completa los datos para agregar un nuevo clasificador al catalogo.
+                  Completa los datos para agregar un nuevo clasificador al
+                  catalogo.
                 </DialogDescription>
               </div>
               <DialogClose asChild>
@@ -321,7 +322,8 @@ export default function EnvironmentTypeListPage() {
                 <DialogTitle>Eliminar tipo de ambiente</DialogTitle>
                 <DialogDescription>
                   Esta accion eliminara el tipo de ambiente seleccionado y los
-                  ambientes de dicho tipo y dejara libres los activos asociados a esos ambientes. No se puede deshacer.
+                  ambientes de dicho tipo y dejara libres los activos asociados
+                  a esos ambientes. No se puede deshacer.
                 </DialogDescription>
               </div>
               <DialogClose asChild>
