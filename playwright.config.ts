@@ -13,10 +13,24 @@ function loadDotEnv(file: string) {
 
 ['.env.local', '.env'].forEach(loadDotEnv);
 
+const frontendHost = process.env.NEXT_PUBLIC_FRONTEND_URL ?? 'http://localhost';
+const frontendPort = process.env.NEXT_PUBLIC_FRONTEND_PORT ?? '3001';
+
+function buildFrontendBase(host: string, port: string) {
+  try {
+    const url = new URL(host);
+    if (port) url.port = port;
+    return url.origin;
+  } catch {
+    const base = host.replace(/\/$/, '').replace(/:$/, '');
+    const portSegment = port ? `:${port}` : '';
+    return `${base}${portSegment}`;
+  }
+}
+
 const resolvedBaseUrl =
-  process.env.NEXT_PUBLIC_FRONTEND_URL ??
   process.env.E2E_BASE_URL ??
-  'http://localhost:3001';
+  buildFrontendBase(frontendHost, frontendPort);
 
 export default defineConfig({
   testDir: './tests/e2e',
