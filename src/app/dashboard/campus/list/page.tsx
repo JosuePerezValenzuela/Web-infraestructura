@@ -22,7 +22,7 @@ import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { env } from "@/lib/env";
 
-export const API_BASE = env.API_BASE_URL;
+const API_BASE = env.API_BASE_URL;
 
 const TAKE = 8;
 

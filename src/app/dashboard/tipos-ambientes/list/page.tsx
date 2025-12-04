@@ -24,7 +24,7 @@ import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { env } from "@/lib/env";
 
-export const API_BASE = env.API_BASE_URL;
+const API_BASE = env.API_BASE_URL;
 
 // Definimos la cantidad de filas que solicitaremos por pagina para mantener una altura consistente.
 const TAKE = 5;

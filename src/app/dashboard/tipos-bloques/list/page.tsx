@@ -24,7 +24,7 @@ import { notify } from "@/lib/notify";
 import { X } from "lucide-react";
 import { env } from "@/lib/env";
 
-export const API_BASE = env.API_BASE_URL;
+const API_BASE = env.API_BASE_URL;
 
 const TAKE = 5;
 
