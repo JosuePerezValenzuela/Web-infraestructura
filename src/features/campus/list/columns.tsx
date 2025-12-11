@@ -6,6 +6,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTableColumnHeader } from '../../../components/data-table-column-header'
+import { InventoryReportAction } from "@/features/reports/inventory/InventoryReportAction";
 
 export type CampusRow = {
     id: number;
@@ -74,6 +75,11 @@ export function campusColumns(
             header: 'Acciones',
             cell: ({ row }) => (
                 <div className='flex items-center gap-1'>
+                    <InventoryReportAction
+                        scope="campus"
+                        scopeId={row.original.id}
+                        scopeLabel={row.original.nombre}
+                    />
                     <Button
                         variant='ghost'
                         size='icon'

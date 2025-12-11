@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from "lucide-react"; // Usamos íconos claros para las
 import { Button } from "@/components/ui/button"; // Botón reutilizable que mantiene la identidad visual del sistema.
 import { DataTableColumnHeader } from "@/components/data-table-column-header"; // Encabezado que habilita ordenamiento accesible.
 import { Badge } from "@/components/ui/badge";
+import { InventoryReportAction } from "@/features/reports/inventory/InventoryReportAction";
 
 type BaseBlockRow = {
   id: number; // Identificador único que utilizaremos más adelante para editar o eliminar.
@@ -172,6 +173,11 @@ export function blockColumns(
       enableHiding: false, // Siempre debe estar visible para mantener la usabilidad.
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
+          <InventoryReportAction
+            scope="bloque"
+            scopeId={row.original.id}
+            scopeLabel={row.original.nombre}
+          />
           {/* Botón para editar el bloque seleccionado. */}
           <Button
             type="button"
