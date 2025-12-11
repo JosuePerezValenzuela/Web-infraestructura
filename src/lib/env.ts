@@ -4,6 +4,7 @@ const apiPrefix = process.env.NEXT_PUBLIC_API_BASE_PREFIX?.trim() ?? "/api";
 
 const frontendHostEnv = process.env.NEXT_PUBLIC_FRONTEND_URL?.trim();
 const frontendPort = process.env.NEXT_PUBLIC_FRONTEND_PORT?.trim() ?? "3001";
+const metabaseUrl = process.env.NEXT_PUBLIC_METABASE_URL?.trim();
 
 function normalizePrefix(raw: string): string {
   const trimmed = raw || "/api";
@@ -40,4 +41,5 @@ export const env = {
   API_BASE_URL:
     buildApiBase(apiHost, apiPort, apiPrefix),
   FRONTEND_URL: buildOrigin(frontendHostEnv ?? "http://localhost", frontendPort),
+  METABASE_URL: metabaseUrl && metabaseUrl.length ? metabaseUrl : null,
 };
