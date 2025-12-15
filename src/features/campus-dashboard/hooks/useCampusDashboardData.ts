@@ -41,14 +41,14 @@ export function useCampusDashboardData(
       }
       search.set("includeInactive", String(parsedFilters.includeInactive));
       const query = search.toString();
-      return `/api/dashboards/campus/global${query ? `?${query}` : ""}`;
+      return `/dashboards/campus/global${query ? `?${query}` : ""}`;
     }
 
     const parsedFilters = campusDashboardFiltersSchema.parse(params.filters);
     const search = new URLSearchParams();
     search.set("includeInactive", String(parsedFilters.includeInactive));
     const query = search.toString();
-    return `/api/dashboards/campus/${params.campusId}${query ? `?${query}` : ""}`;
+    return `/dashboards/campus/${params.campusId}${query ? `?${query}` : ""}`;
   }, [params]);
 
   const schema = useMemo(() => {
