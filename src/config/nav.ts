@@ -15,7 +15,7 @@ export const NAV_GROUPS: NavGroup[] = [
     {
         label: "Campus",
         icon: Layers3,
-        href: `/dashboard/campus/list`,
+        href: `/dashboard/campus`,
     },
     {
         label: 'Facultades',
