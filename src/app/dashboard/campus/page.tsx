@@ -183,17 +183,26 @@ export default function CampusDashboardPage() {
     return Object.values(unique);
   }, [campusOptions, rows]);
 
+  function ChartPlaceholder({ title }: { title: string }) {
+    return (
+      <div className="h-64 w-full rounded-lg border bg-card p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">{title}</p>
+          <span className="text-xs text-muted-foreground">Placeholder</span>
+        </div>
+        <div className="mt-4 h-44 rounded-md bg-muted/60" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="sticky top-0 z-10 space-y-3 border-b bg-background/95 py-3 backdrop-blur">
+    <div className="space-y-6 pt-2">
+      <div className="sticky top-14 z-20 space-y-3 border-b bg-background/95 py-3 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold">Dashboard Campus</h1>
-          <Link
-            href="/dashboard/campus/list"
-            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Administrar Campus
-          </Link>
+          <Button asChild>
+            <Link href="/dashboard/campus/list">Administrar Campus</Link>
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -210,11 +219,12 @@ export default function CampusDashboardPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {(loading ? Array.from({ length: 3 }) : rows.slice(0, 3)).map(
+        {(loading ? Array.from({ length: 3 }) : Array.from({ length: 3 })).map(
           (_, index) => (
             <div
               key={index}
               className="rounded-lg border bg-card p-4 shadow-sm"
+              data-testid="campus-kpi-card"
             >
               {loading ? (
                 <Skeleton className="h-12 w-24" />
@@ -226,6 +236,44 @@ export default function CampusDashboardPage() {
               )}
             </div>
           )
+        )}
+      </div>
+
+      <div className="rounded-lg border bg-card p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Ranking ambientes por campus</h2>
+        {loading ? (
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-44 w-full" />
+          </div>
+        ) : (
+          <ChartPlaceholder title="Ranking de ambientes" />
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {loading ? (
+          Array.from({ length: 2 }).map((_, index) => (
+            <Skeleton key={index} className="h-64 w-full rounded-lg" />
+          ))
+        ) : (
+          <>
+            <ChartPlaceholder title="Capacidad total por campus" />
+            <ChartPlaceholder title="Capacidad examen por campus" />
+          </>
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {loading ? (
+          Array.from({ length: 2 }).map((_, index) => (
+            <Skeleton key={index} className="h-64 w-full rounded-lg" />
+          ))
+        ) : (
+          <>
+            <ChartPlaceholder title="Activos por campus" />
+            <ChartPlaceholder title="Ambientes activos vs inactivos" />
+          </>
         )}
       </div>
 
