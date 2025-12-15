@@ -218,19 +218,39 @@ export default function CampusDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {(loading ? Array.from({ length: 3 }) : Array.from({ length: 3 })).map(
+      <div className="grid gap-3 xl:grid-cols-12">
+        {(loading ? Array.from({ length: 4 }) : Array.from({ length: 4 })).map(
           (_, index) => (
             <div
-              key={index}
+              key={`kpi-row1-${index}`}
               className="rounded-lg border bg-card p-4 shadow-sm"
               data-testid="campus-kpi-card"
+              style={{ gridColumn: "span 3 / span 3" }}
             >
               {loading ? (
                 <Skeleton className="h-12 w-24" />
               ) : (
                 <>
                   <p className="text-sm font-medium">KPI {index + 1}</p>
+                  <p className="text-2xl font-semibold text-primary">--</p>
+                </>
+              )}
+            </div>
+          )
+        )}
+        {(loading ? Array.from({ length: 3 }) : Array.from({ length: 3 })).map(
+          (_, index) => (
+            <div
+              key={`kpi-row2-${index}`}
+              className="rounded-lg border bg-card p-4 shadow-sm"
+              data-testid="campus-kpi-card"
+              style={{ gridColumn: "span 4 / span 4" }}
+            >
+              {loading ? (
+                <Skeleton className="h-12 w-24" />
+              ) : (
+                <>
+                  <p className="text-sm font-medium">KPI {index + 5}</p>
                   <p className="text-2xl font-semibold text-primary">--</p>
                 </>
               )}
