@@ -66,7 +66,7 @@ function mockApiFetchImplementation() {
     }
 
     // Si pedimos el dashboard global devolvemos el payload preparado.
-    if (path.startsWith("/api/dashboards/campus/global")) {
+    if (path.startsWith("/dashboards/campus/global")) {
       return dashboardGlobalResponse as Awaited<ReturnType<typeof apiFetch>>;
     }
 
@@ -174,7 +174,7 @@ describe("Dashboard Campus - vista detalle", () => {
     }));
     // Aplicamos el mock de fetch para los endpoints requeridos por la vista de detalle.
     vi.mocked(apiFetch).mockImplementation(async (path: string) => {
-      if (path.startsWith("/api/dashboards/campus/5")) {
+      if (path.startsWith("/dashboards/campus/5")) {
         return {
           schemaVersion: 1,
           filtersApplied: {
