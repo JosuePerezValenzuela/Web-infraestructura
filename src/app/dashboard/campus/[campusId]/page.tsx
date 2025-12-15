@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -50,10 +50,15 @@ function SwitchInactive({
 export default function CampusDashboardDetailPage({
   params,
 }: {
-  params: { campusId: string };
+  params: { campusId: string } | Promise<{ campusId: string }>;
 }) {
   const router = useRouter();
-  const campusId = Number(params.campusId);
+  const resolvedParams =
+    typeof (params as unknown as Promise<unknown>)?.then === "function"
+      ? use(params as Promise<{ campusId: string }>)
+      : (params as { campusId: string });
+
+  const campusId = Number(resolvedParams.campusId);
   const { filters, setIncludeInactive, buildGlobalHref } =
     useCampusDashboardFilters();
 
@@ -96,24 +101,33 @@ export default function CampusDashboardDetailPage({
   const kpiEntries = useMemo(() => {
     if (data && data.layout.mode === "detail") {
       const entries = Object.entries(data.data.kpis ?? {});
-      if (entries.length >= 4) return entries;
       const padded = [...entries];
-      while (padded.length < 4) {
+      while (padded.length < 8) {
         padded.push([`kpi-${padded.length + 1}`, "--"]);
       }
-      return padded;
+      return padded.slice(0, 8);
     }
-    return [
-      ["kpi-1", "--"],
-      ["kpi-2", "--"],
-      ["kpi-3", "--"],
-      ["kpi-4", "--"],
-    ];
+    return Array.from({ length: 8 }).map((_, index) => [
+      `kpi-${index + 1}`,
+      "--",
+    ]);
   }, [data]);
 
+  function ChartPlaceholder({ title }: { title: string }) {
+    return (
+      <div className="h-64 w-full rounded-lg border bg-card p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">{title}</p>
+          <span className="text-xs text-muted-foreground">Placeholder</span>
+        </div>
+        <div className="mt-4 h-44 rounded-md bg-muted/60" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="sticky top-0 z-10 space-y-3 border-b bg-background/95 py-3 backdrop-blur">
+    <div className="space-y-6 pt-2">
+      <div className="sticky top-14 z-20 space-y-3 border-b bg-background/95 py-3 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <p className="text-xs uppercase text-muted-foreground">Campus</p>
@@ -121,12 +135,9 @@ export default function CampusDashboardDetailPage({
               {campusLabel}
             </div>
           </div>
-          <Link
-            href="/dashboard/campus/list"
-            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Administrar Campus
-          </Link>
+          <Button asChild>
+            <Link href="/dashboard/campus/list">Administrar Campus</Link>
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -167,6 +178,66 @@ export default function CampusDashboardDetailPage({
             )}
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {loading ? (
+          Array.from({ length: 2 }).map((_, index) => (
+            <Skeleton key={index} className="h-64 w-full rounded-lg" />
+          ))
+        ) : (
+          <>
+            <ChartPlaceholder title="Tipos de bloque" />
+            <ChartPlaceholder title="Tipos de ambiente" />
+          </>
+        )}
+      </div>
+
+      <div className="rounded-lg border bg-card p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Facultades del campus</h2>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted-foreground">
+                <th className="px-3 py-2">Facultad</th>
+                <th className="px-3 py-2">Ambientes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td className="px-3 py-4" colSpan={2}>
+                    <Skeleton className="h-5 w-48" />
+                  </td>
+                </tr>
+              ) : data &&
+                data.layout.mode === "detail" &&
+                data.data.tables?.facultades?.rows?.length ? (
+                data.data.tables.facultades.rows.map((row, index) => (
+                  <tr key={index} className="hover:bg-muted/50">
+                    <td className="px-3 py-2">
+                      {(row.nombre as string) ??
+                        (row.facultad as string) ??
+                        (row.name as string) ??
+                        "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {(row.totalAmbientes as number) ??
+                        (row.ambientes as number) ??
+                        "--"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="px-3 py-4 text-muted-foreground" colSpan={2}>
+                    No hay facultades registradas.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
