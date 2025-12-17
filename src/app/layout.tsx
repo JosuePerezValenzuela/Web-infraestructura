@@ -31,11 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AppSidebar />
 
           <SidebarInset className="min-h-screen">
-            <header className="sticky top-0 flex h-14 items-center gap-2 bg-primary-foreground px-4 shadow-sm sm:px-6">
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-primary-foreground px-4 shadow-sm sm:px-6">
               <SidebarTrigger />
               <h1 className="text-sm font-semibold">Menu de navegacion</h1>
             </header>
-            <main className="p-6">{children}</main>
+            <main className="p-6 pt-2">{children}</main>
           </SidebarInset>
         </SidebarProvider>
 
