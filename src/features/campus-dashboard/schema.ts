@@ -18,18 +18,167 @@ export const campusDashboardFiltersSchema = z.object({
     .default(true),
 });
 
+// KPIs globales según contrato v1.
+const campusDashboardGlobalKpisSchema = z.object({
+  campus: z.object({
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  facultades: z.object({
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  bloques: z.object({
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  ambientes: z.object({
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  capacidad: z.object({
+    total: z.number().nonnegative(),
+    examen: z.number().nonnegative(),
+  }),
+  activos: z.object({
+    total: z.number().nonnegative(),
+    asignados: z.number().nonnegative(),
+    noAsignadosGlobal: z.number().nonnegative(),
+  }),
+});
+
+// Charts globales según contrato v1.
+const campusDashboardGlobalChartsSchema = z.object({
+  rankingAmbientesPorCampus: z.array(
+    z.object({
+      campusId: z.number().nullable(),
+      campusNombre: z.string(),
+      ambientes: z.number(),
+      pctGlobal: z.number(),
+    })
+  ),
+  capacidadTotalPorCampus: z.array(
+    z.object({
+      campusId: z.number().nullable(),
+      campusNombre: z.string(),
+      capacidadTotal: z.number(),
+      pctGlobal: z.number().optional(),
+    })
+  ),
+  capacidadExamenPorCampus: z.array(
+    z.object({
+      campusId: z.number().nullable(),
+      campusNombre: z.string(),
+      capacidadExamen: z.number(),
+      pctGlobal: z.number().optional(),
+    })
+  ),
+  activosPorCampus: z.array(
+    z.object({
+      campusId: z.number().nullable(),
+      campusNombre: z.string(),
+      asignados: z.number(),
+      noAsignados: z.number(),
+      pctGlobal: z.number().optional(),
+    })
+  ),
+  ambientesActivosInactivosPorCampus: z.array(
+    z.object({
+      campusId: z.number().nullable(),
+      campusNombre: z.string(),
+      activos: z.number(),
+      inactivos: z.number(),
+    })
+  ),
+});
+
+// Tabla global según contrato v1.
+const campusDashboardGlobalTableSchema = z.object({
+  campusResumen: z.array(
+    z.object({
+      campusId: z.number(),
+      campusNombre: z.string(),
+      facultades: z.number(),
+      bloques: z.number(),
+      tiposBloque: z.number(),
+      ambientes: z.number(),
+      tiposAmbiente: z.number(),
+      capacidadTotal: z.number(),
+      capacidadExamen: z.number(),
+      activosAsignados: z.number(),
+    })
+  ),
+});
+
 // Estructura esperada del payload del dashboard global.
 export const campusDashboardGlobalResponseSchema = z.object({
   schemaVersion: z.literal(1),
   filtersApplied: campusDashboardFiltersSchema,
   layout: z.object({ mode: z.literal("global") }),
   data: z.object({
-    kpis: z.record(z.string(), z.unknown()).default({}),
-    charts: z.record(z.string(), z.unknown()).default({}),
-    table: z.object({
-      rows: z.array(z.record(z.string(), z.unknown())).default([]),
-    }),
+    kpis: campusDashboardGlobalKpisSchema,
+    charts: campusDashboardGlobalChartsSchema,
+    table: campusDashboardGlobalTableSchema,
   }),
+});
+
+// KPIs detalle según contrato v1.
+const campusDashboardDetailKpisSchema = z.object({
+  facultades: z.object({
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  bloques: z.object({
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  ambientes: z.object({
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  capacidad: z.object({
+    total: z.number().nonnegative(),
+    examen: z.number().nonnegative(),
+  }),
+  activos: z.object({
+    asignados: z.number().nonnegative(),
+    noAsignadosGlobal: z.number().nonnegative(),
+  }),
+});
+
+// Charts detalle según contrato v1.
+const campusDashboardDetailChartsSchema = z.object({
+  tiposBloque: z.array(
+    z.object({
+      tipoBloqueId: z.number(),
+      tipoBloqueNombre: z.string(),
+      cantidad: z.number(),
+    })
+  ),
+  tiposAmbiente: z.array(
+    z.object({
+      tipoAmbienteId: z.number(),
+      tipoAmbienteNombre: z.string(),
+      cantidad: z.number(),
+    })
+  ),
+});
+
+// Tablas detalle según contrato v1.
+const campusDashboardDetailTablesSchema = z.object({
+  facultadesResumen: z.array(
+    z.object({
+      facultadId: z.number(),
+      facultadNombre: z.string(),
+      bloques: z.number(),
+      tiposBloque: z.number(),
+      ambientes: z.number(),
+      tiposAmbiente: z.number(),
+      capacidadTotal: z.number(),
+      capacidadExamen: z.number(),
+      activosAsignados: z.number(),
+    })
+  ),
 });
 
 // Estructura esperada del payload del dashboard detalle.
@@ -44,16 +193,16 @@ export const campusDashboardDetailResponseSchema = z.object({
     }),
   layout: z.object({ mode: z.literal("detail") }),
   data: z.object({
-    kpis: z.record(z.string(), z.unknown()).default({}),
-    charts: z.record(z.string(), z.unknown()).default({}),
-    tables: z
+    campus: z
       .object({
-        facultades: z.object({
-          rows: z.array(z.record(z.string(), z.unknown())).default([]),
-        }),
+        id: z.number(),
+        nombre: z.string(),
+        activo: z.boolean().optional(),
       })
-      .partial()
-      .default({}),
+      .optional(),
+    kpis: campusDashboardDetailKpisSchema,
+    charts: campusDashboardDetailChartsSchema,
+    tables: campusDashboardDetailTablesSchema,
   }),
 });
 
