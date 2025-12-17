@@ -3,14 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { useCampusDashboardFilters } from "@/features/campus-dashboard/hooks/useCampusDashboardFilters";
 import { useCampusDashboardData } from "@/features/campus-dashboard/hooks/useCampusDashboardData";
+import type { CampusDashboardGlobalResponse } from "@/features/campus-dashboard/schema";
 
 type CampusOption = { id: number; nombre: string };
 type DashboardRow = Record<string, unknown>;
+type GlobalCharts = CampusDashboardGlobalResponse["data"]["charts"];
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
+  ssr: false,
+});
 
 function SwitchInactive({
   checked,
@@ -24,7 +32,7 @@ function SwitchInactive({
       type="button"
       role="switch"
       aria-checked={checked}
-      aria-label="Mostrar inactivos"
+      aria-label="Incluir inactivos"
       onClick={() => onCheckedChange(!checked)}
       className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition ${
         checked
@@ -163,7 +171,9 @@ export default function CampusDashboardPage() {
   }, []);
 
   const rows: DashboardRow[] =
-    data && data.layout.mode === "global" ? data.data.table.rows : [];
+    data && data.layout.mode === "global"
+      ? (data.data.table.campusResumen as DashboardRow[])
+      : [];
 
   const computedOptions = useMemo(() => {
     if (campusOptions.length) {
@@ -182,18 +192,6 @@ export default function CampusDashboardPage() {
     });
     return Object.values(unique);
   }, [campusOptions, rows]);
-
-  function ChartPlaceholder({ title }: { title: string }) {
-    return (
-      <div className="h-64 w-full rounded-lg border bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">{title}</p>
-          <span className="text-xs text-muted-foreground">Placeholder</span>
-        </div>
-        <div className="mt-4 h-44 rounded-md bg-muted/60" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 pt-2">
@@ -218,46 +216,7 @@ export default function CampusDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-12">
-        {(loading ? Array.from({ length: 4 }) : Array.from({ length: 4 })).map(
-          (_, index) => (
-            <div
-              key={`kpi-row1-${index}`}
-              className="rounded-lg border bg-card p-4 shadow-sm"
-              data-testid="campus-kpi-card"
-              style={{ gridColumn: "span 3 / span 3" }}
-            >
-              {loading ? (
-                <Skeleton className="h-12 w-24" />
-              ) : (
-                <>
-                  <p className="text-sm font-medium">KPI {index + 1}</p>
-                  <p className="text-2xl font-semibold text-primary">--</p>
-                </>
-              )}
-            </div>
-          )
-        )}
-        {(loading ? Array.from({ length: 3 }) : Array.from({ length: 3 })).map(
-          (_, index) => (
-            <div
-              key={`kpi-row2-${index}`}
-              className="rounded-lg border bg-card p-4 shadow-sm"
-              data-testid="campus-kpi-card"
-              style={{ gridColumn: "span 4 / span 4" }}
-            >
-              {loading ? (
-                <Skeleton className="h-12 w-24" />
-              ) : (
-                <>
-                  <p className="text-sm font-medium">KPI {index + 5}</p>
-                  <p className="text-2xl font-semibold text-primary">--</p>
-                </>
-              )}
-            </div>
-          )
-        )}
-      </div>
+      <KpiGrid data={data} loading={loading} />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Ranking ambientes por campus</h2>
@@ -267,7 +226,15 @@ export default function CampusDashboardPage() {
             <Skeleton className="h-44 w-full" />
           </div>
         ) : (
-          <ChartPlaceholder title="Ranking de ambientes" />
+          <ChartCard
+            seriesLabel="Ambientes"
+            height={320}
+            option={buildRankingOption(
+              data?.layout.mode === "global"
+                ? data.data.charts.rankingAmbientesPorCampus
+                : []
+            )}
+          />
         )}
       </div>
 
@@ -278,76 +245,448 @@ export default function CampusDashboardPage() {
           ))
         ) : (
           <>
-            <ChartPlaceholder title="Capacidad total por campus" />
-            <ChartPlaceholder title="Capacidad examen por campus" />
-          </>
-        )}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {loading ? (
-          Array.from({ length: 2 }).map((_, index) => (
-            <Skeleton key={index} className="h-64 w-full rounded-lg" />
-          ))
-        ) : (
-          <>
-            <ChartPlaceholder title="Activos por campus" />
-            <ChartPlaceholder title="Ambientes activos vs inactivos" />
-          </>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Tabla por campus</h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                <th className="px-3 py-2">Campus</th>
-                <th className="px-3 py-2">Total ambientes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td className="px-3 py-4" colSpan={2}>
-                    <Skeleton className="h-5 w-48" />
-                  </td>
-                </tr>
-              ) : rows.length ? (
-                rows.map((row) => (
-                  <tr
-                    key={String(row.campusId ?? row.id ?? row.campus_id)}
-                    className="cursor-pointer hover:bg-muted/60"
-                    onClick={() => {
-                      const campusId =
-                        Number(row.campusId ?? row.id ?? row.campus_id) || 0;
-                      if (!campusId) return;
-                      router.push(buildDetailHref(campusId));
-                    }}
-                  >
-                    <td className="px-3 py-2">
-                      {(row.campusName as string) ??
-                        (row.nombre as string) ??
-                        (row.name as string)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {(row.totalAmbientes as number) ??
-                        (row.total as number) ??
-                        "--"}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td className="px-3 py-4 text-muted-foreground" colSpan={2}>
-                    No hay datos para mostrar.
-                  </td>
-                </tr>
+            <ChartCard
+              title="Capacidad total por campus"
+              height={320}
+              option={buildCapacityOption(
+                data?.layout.mode === "global"
+                  ? data.data.charts.capacidadTotalPorCampus
+                  : [],
+                "capacidadTotal"
               )}
-            </tbody>
-          </table>
+            />
+            <ChartCard
+              title="Capacidad examen por campus"
+              height={320}
+              option={buildCapacityOption(
+                data?.layout.mode === "global"
+                  ? data.data.charts.capacidadExamenPorCampus
+                  : [],
+                "capacidadExamen"
+              )}
+            />
+          </>
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {loading ? (
+          Array.from({ length: 2 }).map((_, index) => (
+            <Skeleton key={index} className="h-64 w-full rounded-lg" />
+          ))
+        ) : (
+          <>
+            <ChartCard
+              title="Activos por campus"
+              height={320}
+              option={buildActivosOption(
+                data?.layout.mode === "global"
+                  ? data.data.charts.activosPorCampus
+                  : []
+              )}
+            />
+            <ChartCard
+              title="Ambientes activos vs inactivos"
+              height={320}
+              option={buildAmbientesEstadoOption(
+                data?.layout.mode === "global"
+                  ? data.data.charts.ambientesActivosInactivosPorCampus
+                  : []
+              )}
+            />
+          </>
+        )}
+      </div>
+
+      <CampusTable
+        loading={loading}
+        rows={
+          data && data.layout.mode === "global"
+            ? data.data.table.campusResumen
+            : []
+        }
+        onRowClick={(campusId) => router.push(buildDetailHref(campusId))}
+      />
+    </div>
+  );
+}
+
+function KpiGrid({
+  data,
+  loading,
+}: {
+  data: CampusDashboardGlobalResponse | null;
+  loading: boolean;
+}) {
+  const kpis = data && data.layout.mode === "global" ? data.data.kpis : null;
+
+  const cards = [
+    {
+      title: "Campus",
+      value: kpis ? kpis.campus.activos + kpis.campus.inactivos : "--",
+      detail: kpis
+        ? `${kpis.campus.activos} activos / ${kpis.campus.inactivos} inactivos`
+        : null,
+      span: "xl:col-span-3",
+    },
+    {
+      title: "Facultades",
+      value: kpis ? kpis.facultades.activos + kpis.facultades.inactivos : "--",
+      detail: kpis
+        ? `${kpis.facultades.activos} activos / ${kpis.facultades.inactivos} inactivos`
+        : null,
+      span: "xl:col-span-3",
+    },
+    {
+      title: "Bloques",
+      value: kpis ? kpis.bloques.activos + kpis.bloques.inactivos : "--",
+      detail: kpis
+        ? `${kpis.bloques.activos} activos / ${kpis.bloques.inactivos} inactivos`
+        : null,
+      span: "xl:col-span-3",
+    },
+    {
+      title: "Ambientes",
+      value: kpis ? kpis.ambientes.activos + kpis.ambientes.inactivos : "--",
+      detail: kpis
+        ? `${kpis.ambientes.activos} activos / ${kpis.ambientes.inactivos} inactivos`
+        : null,
+      span: "xl:col-span-3",
+    },
+    {
+      title: "Capacidad total",
+      value: kpis ? kpis.capacidad.total : "--",
+      span: "xl:col-span-4",
+    },
+    {
+      title: "Capacidad examen",
+      value: kpis ? kpis.capacidad.examen : "--",
+      span: "xl:col-span-4",
+    },
+    {
+      title: "Activos",
+      value: kpis ? kpis.activos.total : "--",
+      detail: kpis
+        ? `${kpis.activos.asignados} asignados / ${kpis.activos.noAsignadosGlobal} sin asignar`
+        : null,
+      span: "xl:col-span-4",
+    },
+  ];
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-12">
+      {cards.map((card, index) => (
+        <div
+          key={card.title}
+          className={`rounded-lg border bg-card p-4 shadow-sm ${card.span}`}
+          data-testid="campus-kpi-card"
+        >
+          {loading ? (
+            <Skeleton className="h-12 w-24" />
+          ) : (
+            <>
+              <p className="text-sm font-medium">{card.title}</p>
+              <p className="text-2xl font-semibold text-primary">
+                {typeof card.value === "number" ? card.value : "--"}
+              </p>
+              {card.detail ? (
+                <p className="text-xs text-muted-foreground">{card.detail}</p>
+              ) : null}
+            </>
+          )}
         </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  option,
+  height = 300,
+  seriesLabel,
+}: {
+  title?: string;
+  option: any;
+  height?: number;
+  seriesLabel?: string;
+}) {
+  const hasData =
+    option && option.series && option.series.some((s: any) => s.data?.length);
+  return (
+    <div className="rounded-lg border bg-card p-4 shadow-sm">
+      {title ? <p className="text-sm font-semibold">{title}</p> : null}
+      {hasData ? (
+        <div className="mt-3">
+          <ReactECharts
+            option={option}
+            style={{ height }}
+            opts={{ locale: "es" }}
+          />
+        </div>
+      ) : (
+        <div className="mt-3 rounded-md border border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">
+          Sin datos para {title ?? seriesLabel ?? "este gráfico"}.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildRankingOption(rows: GlobalCharts["rankingAmbientesPorCampus"]) {
+  const sorted = [...rows].sort((a, b) => b.ambientes - a.ambientes);
+  return {
+    tooltip: { trigger: "axis" },
+    xAxis: {
+      type: "category",
+      data: sorted.map((row) => row.campusNombre),
+      axisLabel: { rotate: 30 },
+    },
+    yAxis: { type: "value" },
+    series: [
+      {
+        type: "bar",
+        data: sorted.map((row) => row.ambientes),
+        name: "Ambientes",
+        itemStyle: { color: "#0ea5e9" },
+      },
+    ],
+  };
+}
+
+function buildCapacityOption(
+  rows:
+    | GlobalCharts["capacidadTotalPorCampus"]
+    | GlobalCharts["capacidadExamenPorCampus"],
+  valueKey: "capacidadTotal" | "capacidadExamen"
+) {
+  const sorted = [...rows].sort(
+    (a, b) => (b[valueKey] as number) - (a[valueKey] as number)
+  );
+  return {
+    tooltip: { trigger: "axis" },
+    xAxis: { type: "value" },
+    yAxis: {
+      type: "category",
+      data: sorted.map((row) => row.campusNombre),
+    },
+    series: [
+      {
+        type: "bar",
+        data: sorted.map((row) => row[valueKey]),
+        name:
+          valueKey === "capacidadTotal"
+            ? "Capacidad total"
+            : "Capacidad examen",
+        itemStyle: {
+          color: valueKey === "capacidadTotal" ? "#22c55e" : "#a855f7",
+        },
+      },
+    ],
+  };
+}
+
+function buildActivosOption(rows: GlobalCharts["activosPorCampus"]) {
+  const sorted = [...rows].sort(
+    (a, b) => b.asignados + b.noAsignados - (a.asignados + a.noAsignados)
+  );
+  return {
+    tooltip: { trigger: "axis" },
+    legend: { bottom: 0 },
+    xAxis: { type: "category", data: sorted.map((row) => row.campusNombre) },
+    yAxis: { type: "value" },
+    series: [
+      {
+        name: "Asignados",
+        type: "bar",
+        stack: "activos",
+        itemStyle: { color: "#2563eb" },
+        data: sorted.map((row) => row.asignados),
+      },
+      {
+        name: "Sin asignar",
+        type: "bar",
+        stack: "activos",
+        itemStyle: { color: "#94a3b8" },
+        data: sorted.map((row) => row.noAsignados),
+      },
+    ],
+  };
+}
+
+function buildAmbientesEstadoOption(
+  rows: GlobalCharts["ambientesActivosInactivosPorCampus"]
+) {
+  const sorted = [...rows].sort(
+    (a, b) => b.activos + b.inactivos - (a.activos + a.inactivos)
+  );
+  return {
+    tooltip: { trigger: "axis" },
+    legend: { bottom: 0 },
+    xAxis: { type: "category", data: sorted.map((row) => row.campusNombre) },
+    yAxis: { type: "value" },
+    series: [
+      {
+        name: "Activos",
+        type: "bar",
+        stack: "estado",
+        itemStyle: { color: "#22c55e" },
+        data: sorted.map((row) => row.activos),
+      },
+      {
+        name: "Inactivos",
+        type: "bar",
+        stack: "estado",
+        itemStyle: { color: "#f59e0b" },
+        data: sorted.map((row) => row.inactivos),
+      },
+    ],
+  };
+}
+
+function CampusTable({
+  loading,
+  rows,
+  onRowClick,
+}: {
+  loading: boolean;
+  rows: CampusDashboardGlobalResponse["data"]["table"]["campusResumen"];
+  onRowClick: (campusId: number) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] =
+    useState<keyof (typeof rows)[number]>("campusNombre");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const base = term.length
+      ? rows.filter((row) => row.campusNombre.toLowerCase().includes(term))
+      : rows;
+
+    const sorted = [...base].sort((a, b) => {
+      const aVal = a[sortBy] as number | string;
+      const bVal = b[sortBy] as number | string;
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortDir === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      return sortDir === "asc"
+        ? String(aVal).localeCompare(String(bVal))
+        : String(bVal).localeCompare(String(aVal));
+    });
+
+    return sorted;
+  }, [rows, search, sortBy, sortDir]);
+
+  function toggleSort(column: typeof sortBy) {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(column);
+      setSortDir("asc");
+    }
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Tabla por campus</h2>
+        <Input
+          placeholder="Buscar campus"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="w-full max-w-xs"
+        />
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="text-left text-muted-foreground">
+              {[
+                "Campus",
+                "Facultades",
+                "Bloques",
+                "Tipos bloque",
+                "Ambientes",
+                "Tipos ambiente",
+                "Capacidad total",
+                "Capacidad examen",
+                "Activos asignados",
+              ].map((col, index) => (
+                <th
+                  key={col}
+                  className="px-3 py-2 cursor-pointer select-none"
+                  onClick={() =>
+                    toggleSort(
+                      [
+                        "campusNombre",
+                        "facultades",
+                        "bloques",
+                        "tiposBloque",
+                        "ambientes",
+                        "tiposAmbiente",
+                        "capacidadTotal",
+                        "capacidadExamen",
+                        "activosAsignados",
+                      ][index] as typeof sortBy
+                    )
+                  }
+                >
+                  {col}
+                  {sortBy ===
+                  ([
+                    "campusNombre",
+                    "facultades",
+                    "bloques",
+                    "tiposBloque",
+                    "ambientes",
+                    "tiposAmbiente",
+                    "capacidadTotal",
+                    "capacidadExamen",
+                    "activosAsignados",
+                  ][index] as typeof sortBy)
+                    ? sortDir === "asc"
+                      ? " ↑"
+                      : " ↓"
+                    : ""}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td className="px-3 py-4" colSpan={9}>
+                  <Skeleton className="h-5 w-48" />
+                </td>
+              </tr>
+            ) : filtered.length ? (
+              filtered.map((row) => (
+                <tr
+                  key={row.campusId}
+                  className="cursor-pointer hover:bg-muted/60"
+                  onClick={() => onRowClick(row.campusId)}
+                >
+                  <td className="px-3 py-2">{row.campusNombre}</td>
+                  <td className="px-3 py-2">{row.facultades}</td>
+                  <td className="px-3 py-2">{row.bloques}</td>
+                  <td className="px-3 py-2">{row.tiposBloque}</td>
+                  <td className="px-3 py-2">{row.ambientes}</td>
+                  <td className="px-3 py-2">{row.tiposAmbiente}</td>
+                  <td className="px-3 py-2">{row.capacidadTotal}</td>
+                  <td className="px-3 py-2">{row.capacidadExamen}</td>
+                  <td className="px-3 py-2">{row.activosAsignados}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="px-3 py-4 text-muted-foreground" colSpan={9}>
+                  No hay datos para mostrar.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
