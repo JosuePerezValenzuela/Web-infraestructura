@@ -11,6 +11,8 @@ import { apiFetch } from "@/lib/api";
 import { useCampusDashboardFilters } from "@/features/campus-dashboard/hooks/useCampusDashboardFilters";
 import { useCampusDashboardData } from "@/features/campus-dashboard/hooks/useCampusDashboardData";
 import type { CampusDashboardGlobalResponse } from "@/features/campus-dashboard/schema";
+import { DonutKpiCard } from "@/features/campus-dashboard/components/DonutKpiCard";
+import { CapacityKpiCard } from "@/features/campus-dashboard/components/CapacityKpiCard";
 
 type CampusOption = { id: number; nombre: string };
 type DashboardRow = Record<string, unknown>;
@@ -174,6 +176,8 @@ export default function CampusDashboardPage() {
     data && data.layout.mode === "global"
       ? (data.data.table.campusResumen as DashboardRow[])
       : [];
+  const kpis =
+    data && data.layout.mode === "global" ? data.data.kpis : undefined;
 
   const computedOptions = useMemo(() => {
     if (campusOptions.length) {
@@ -216,7 +220,7 @@ export default function CampusDashboardPage() {
         </div>
       </div>
 
-      <KpiGrid data={data} loading={loading} />
+      <KpiGrid kpis={kpis} loading={loading} />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Ranking ambientes por campus</h2>
@@ -312,90 +316,81 @@ export default function CampusDashboardPage() {
 }
 
 function KpiGrid({
-  data,
+  kpis,
   loading,
 }: {
-  data: CampusDashboardGlobalResponse | null;
+  kpis: CampusDashboardGlobalResponse["data"]["kpis"] | undefined;
   loading: boolean;
 }) {
-  const kpis = data && data.layout.mode === "global" ? data.data.kpis : null;
-
   const cards = [
     {
+      type: "donut" as const,
       title: "Campus",
-      value: kpis ? kpis.campus.activos + kpis.campus.inactivos : "--",
-      detail: kpis
-        ? `${kpis.campus.activos} activos / ${kpis.campus.inactivos} inactivos`
-        : null,
-      span: "xl:col-span-3",
+      data: [
+        { label: "Activos", value: kpis?.campus.activos ?? 0 },
+        { label: "Inactivos", value: kpis?.campus.inactivos ?? 0 },
+      ],
     },
     {
+      type: "donut" as const,
       title: "Facultades",
-      value: kpis ? kpis.facultades.activos + kpis.facultades.inactivos : "--",
-      detail: kpis
-        ? `${kpis.facultades.activos} activos / ${kpis.facultades.inactivos} inactivos`
-        : null,
-      span: "xl:col-span-3",
+      data: [
+        { label: "Activos", value: kpis?.facultades.activos ?? 0 },
+        { label: "Inactivos", value: kpis?.facultades.inactivos ?? 0 },
+      ],
     },
     {
+      type: "donut" as const,
       title: "Bloques",
-      value: kpis ? kpis.bloques.activos + kpis.bloques.inactivos : "--",
-      detail: kpis
-        ? `${kpis.bloques.activos} activos / ${kpis.bloques.inactivos} inactivos`
-        : null,
-      span: "xl:col-span-3",
+      data: [
+        { label: "Activos", value: kpis?.bloques.activos ?? 0 },
+        { label: "Inactivos", value: kpis?.bloques.inactivos ?? 0 },
+      ],
     },
     {
+      type: "donut" as const,
       title: "Ambientes",
-      value: kpis ? kpis.ambientes.activos + kpis.ambientes.inactivos : "--",
-      detail: kpis
-        ? `${kpis.ambientes.activos} activos / ${kpis.ambientes.inactivos} inactivos`
-        : null,
-      span: "xl:col-span-3",
+      data: [
+        { label: "Activos", value: kpis?.ambientes.activos ?? 0 },
+        { label: "Inactivos", value: kpis?.ambientes.inactivos ?? 0 },
+      ],
     },
     {
-      title: "Capacidad total",
-      value: kpis ? kpis.capacidad.total : "--",
-      span: "xl:col-span-4",
-    },
-    {
-      title: "Capacidad examen",
-      value: kpis ? kpis.capacidad.examen : "--",
-      span: "xl:col-span-4",
-    },
-    {
+      type: "donut" as const,
       title: "Activos",
-      value: kpis ? kpis.activos.total : "--",
-      detail: kpis
-        ? `${kpis.activos.asignados} asignados / ${kpis.activos.noAsignadosGlobal} sin asignar`
-        : null,
-      span: "xl:col-span-4",
+      data: [
+        { label: "Asignados", value: kpis?.activos.asignados ?? 0 },
+        { label: "Sin asignar", value: kpis?.activos.noAsignadosGlobal ?? 0 },
+      ],
+    },
+    {
+      type: "capacity" as const,
+      title: "Capacidades",
+      total: kpis?.capacidad.total ?? 0,
+      examen: kpis?.capacidad.examen ?? 0,
     },
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-12">
-      {cards.map((card, index) => (
-        <div
-          key={card.title}
-          className={`rounded-lg border bg-card p-4 shadow-sm ${card.span}`}
-          data-testid="campus-kpi-card"
-        >
-          {loading ? (
-            <Skeleton className="h-12 w-24" />
-          ) : (
-            <>
-              <p className="text-sm font-medium">{card.title}</p>
-              <p className="text-2xl font-semibold text-primary">
-                {typeof card.value === "number" ? card.value : "--"}
-              </p>
-              {card.detail ? (
-                <p className="text-xs text-muted-foreground">{card.detail}</p>
-              ) : null}
-            </>
-          )}
-        </div>
-      ))}
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {cards.map((card) =>
+        card.type === "donut" ? (
+          <DonutKpiCard
+            key={card.title}
+            title={card.title}
+            data={card.data}
+            loading={loading}
+          />
+        ) : (
+          <CapacityKpiCard
+            key={card.title}
+            title={card.title}
+            total={card.total}
+            examen={card.examen}
+            loading={loading}
+          />
+        )
+      )}
     </div>
   );
 }
