@@ -131,17 +131,16 @@ export default function CampusDashboardDetailPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <SwitchInactive
-            checked={filters.includeInactive}
-            onCheckedChange={setIncludeInactive}
-          />
           <Button
             type="button"
-            variant="outline"
             onClick={() => router.push(buildGlobalHref())}
           >
             Volver
           </Button>
+          <SwitchInactive
+            checked={filters.includeInactive}
+            onCheckedChange={setIncludeInactive}
+          />
         </div>
       </div>
 

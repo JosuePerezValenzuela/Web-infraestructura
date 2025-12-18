@@ -444,6 +444,12 @@ function buildRankingOption(rows: GlobalCharts["rankingAmbientesPorCampus"]) {
         data: sorted.map((row) => row.ambientes),
         name: "Ambientes",
         itemStyle: { color: "#0ea5e9" },
+        label: {
+          show: true,
+          position: "top",
+          formatter: ({ value }: { value: number }) =>
+            Number(value ?? 0).toLocaleString(),
+        },
       },
     ],
   };
@@ -476,6 +482,12 @@ function buildCapacityOption(
         itemStyle: {
           color: valueKey === "capacidadTotal" ? "#22c55e" : "#a855f7",
         },
+        label: {
+          show: true,
+          position: "right",
+          formatter: ({ value }: { value: number }) =>
+            Number(value ?? 0).toLocaleString(),
+        },
       },
     ],
   };
@@ -497,6 +509,12 @@ function buildActivosOption(rows: GlobalCharts["activosPorCampus"]) {
         stack: "activos",
         itemStyle: { color: "#2563eb" },
         data: sorted.map((row) => row.asignados),
+        label: {
+          show: true,
+          position: "inside",
+          formatter: ({ value }: { value: number }) =>
+            Number(value ?? 0).toLocaleString(),
+        },
       },
       {
         name: "Sin asignar",
@@ -504,6 +522,12 @@ function buildActivosOption(rows: GlobalCharts["activosPorCampus"]) {
         stack: "activos",
         itemStyle: { color: "#94a3b8" },
         data: sorted.map((row) => row.noAsignados),
+        label: {
+          show: true,
+          position: "inside",
+          formatter: ({ value }: { value: number }) =>
+            Number(value ?? 0).toLocaleString(),
+        },
       },
     ],
   };
@@ -527,6 +551,12 @@ function buildAmbientesEstadoOption(
         stack: "estado",
         itemStyle: { color: "#22c55e" },
         data: sorted.map((row) => row.activos),
+        label: {
+          show: true,
+          position: "inside",
+          formatter: ({ value }: { value: number }) =>
+            Number(value ?? 0).toLocaleString(),
+        },
       },
       {
         name: "Inactivos",
@@ -534,6 +564,12 @@ function buildAmbientesEstadoOption(
         stack: "estado",
         itemStyle: { color: "#f59e0b" },
         data: sorted.map((row) => row.inactivos),
+        label: {
+          show: true,
+          position: "inside",
+          formatter: ({ value }: { value: number }) =>
+            Number(value ?? 0).toLocaleString(),
+        },
       },
     ],
   };
