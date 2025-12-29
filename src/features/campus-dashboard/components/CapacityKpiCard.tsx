@@ -26,19 +26,24 @@ export function CapacityKpiCard({
         trigger: "axis",
         formatter: (params: any) => {
           const items = params as Array<{ seriesName: string; value: number }>;
-          const totalValue = (items?.[0]?.value ?? 0) + (items?.[1]?.value ?? 0);
+          const totalValue =
+            (items?.[0]?.value ?? 0) + (items?.[1]?.value ?? 0);
           return [
             `<strong>${title}</strong>`,
             ...items.map(
-              (item) =>
-                `${item.seriesName}: ${item.value.toLocaleString()}`
+              (item) => `${item.seriesName}: ${item.value.toLocaleString()}`
             ),
             `Total: ${totalValue.toLocaleString()}`,
           ].join("<br />");
         },
       },
       grid: { left: 12, right: 12, bottom: 16, top: 30, containLabel: true },
-      xAxis: { type: "category", data: [title], axisTick: { show: false }, axisLabel: { show: false } },
+      xAxis: {
+        type: "category",
+        data: [title],
+        axisTick: { show: false },
+        axisLabel: { show: false },
+      },
       yAxis: { type: "value", splitLine: { show: false } },
       series: [
         {
@@ -56,7 +61,7 @@ export function CapacityKpiCard({
           data: [examen],
         },
         {
-          name: "Total",
+          name: "Diferencia",
           type: "bar",
           stack: "capacidad",
           itemStyle: { color: "#22c55e" },
@@ -65,7 +70,7 @@ export function CapacityKpiCard({
             show: true,
             position: "inside",
             formatter: ({ value }: { value: number }) =>
-              `${(value + examen).toLocaleString()} (Total)`,
+              `${(value + examen).toLocaleString()} (Cap total)`,
           },
           data: [complement],
         },
@@ -74,7 +79,10 @@ export function CapacityKpiCard({
   }, [examen, title, total]);
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm" data-testid="campus-kpi-card">
+    <div
+      className="rounded-lg border bg-card p-4 shadow-sm"
+      data-testid="campus-kpi-card"
+    >
       <p className="text-sm font-semibold">{title}</p>
       {loading ? (
         <div className="mt-3 space-y-2">
@@ -83,7 +91,11 @@ export function CapacityKpiCard({
         </div>
       ) : (
         <div className="mt-2">
-          <ReactECharts option={option} style={{ height: 200 }} opts={{ locale: "es" }} />
+          <ReactECharts
+            option={option}
+            style={{ height: 200 }}
+            opts={{ locale: "es" }}
+          />
         </div>
       )}
     </div>
