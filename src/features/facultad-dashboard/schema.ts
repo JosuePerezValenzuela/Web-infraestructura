@@ -37,7 +37,7 @@ function parseCsvDayArray(value: unknown): number[] {
 }
 
 const positiveIntArraySchema = z.array(z.coerce.number().int().positive());
-const dayArraySchema = z.array(z.coerce.number().int().min(0).max(6));
+const dayArraySchema = z.array(z.coerce.number().int().min(0).max(5));
 const slotMinutesSchema = z
   .coerce
   .number()
@@ -60,8 +60,8 @@ export const facultadDashboardFiltersSchema = z.object({
     .default(true),
   slotMinutes: z.preprocess((value) => value ?? 45, slotMinutesSchema).default(45),
   dias: z
-    .preprocess((value) => (value === undefined ? [0, 1, 2, 3, 4, 5, 6] : parseCsvDayArray(value)), dayArraySchema)
-    .default([0, 1, 2, 3, 4, 5, 6]),
+    .preprocess((value) => (value === undefined ? [0, 1, 2, 3, 4, 5] : parseCsvDayArray(value)), dayArraySchema)
+    .default([0, 1, 2, 3, 4, 5]),
 });
 
 const stateCountSchema = z.object({
@@ -84,10 +84,11 @@ const commonKpisSchema = z.object({
 });
 
 const utilizationRowSchema = z.object({
+  ambienteId: z.number().int().positive().optional(),
   ambienteNombre: z.string(),
   bloqueNombre: z
     .preprocess(
-      (value) => (value === null || value === undefined ? "Sin bloque" : value),
+      (value) => (value === null || value === undefined ? "" : value),
       z.string()
     ),
   pctOcupacion: z.number().nonnegative(),
@@ -154,7 +155,9 @@ const commonChartsSchema = z.object({
 const commonTablesSchema = z.object({
   resumenBloques: z.array(
     z.object({
+      bloqueId: z.number().int().positive().optional(),
       bloqueNombre: z.string(),
+      facultadNombre: z.string().optional(),
       tipoBloqueNombre: z.string(),
       pisos: z.number().nonnegative(),
       activo: z.boolean(),
@@ -185,7 +188,7 @@ export const facultadDashboardDetailResponseSchema = z.object({
     facultadId: z.coerce.number().int().positive(),
     includeInactive: facultadDashboardFiltersSchema.shape.includeInactive,
     slotMinutes: slotMinutesSchema.default(45),
-    dias: dayArraySchema.default([0, 1, 2, 3, 4, 5, 6]),
+    dias: dayArraySchema.default([0, 1, 2, 3, 4, 5]),
   }),
   layout: z.object({ mode: z.literal("detail") }),
   data: z.object({

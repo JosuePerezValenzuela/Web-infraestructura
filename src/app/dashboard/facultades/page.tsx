@@ -189,7 +189,6 @@ function DaySelector({
     { id: 3, short: "J" },
     { id: 4, short: "V" },
     { id: 5, short: "S" },
-    { id: 6, short: "D" },
   ];
   const selected = new Set(value);
 
@@ -214,7 +213,7 @@ function DaySelector({
                 next.add(day.id);
               }
               const sorted = Array.from(next).sort((a, b) => a - b);
-              onChange(sorted.length ? sorted : [0, 1, 2, 3, 4, 5, 6]);
+              onChange(sorted.length ? sorted : [0, 1, 2, 3, 4, 5]);
             }}
             aria-label={`Día ${day.id}`}
           >
@@ -640,7 +639,11 @@ function buildOccupationByBlockOption(rows: GlobalCharts["ocupacionPorBloque"]) 
   return {
     tooltip: { trigger: "axis" },
     xAxis: { type: "value", max: 100 },
-    yAxis: { type: "category", data: sorted.map((row) => row.bloqueNombre) },
+    yAxis: {
+      type: "category",
+      inverse: true,
+      data: sorted.map((row) => row.bloqueNombre),
+    },
     series: [
       {
         type: "bar",
@@ -665,8 +668,8 @@ function buildTopUtilizationOption(
     yAxis: {
       type: "category",
       inverse: true,
-      data: rows.map(
-        (row) => `${row.ambienteNombre} (${row.bloqueNombre || "Sin bloque"})`
+      data: rows.map((row) =>
+        row.bloqueNombre ? `${row.ambienteNombre} (${row.bloqueNombre})` : row.ambienteNombre
       ),
     },
     series: [
@@ -685,6 +688,7 @@ function buildTopUtilizationOption(
 }
 
 function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"]) {
+  const weekdayRows = rows.filter((row) => row.dia >= 0 && row.dia <= 5);
   const dayLabels: Record<number, string> = {
     0: "Lunes",
     1: "Martes",
@@ -692,13 +696,12 @@ function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"])
     3: "Jueves",
     4: "Viernes",
     5: "Sábado",
-    6: "Domingo",
   };
-  const franjas = Array.from(new Set(rows.map((item) => item.franja)));
-  const dias = Array.from(new Set(rows.map((item) => item.dia))).sort((a, b) => a - b);
-  const data = rows.map((row) => [
+  const fixedDays = [5, 4, 3, 2, 1, 0];
+  const franjas = Array.from(new Set(weekdayRows.map((item) => item.franja)));
+  const data = weekdayRows.map((row) => [
     franjas.indexOf(row.franja),
-    dias.indexOf(row.dia),
+    fixedDays.indexOf(row.dia),
     row.pctOcupacion,
   ]);
 
@@ -706,22 +709,25 @@ function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"])
     tooltip: {
       formatter: (params: { data: [number, number, number] }) => {
         const [x, y, pct] = params.data;
-        return `${dayLabels[dias[y]]} ${franjas[x]}: ${pct}%`;
+        return `${dayLabels[fixedDays[y]]} ${franjas[x]}: ${pct}%`;
       },
     },
-    grid: { left: 90, right: 20, top: 20, bottom: 40 },
+    grid: { left: 90, right: 90, top: 20, bottom: 40 },
     xAxis: { type: "category", data: franjas },
     yAxis: {
       type: "category",
-      data: dias.map((day) => dayLabels[day] ?? String(day)),
+      data: fixedDays.map((day) => dayLabels[day]),
     },
     visualMap: {
       min: 0,
       max: 100,
       calculable: true,
-      orient: "horizontal",
-      left: "center",
-      bottom: 0,
+      orient: "vertical",
+      right: 10,
+      top: "middle",
+      inRange: {
+        color: ["#dbeafe", "#fbcfe8", "#fecaca"],
+      },
     },
     series: [{ type: "heatmap", data }],
   };
@@ -735,22 +741,85 @@ function ResumenBloquesTable({
   rows: FacultadDashboardGlobalResponse["data"]["tables"]["resumenBloques"];
 }) {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<
+    | "bloqueNombre"
+    | "facultadNombre"
+    | "tipoBloqueNombre"
+    | "pisos"
+    | "activo"
+    | "ambientes"
+    | "capacidadTotal"
+    | "capacidadExamen"
+    | "activosAsignados"
+  >("bloqueNombre");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const enriched = useMemo(() => {
+    return rows.map((row) => {
+      const facultadNombre = row.facultadNombre ?? "N/D";
+
+      return {
+        ...row,
+        facultadNombre,
+      };
+    });
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term.length) return rows;
-    return rows.filter(
-      (row) =>
-        row.bloqueNombre.toLowerCase().includes(term) ||
-        row.tipoBloqueNombre.toLowerCase().includes(term)
-    );
-  }, [rows, search]);
+    const base = !term.length
+      ? enriched
+      : enriched.filter(
+          (row) =>
+            row.bloqueNombre.toLowerCase().includes(term) ||
+            row.tipoBloqueNombre.toLowerCase().includes(term) ||
+            row.facultadNombre.toLowerCase().includes(term)
+        );
+
+    return [...base].sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortDir === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+        return sortDir === "asc"
+          ? Number(aVal) - Number(bVal)
+          : Number(bVal) - Number(aVal);
+      }
+      return sortDir === "asc"
+        ? String(aVal).localeCompare(String(bVal))
+        : String(bVal).localeCompare(String(aVal));
+    });
+  }, [enriched, search, sortBy, sortDir]);
+
+  function toggleSort(
+    column:
+      | "bloqueNombre"
+      | "facultadNombre"
+      | "tipoBloqueNombre"
+      | "pisos"
+      | "activo"
+      | "ambientes"
+      | "capacidadTotal"
+      | "capacidadExamen"
+      | "activosAsignados"
+  ) {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(column);
+    setSortDir("asc");
+  }
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Resumen de bloques</h2>
         <Input
-          placeholder="Buscar bloque o tipo"
+          placeholder="Buscar facultad, bloque o tipo"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="w-full max-w-xs"
@@ -760,15 +829,33 @@ function ResumenBloquesTable({
         <table className="min-w-full text-sm">
           <thead>
             <tr className="text-left text-muted-foreground">
-              <th className="px-3 py-2">Bloque</th>
-              <th className="px-3 py-2">Tipo</th>
-              <th className="px-3 py-2">Pisos</th>
-              <th className="px-3 py-2">Estado</th>
-              <th className="px-3 py-2">Ambientes</th>
-              <th className="px-3 py-2">Tipos ambiente</th>
-              <th className="px-3 py-2">Capacidad total</th>
-              <th className="px-3 py-2">Capacidad examen</th>
-              <th className="px-3 py-2">Activos asignados</th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("facultadNombre")}>
+                Facultad {sortBy === "facultadNombre" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("bloqueNombre")}>
+                Bloque {sortBy === "bloqueNombre" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("tipoBloqueNombre")}>
+                Tipo bloque {sortBy === "tipoBloqueNombre" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("pisos")}>
+                Pisos {sortBy === "pisos" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("activo")}>
+                Estado {sortBy === "activo" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("ambientes")}>
+                Ambientes {sortBy === "ambientes" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("capacidadTotal")}>
+                Capacidad total {sortBy === "capacidadTotal" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("capacidadExamen")}>
+                Capacidad examen {sortBy === "capacidadExamen" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th className="cursor-pointer select-none px-3 py-2" onClick={() => toggleSort("activosAsignados")}>
+                Activos asignados {sortBy === "activosAsignados" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -780,13 +867,13 @@ function ResumenBloquesTable({
               </tr>
             ) : filtered.length ? (
               filtered.map((row) => (
-                <tr key={`${row.bloqueNombre}-${row.tipoBloqueNombre}`} className="hover:bg-muted/50">
+                <tr key={row.bloqueId ?? `${row.bloqueNombre}-${row.tipoBloqueNombre}`} className="hover:bg-muted/50">
+                  <td className="px-3 py-2">{row.facultadNombre}</td>
                   <td className="px-3 py-2">{row.bloqueNombre}</td>
                   <td className="px-3 py-2">{row.tipoBloqueNombre}</td>
                   <td className="px-3 py-2">{row.pisos}</td>
                   <td className="px-3 py-2">{row.activo ? "Activo" : "Inactivo"}</td>
                   <td className="px-3 py-2">{row.ambientes}</td>
-                  <td className="px-3 py-2">{row.tiposAmbiente}</td>
                   <td className="px-3 py-2">{row.capacidadTotal}</td>
                   <td className="px-3 py-2">{row.capacidadExamen}</td>
                   <td className="px-3 py-2">{row.activosAsignados}</td>
