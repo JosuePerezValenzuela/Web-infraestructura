@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { DonutKpiCard } from "@/features/campus-dashboard/components/DonutKpiCard";
@@ -15,7 +15,7 @@ import { useFacultadDashboardData } from "@/features/facultad-dashboard/hooks/us
 import type { FacultadDashboardGlobalResponse } from "@/features/facultad-dashboard/schema";
 
 type CampusOption = { id: number; nombre: string };
-type FacultadOption = { id: number; nombre: string };
+type FacultadOption = { id: number; nombre: string; campus_id: number };
 type GlobalCharts = FacultadDashboardGlobalResponse["data"]["charts"];
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
@@ -72,7 +72,13 @@ function MultiSelect({
   onChange: (ids: number[]) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const filteredOptions = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term.length) return options;
+    return options.filter((option) => option.nombre.toLowerCase().includes(term));
+  }, [options, searchTerm]);
 
   const summaryLabel =
     selectedIds.length === 0 ? emptyLabel : `${selectedIds.length} seleccionados`;
@@ -85,7 +91,10 @@ function MultiSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={label}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => !value);
+          setSearchTerm("");
+        }}
         className="min-w-[220px] justify-between"
       >
         <span className="truncate">{summaryLabel}</span>
@@ -100,7 +109,30 @@ function MultiSelect({
           aria-label={`Listado de ${label.toLowerCase()}`}
           className="absolute z-20 mt-2 w-72 max-w-full rounded-md border bg-popover p-1 shadow-lg"
         >
-          {options.map((option) => {
+          <li className="p-1">
+            <Input
+              placeholder={`Buscar ${label.toLowerCase()}`}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              autoFocus
+            />
+          </li>
+          <li className="p-1">
+            <button
+              type="button"
+              role="option"
+              aria-selected={selectedIds.length === 0}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+              onClick={() => {
+                onChange([]);
+                setOpen(false);
+                setSearchTerm("");
+              }}
+            >
+              Limpiar selección
+            </button>
+          </li>
+          {filteredOptions.map((option) => {
             const isSelected = selectedSet.has(option.id);
             return (
               <li key={option.id} className="p-1">
@@ -118,6 +150,7 @@ function MultiSelect({
                     }
                     onChange(Array.from(next));
                     setOpen(false);
+                    setSearchTerm("");
                   }}
                 >
                   <span
@@ -131,7 +164,7 @@ function MultiSelect({
               </li>
             );
           })}
-          {options.length === 0 ? (
+          {filteredOptions.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">
               Sin opciones disponibles
             </li>
@@ -194,7 +227,6 @@ function DaySelector({
 }
 
 export default function FacultadDashboardPage() {
-  const router = useRouter();
   const {
     filters,
     setCampusIds,
@@ -202,7 +234,6 @@ export default function FacultadDashboardPage() {
     setIncludeInactive,
     setSlotMinutes,
     setDias,
-    buildDetailHref,
   } = useFacultadDashboardFilters();
   const { data, loading } = useFacultadDashboardData({
     mode: "global",
@@ -210,7 +241,7 @@ export default function FacultadDashboardPage() {
   });
 
   const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
-  const [facultadOptions, setFacultadOptions] = useState<FacultadOption[]>([]);
+  const [allFacultadOptions, setAllFacultadOptions] = useState<FacultadOption[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -219,12 +250,27 @@ export default function FacultadDashboardPage() {
       try {
         const [campus, facultades] = await Promise.all([
           apiFetch<{ items: CampusOption[] }>("/campus?page=1&limit=50"),
-          apiFetch<{ items: FacultadOption[] }>("/facultades?page=1&limit=100"),
+          apiFetch<{ items: Array<FacultadOption | (Omit<FacultadOption, "campus_id"> & { campus_id: string })> }>("/facultades?page=1&limit=200"),
         ]);
 
         if (active) {
           setCampusOptions(campus.items ?? []);
-          setFacultadOptions(facultades.items ?? []);
+          setAllFacultadOptions(
+            (facultades.items ?? [])
+              .map((item) => ({
+                id: Number(item.id),
+                nombre: String(item.nombre),
+                campus_id: Number(item.campus_id),
+              }))
+              .filter(
+                (item) =>
+                  Number.isInteger(item.id) &&
+                  item.id > 0 &&
+                  Number.isInteger(item.campus_id) &&
+                  item.campus_id > 0 &&
+                  item.nombre.trim().length > 0
+              )
+          );
         }
       } catch {
         // Si falla el catálogo, la vista mantiene funcionamiento con filtros actuales.
@@ -238,7 +284,26 @@ export default function FacultadDashboardPage() {
   }, []);
 
   const globalData = data?.layout.mode === "global" ? data.data : null;
-  const selectedFacultadId = filters.facultadIds[0] ?? null;
+
+  const facultadOptions = useMemo(() => {
+    if (!filters.campusIds.length) {
+      return allFacultadOptions;
+    }
+    const selectedCampus = new Set(filters.campusIds);
+    return allFacultadOptions.filter((item) => selectedCampus.has(item.campus_id));
+  }, [allFacultadOptions, filters.campusIds]);
+
+  useEffect(() => {
+    if (!filters.facultadIds.length) return;
+    const allowed = new Set(facultadOptions.map((item) => item.id));
+    const next = filters.facultadIds.filter((id) => allowed.has(id));
+    const unchanged =
+      next.length === filters.facultadIds.length &&
+      next.every((id, index) => id === filters.facultadIds[index]);
+    if (!unchanged) {
+      setFacultadIds(next);
+    }
+  }, [facultadOptions, filters.facultadIds, setFacultadIds]);
 
   return (
     <div className="space-y-6 pt-2">
@@ -263,8 +328,25 @@ export default function FacultadDashboardPage() {
               emptyLabel="Selecciona facultades"
               onChange={setFacultadIds}
             />
+            <SwitchInactive
+              checked={filters.includeInactive}
+              onCheckedChange={setIncludeInactive}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild>
+              <Link href="/dashboard/facultades/list">Administrar Facultades</Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="slot-minutes-filter">Periodo de tiempo</Label>
             <select
-              aria-label="Slot en minutos"
+              id="slot-minutes-filter"
+              aria-label="Periodo de tiempo"
               className="h-9 rounded-md border bg-background px-3 text-sm"
               value={filters.slotMinutes}
               onChange={(event) =>
@@ -276,28 +358,10 @@ export default function FacultadDashboardPage() {
               <option value={45}>45 min</option>
               <option value={60}>60 min</option>
             </select>
-            <DaySelector value={filters.dias} onChange={setDias} />
-            <SwitchInactive
-              checked={filters.includeInactive}
-              onCheckedChange={setIncludeInactive}
-            />
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline">
-              <Link href="/dashboard/facultades/list">Administrar Facultades</Link>
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                if (selectedFacultadId) {
-                  router.push(buildDetailHref(selectedFacultadId));
-                }
-              }}
-              disabled={!selectedFacultadId}
-            >
-              Ver detalle de facultad
-            </Button>
+          <div className="space-y-2">
+            <Label>Días</Label>
+            <DaySelector value={filters.dias} onChange={setDias} />
           </div>
         </div>
       </div>

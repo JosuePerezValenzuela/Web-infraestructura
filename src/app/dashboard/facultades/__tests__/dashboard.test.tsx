@@ -1,14 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+ï»¿import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import FacultadDashboardPage from "../page";
 import { apiFetch } from "@/lib/api";
 
 let currentSearchParams = "";
-const pushMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(currentSearchParams),
   usePathname: () => "/dashboard/facultades",
 }));
@@ -23,8 +21,8 @@ const campusCatalog = [
 ];
 
 const facultyCatalog = [
-  { id: 10, nombre: "Facultad de Ingeniería" },
-  { id: 11, nombre: "Facultad de Ciencias" },
+  { id: 10, nombre: "Facultad de Ingenieria", campus_id: 1 },
+  { id: 11, nombre: "Facultad de Ciencias", campus_id: 2 },
 ];
 
 const dashboardGlobalResponse = {
@@ -46,7 +44,7 @@ const dashboardGlobalResponse = {
       activos: { asignados: 120, noAsignadosGlobal: 25 },
     },
     charts: {
-      tiposBloque: [{ tipoBloqueNombre: "Académico", cantidad: 3 }],
+      tiposBloque: [{ tipoBloqueNombre: "Academico", cantidad: 3 }],
       tiposAmbiente: [{ tipoAmbienteNombre: "Aula", cantidad: 7 }],
       capacidadPorBloque: [
         { bloqueNombre: "Bloque A", capacidadTotal: 200, capacidadExamen: 150 },
@@ -97,7 +95,7 @@ const dashboardGlobalResponse = {
       resumenBloques: [
         {
           bloqueNombre: "Bloque A",
-          tipoBloqueNombre: "Académico",
+          tipoBloqueNombre: "Academico",
           pisos: 4,
           activo: true,
           ambientes: 10,
@@ -147,7 +145,6 @@ function mockApiFetchImplementation() {
 describe("Dashboard Facultades - vista global", () => {
   beforeEach(() => {
     currentSearchParams = "";
-    pushMock.mockClear();
     mockApiFetchImplementation();
   });
 
@@ -169,22 +166,23 @@ describe("Dashboard Facultades - vista global", () => {
     expect(adminButton).toHaveAttribute("href", "/dashboard/facultades/list");
   });
 
-  it("parsea query params y permite navegar al detalle con filtros preservados", async () => {
-    currentSearchParams =
-      "campusIds=1&facultadIds=10&includeInactive=false&slotMinutes=60&dias=1,3,5";
+  it("filtra facultades por campus seleccionado en el filtro de campus", async () => {
+    currentSearchParams = "campusIds=1&includeInactive=true&slotMinutes=45&dias=1,2,3,4,5";
 
     render(<FacultadDashboardPage />);
 
-    const detailButton = await screen.findByRole("button", {
-      name: /ver detalle de facultad/i,
+    const facultadesTrigger = await screen.findByRole("button", {
+      name: /facultades/i,
     });
 
-    await userEvent.click(detailButton);
+    facultadesTrigger.click();
 
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith(
-        "/dashboard/facultades/10?campusIds=1&facultadIds=10&includeInactive=false&slotMinutes=60&dias=1%2C3%2C5"
-      );
-    });
+    expect(
+      await screen.findByRole("option", { name: /facultad de ingenieria/i })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("option", { name: /facultad de ciencias/i })
+    ).not.toBeInTheDocument();
   });
 });
