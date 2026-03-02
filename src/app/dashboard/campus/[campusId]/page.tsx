@@ -115,6 +115,16 @@ export default function CampusDashboardDetailPage({
       ? data.data.tables.facultadesResumen
       : [];
 
+  const buildFacultadDashboardHref = useMemo(() => {
+    return (facultadId: number) => {
+      const params = new URLSearchParams();
+      params.set("campusIds", String(campusId));
+      params.set("facultadIds", String(facultadId));
+      params.set("includeInactive", String(filters.includeInactive));
+      return `/dashboard/facultades?${params.toString()}`;
+    };
+  }, [campusId, filters.includeInactive]);
+
   return (
     <div className="space-y-6 pt-2">
       <div className="sticky top-14 z-20 space-y-3 border-b bg-background/95 py-3 backdrop-blur">
@@ -178,7 +188,11 @@ export default function CampusDashboardDetailPage({
         )}
       </div>
 
-      <FacultiesTable loading={loading} rows={facultiesRows} />
+      <FacultiesTable
+        loading={loading}
+        rows={facultiesRows}
+        onRowClick={(facultadId) => router.push(buildFacultadDashboardHref(facultadId))}
+      />
     </div>
   );
 }
@@ -264,11 +278,17 @@ function ChartCard({
   height = 300,
 }: {
   title: string;
-  option: any;
+  option: unknown;
   height?: number;
 }) {
   const hasData =
-    option && option.series && option.series.some((s: any) => s.data?.length);
+    !!option &&
+    typeof option === "object" &&
+    "series" in option &&
+    Array.isArray((option as { series?: Array<{ data?: unknown[] }> }).series) &&
+    (option as { series: Array<{ data?: unknown[] }> }).series.some((s) =>
+      Array.isArray(s.data) ? s.data.length > 0 : false
+    );
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">
       <p className="text-sm font-semibold">{title}</p>
@@ -316,9 +336,11 @@ function buildHorizontalBarOption(
 function FacultiesTable({
   loading,
   rows,
+  onRowClick,
 }: {
   loading: boolean;
   rows: CampusDashboardDetailResponse["data"]["tables"]["facultadesResumen"];
+  onRowClick: (facultadId: number) => void;
 }) {
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
@@ -371,7 +393,11 @@ function FacultiesTable({
               </tr>
             ) : filtered.length ? (
               filtered.map((row) => (
-                <tr key={row.facultadId} className="hover:bg-muted/50">
+                <tr
+                  key={row.facultadId}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => onRowClick(row.facultadId)}
+                >
                   <td className="px-3 py-2">{row.facultadNombre}</td>
                   <td className="px-3 py-2">{row.bloques}</td>
                   <td className="px-3 py-2">{row.tiposBloque}</td>

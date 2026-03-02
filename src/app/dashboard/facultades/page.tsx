@@ -104,19 +104,20 @@ function MultiSelect({
       </Button>
 
       {open ? (
-        <ul
-          role="listbox"
-          aria-label={`Listado de ${label.toLowerCase()}`}
-          className="absolute z-20 mt-2 w-72 max-w-full rounded-md border bg-popover p-1 shadow-lg"
-        >
-          <li className="p-1">
+        <div className="absolute z-20 mt-2 w-72 max-w-full rounded-md border bg-popover shadow-lg">
+          <div className="sticky top-0 z-10 border-b bg-popover p-2">
             <Input
               placeholder={`Buscar ${label.toLowerCase()}`}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               autoFocus
             />
-          </li>
+          </div>
+          <ul
+            role="listbox"
+            aria-label={`Listado de ${label.toLowerCase()}`}
+            className="max-h-72 overflow-y-auto p-1"
+          >
           <li className="p-1">
             <button
               type="button"
@@ -170,6 +171,7 @@ function MultiSelect({
             </li>
           ) : null}
         </ul>
+        </div>
       ) : null}
     </div>
   );
@@ -241,6 +243,7 @@ export default function FacultadDashboardPage() {
 
   const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
   const [allFacultadOptions, setAllFacultadOptions] = useState<FacultadOption[]>([]);
+  const [facultadCatalogReady, setFacultadCatalogReady] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -270,6 +273,7 @@ export default function FacultadDashboardPage() {
                   item.nombre.trim().length > 0
               )
           );
+          setFacultadCatalogReady(true);
         }
       } catch {
         // Si falla el catálogo, la vista mantiene funcionamiento con filtros actuales.
@@ -293,6 +297,7 @@ export default function FacultadDashboardPage() {
   }, [allFacultadOptions, filters.campusIds]);
 
   useEffect(() => {
+    if (!facultadCatalogReady) return;
     if (!filters.facultadIds.length) return;
     const allowed = new Set(facultadOptions.map((item) => item.id));
     const next = filters.facultadIds.filter((id) => allowed.has(id));
@@ -302,7 +307,7 @@ export default function FacultadDashboardPage() {
     if (!unchanged) {
       setFacultadIds(next);
     }
-  }, [facultadOptions, filters.facultadIds, setFacultadIds]);
+  }, [facultadCatalogReady, facultadOptions, filters.facultadIds, setFacultadIds]);
 
   return (
     <div className="space-y-6 pt-2">
@@ -370,11 +375,13 @@ export default function FacultadDashboardPage() {
           loading={loading}
           title="Tipos de bloque"
           option={buildSimpleBarOption(globalData?.charts.tiposBloque ?? [], "tipoBloqueNombre", "cantidad")}
+          height={400}
         />
         <ChartCard
           loading={loading}
           title="Tipos de ambiente"
           option={buildSimpleBarOption(globalData?.charts.tiposAmbiente ?? [], "tipoAmbienteNombre", "cantidad")}
+          height={400}
         />
       </div>
 
@@ -383,11 +390,13 @@ export default function FacultadDashboardPage() {
           loading={loading}
           title="Capacidad por bloque"
           option={buildCapacityByBlockOption(globalData?.charts.capacidadPorBloque ?? [])}
+          height={420}
         />
         <ChartCard
           loading={loading}
           title="Activos por bloque"
           option={buildSimpleBarOption(globalData?.charts.activosPorBloque ?? [], "bloqueNombre", "activosAsignados")}
+          height={420}
         />
       </div>
 
@@ -396,11 +405,13 @@ export default function FacultadDashboardPage() {
           loading={loading}
           title="Ambientes activos vs inactivos por bloque"
           option={buildStackedStateOption(globalData?.charts.ambientesActivosInactivosPorBloque ?? [])}
+          height={420}
         />
         <ChartCard
           loading={loading}
           title="Ocupación por bloque"
           option={buildOccupationByBlockOption(globalData?.charts.ocupacionPorBloque ?? [])}
+          height={400}
         />
       </div>
 
@@ -557,12 +568,28 @@ function buildSimpleBarOption(
   const sorted = [...rows].sort(
     (a, b) => Number(b[valueKey] ?? 0) - Number(a[valueKey] ?? 0)
   );
+  const hasZoom = sorted.length > 10;
+  const zoomEnd = Math.min(100, (10 / Math.max(sorted.length, 1)) * 100);
   return {
     tooltip: { trigger: "axis" },
+    grid: {
+      left: 40,
+      right: 20,
+      top: 20,
+      bottom: hasZoom ? 80 : 40,
+      containLabel: true,
+    },
+    dataZoom:
+      hasZoom
+        ? [
+            { type: "inside", xAxisIndex: 0, start: 0, end: zoomEnd },
+            { type: "slider", xAxisIndex: 0, height: 14, bottom: 14, start: 0, end: zoomEnd },
+          ]
+        : undefined,
     xAxis: {
       type: "category",
       data: sorted.map((row) => String(row[labelKey] ?? "")),
-      axisLabel: { rotate: 20 },
+      axisLabel: { rotate: 20, interval: 0, hideOverlap: false },
     },
     yAxis: { type: "value" },
     series: [
@@ -578,13 +605,29 @@ function buildSimpleBarOption(
 
 function buildCapacityByBlockOption(rows: GlobalCharts["capacidadPorBloque"]) {
   const sorted = [...rows].sort((a, b) => b.capacidadTotal - a.capacidadTotal);
+  const hasZoom = sorted.length > 10;
+  const zoomEnd = Math.min(100, (10 / Math.max(sorted.length, 1)) * 100);
   return {
     tooltip: { trigger: "axis" },
-    legend: { bottom: 0 },
+    legend: { top: 0 },
+    grid: {
+      left: 40,
+      right: 20,
+      top: 52,
+      bottom: hasZoom ? 80 : 40,
+      containLabel: true,
+    },
+    dataZoom:
+      hasZoom
+        ? [
+            { type: "inside", xAxisIndex: 0, start: 0, end: zoomEnd },
+            { type: "slider", xAxisIndex: 0, height: 14, bottom: 14, start: 0, end: zoomEnd },
+          ]
+        : undefined,
     xAxis: {
       type: "category",
       data: sorted.map((row) => row.bloqueNombre),
-      axisLabel: { rotate: 20 },
+      axisLabel: { rotate: 20, interval: 0, hideOverlap: false },
     },
     yAxis: { type: "value" },
     series: [
@@ -610,10 +653,30 @@ function buildStackedStateOption(
   const sorted = [...rows].sort(
     (a, b) => b.activos + b.inactivos - (a.activos + a.inactivos)
   );
+  const hasZoom = sorted.length > 10;
+  const zoomEnd = Math.min(100, (10 / Math.max(sorted.length, 1)) * 100);
   return {
     tooltip: { trigger: "axis" },
-    legend: { bottom: 0 },
-    xAxis: { type: "category", data: sorted.map((row) => row.bloqueNombre) },
+    legend: { top: 0 },
+    grid: {
+      left: 40,
+      right: 20,
+      top: 52,
+      bottom: hasZoom ? 80 : 40,
+      containLabel: true,
+    },
+    dataZoom:
+      hasZoom
+        ? [
+            { type: "inside", xAxisIndex: 0, start: 0, end: zoomEnd },
+            { type: "slider", xAxisIndex: 0, height: 14, bottom: 14, start: 0, end: zoomEnd },
+          ]
+        : undefined,
+    xAxis: {
+      type: "category",
+      data: sorted.map((row) => row.bloqueNombre),
+      axisLabel: { interval: 0, hideOverlap: false, rotate: 20 },
+    },
     yAxis: { type: "value" },
     series: [
       {
@@ -636,13 +699,26 @@ function buildStackedStateOption(
 
 function buildOccupationByBlockOption(rows: GlobalCharts["ocupacionPorBloque"]) {
   const sorted = [...rows].sort((a, b) => b.pctOcupacion - a.pctOcupacion);
+  const hasZoom = sorted.length > 10;
+  const zoomEnd = Math.min(100, (10 / Math.max(sorted.length, 1)) * 100);
   return {
     tooltip: { trigger: "axis" },
-    xAxis: { type: "value", max: 100 },
-    yAxis: {
+    grid: { left: 40, right: 20, top: 20, bottom: hasZoom ? 90 : 50, containLabel: true },
+    dataZoom:
+      hasZoom
+        ? [
+            { type: "inside", xAxisIndex: 0, start: 0, end: zoomEnd },
+            { type: "slider", xAxisIndex: 0, height: 14, bottom: 16, start: 0, end: zoomEnd },
+          ]
+        : undefined,
+    xAxis: {
       type: "category",
-      inverse: true,
       data: sorted.map((row) => row.bloqueNombre),
+      axisLabel: { interval: 0, hideOverlap: false, rotate: 25 },
+    },
+    yAxis: {
+      type: "value",
+      max: 100,
     },
     series: [
       {
@@ -651,7 +727,7 @@ function buildOccupationByBlockOption(rows: GlobalCharts["ocupacionPorBloque"]) 
         itemStyle: { color: "#2563eb" },
         label: {
           show: true,
-          position: "right",
+          position: "top",
           formatter: ({ value }: { value: number }) => `${value}%`,
         },
       },
