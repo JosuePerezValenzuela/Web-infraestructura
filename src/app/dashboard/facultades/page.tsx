@@ -603,7 +603,9 @@ function buildTopUtilizationOption(
     yAxis: {
       type: "category",
       inverse: true,
-      data: rows.map((row) => `${row.ambienteNombre} (${row.bloqueNombre})`),
+      data: rows.map(
+        (row) => `${row.ambienteNombre} (${row.bloqueNombre || "Sin bloque"})`
+      ),
     },
     series: [
       {

@@ -85,7 +85,11 @@ const commonKpisSchema = z.object({
 
 const utilizationRowSchema = z.object({
   ambienteNombre: z.string(),
-  bloqueNombre: z.string(),
+  bloqueNombre: z
+    .preprocess(
+      (value) => (value === null || value === undefined ? "Sin bloque" : value),
+      z.string()
+    ),
   pctOcupacion: z.number().nonnegative(),
   slotsOcupados: z.number().nonnegative(),
   slotsTotales: z.number().nonnegative(),
