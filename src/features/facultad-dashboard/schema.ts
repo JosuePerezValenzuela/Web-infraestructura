@@ -42,8 +42,8 @@ const slotMinutesSchema = z
   .coerce
   .number()
   .int()
-  .refine((value) => [15, 30, 45, 60].includes(value), {
-    message: "slotMinutes debe ser 15, 30, 45 o 60",
+  .refine((value) => [15, 30, 45, 60, 90].includes(value), {
+    message: "slotMinutes debe ser 15, 30, 45, 60 o 90",
   });
 
 export const facultadDashboardFiltersSchema = z.object({

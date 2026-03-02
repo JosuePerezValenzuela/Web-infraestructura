@@ -183,13 +183,13 @@ function DaySelector({
   onChange: (days: number[]) => void;
 }) {
   const labels = [
-    { id: 0, short: "D" },
-    { id: 1, short: "L" },
-    { id: 2, short: "M" },
-    { id: 3, short: "X" },
-    { id: 4, short: "J" },
-    { id: 5, short: "V" },
-    { id: 6, short: "S" },
+    { id: 0, short: "L" },
+    { id: 1, short: "M" },
+    { id: 2, short: "X" },
+    { id: 3, short: "J" },
+    { id: 4, short: "V" },
+    { id: 5, short: "S" },
+    { id: 6, short: "D" },
   ];
   const selected = new Set(value);
 
@@ -350,13 +350,11 @@ export default function FacultadDashboardPage() {
               className="h-9 rounded-md border bg-background px-3 text-sm"
               value={filters.slotMinutes}
               onChange={(event) =>
-                setSlotMinutes(Number(event.target.value) as 15 | 30 | 45 | 60)
+                setSlotMinutes(Number(event.target.value) as 45 | 90)
               }
             >
-              <option value={15}>15 min</option>
-              <option value={30}>30 min</option>
               <option value={45}>45 min</option>
-              <option value={60}>60 min</option>
+              <option value={90}>90 min</option>
             </select>
           </div>
           <div className="space-y-2">
@@ -688,13 +686,13 @@ function buildTopUtilizationOption(
 
 function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"]) {
   const dayLabels: Record<number, string> = {
-    0: "Domingo",
-    1: "Lunes",
-    2: "Martes",
-    3: "Miércoles",
-    4: "Jueves",
-    5: "Viernes",
-    6: "Sábado",
+    0: "Lunes",
+    1: "Martes",
+    2: "Miércoles",
+    3: "Jueves",
+    4: "Viernes",
+    5: "Sábado",
+    6: "Domingo",
   };
   const franjas = Array.from(new Set(rows.map((item) => item.franja)));
   const dias = Array.from(new Set(rows.map((item) => item.dia))).sort((a, b) => a - b);
