@@ -163,7 +163,7 @@ function DaySelector({ value, onChange }: { value: number[]; onChange: (days: nu
   const selected = new Set(value);
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
+    <div className="inline-flex items-center gap-1 rounded-lg border bg-card p-1">
       {labels.map((day) => {
         const active = selected.has(day.id);
         return (
@@ -325,19 +325,23 @@ export default function BloquesDashboardPage() {
           <div className="w-full"><MultiSelect label="Facultades" options={facultadOptions} selectedIds={filters.facultadIds} emptyLabel="Selecciona facultades" onChange={setFacultadIds} /></div>
           <div className="w-full"><MultiSelect label="Bloques" options={bloqueOptions} selectedIds={filters.bloqueIds} emptyLabel="Selecciona bloques" onChange={setBloqueIds} /></div>
           <div className="w-full"><MultiSelect label="Tipos de bloque" options={tipoBloqueOptions} selectedIds={filters.tipoBloqueIds} emptyLabel="Selecciona tipos" onChange={setTipoBloqueIds} /></div>
-          <div className="w-full"><SwitchInactive checked={filters.includeInactive} onCheckedChange={setIncludeInactive} className="w-full justify-center" /></div>
-          <Button asChild className="w-full">
-            <Link href="/dashboard/bloques/list">Administrar Bloques</Link>
-          </Button>
+          <div className="w-full flex items-center">
+            <SwitchInactive checked={filters.includeInactive} onCheckedChange={setIncludeInactive} />
+          </div>
+          <div className="w-full flex items-center">
+            <Button asChild>
+              <Link href="/dashboard/bloques/list">Administrar Bloques</Link>
+            </Button>
+          </div>
         </div>
-        <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="space-y-2">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-2 shrink-0">
             <Label htmlFor="slot-minutes-filter">Periodo de tiempo</Label>
-            <select id="slot-minutes-filter" aria-label="Periodo de tiempo" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={filters.slotMinutes} onChange={(event) => setSlotMinutes(Number(event.target.value) as 45 | 90)}>
+            <select id="slot-minutes-filter" aria-label="Periodo de tiempo" className="h-9 rounded-md border bg-background px-3 text-sm" value={filters.slotMinutes} onChange={(event) => setSlotMinutes(Number(event.target.value) as 45 | 90)}>
               <option value={45}>45 min</option><option value={90}>90 min</option>
             </select>
           </div>
-          <div className="space-y-2"><Label>Dias</Label><DaySelector value={filters.dias} onChange={setDias} /></div>
+          <div className="space-y-2 shrink-0"><Label>Dias</Label><DaySelector value={filters.dias} onChange={setDias} /></div>
         </div>
       </div>
       <KpiGrid kpis={globalData?.kpis} loading={loading} />
