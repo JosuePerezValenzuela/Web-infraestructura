@@ -16,11 +16,30 @@ import type { BloqueDashboardGlobalResponse } from "@/features/bloque-dashboard/
 
 type CampusOption = { id: number; nombre: string };
 type FacultadOption = { id: number; nombre: string; campus_id: number };
-type BloqueOption = { id: number; nombre: string; facultad_id: number };
+type BloqueOption = {
+  id: number;
+  nombre: string;
+  facultad_id?: number;
+  facultad_nombre?: string;
+};
 type TipoBloqueOption = { id: number; nombre: string };
 type GlobalCharts = BloqueDashboardGlobalResponse["data"]["charts"];
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+
+function asArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === "object" && "items" in value) {
+    const items = (value as { items?: unknown }).items;
+    return Array.isArray(items) ? (items as T[]) : [];
+  }
+  return [];
+}
+
+function toPositiveInt(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
 function SwitchInactive({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (value: boolean) => void }) {
   return (
@@ -175,18 +194,69 @@ export default function BloquesDashboardPage() {
     let active = true;
     async function loadCatalogs() {
       try {
-        const [campus, facultades, bloques, tiposBloque] = await Promise.all([
-          apiFetch<{ items: CampusOption[] }>("/campus?page=1&limit=50"),
-          apiFetch<{ items: Array<FacultadOption | (Omit<FacultadOption, "campus_id"> & { campus_id: string })> }>("/facultades?page=1&limit=200"),
-          apiFetch<{ items: Array<BloqueOption | (Omit<BloqueOption, "facultad_id"> & { facultad_id: string })> }>("/bloques?page=1&limit=200"),
-          apiFetch<{ items: TipoBloqueOption[] }>("/tipo_bloques?page=1&limit=100"),
+        const [campusResponse, facultadesResponse, bloquesResponse, tiposBloqueResponse] = await Promise.all([
+          apiFetch("/campus?page=1&limit=50"),
+          apiFetch("/facultades?page=1&limit=200"),
+          apiFetch("/bloques?page=1&limit=200"),
+          apiFetch("/tipo_bloques?page=1&limit=100"),
         ]);
 
         if (active) {
-          setCampusOptions(campus.items ?? []);
-          setAllFacultadOptions((facultades.items ?? []).map((item) => ({ id: Number(item.id), nombre: String(item.nombre), campus_id: Number(item.campus_id) })).filter((item) => Number.isInteger(item.id) && item.id > 0 && Number.isInteger(item.campus_id) && item.campus_id > 0 && item.nombre.trim().length > 0));
-          setAllBloqueOptions((bloques.items ?? []).map((item) => ({ id: Number(item.id), nombre: String(item.nombre), facultad_id: Number(item.facultad_id) })).filter((item) => Number.isInteger(item.id) && item.id > 0 && Number.isInteger(item.facultad_id) && item.facultad_id > 0 && item.nombre.trim().length > 0));
-          setTipoBloqueOptions((tiposBloque.items ?? []).map((item) => ({ id: Number(item.id), nombre: String(item.nombre) })).filter((item) => Number.isInteger(item.id) && item.id > 0 && item.nombre.trim().length > 0));
+          const campusItems = asArray<{ id?: unknown; nombre?: unknown }>(campusResponse);
+          const facultadItems = asArray<Record<string, unknown>>(facultadesResponse);
+          const bloqueItems = asArray<Record<string, unknown>>(bloquesResponse);
+          const tipoBloqueItems = asArray<{ id?: unknown; nombre?: unknown; descripcion?: unknown }>(tiposBloqueResponse);
+
+          setCampusOptions(
+            campusItems
+              .map((item) => {
+                const id = toPositiveInt(item.id);
+                const nombre = String(item.nombre ?? "").trim();
+                return id && nombre ? { id, nombre } : null;
+              })
+              .filter((item): item is CampusOption => Boolean(item))
+          );
+
+          setAllFacultadOptions(
+            facultadItems
+              .map((item) => {
+                const id = toPositiveInt(item.id);
+                const campusId = toPositiveInt(item.campus_id ?? item.campusId);
+                const nombre = String(item.nombre ?? item.nombre_corto ?? item.nombreCorto ?? "").trim();
+                return id && campusId && nombre ? { id, nombre, campus_id: campusId } : null;
+              })
+              .filter((item): item is FacultadOption => Boolean(item))
+          );
+
+          setAllBloqueOptions(
+            bloqueItems
+              .map((item) => {
+                const id = toPositiveInt(item.id);
+                const facultadId = toPositiveInt(item.facultad_id ?? item.facultadId);
+                const facultadNombre = String(
+                  item.facultad_nombre ?? item.facultadNombre ?? ""
+                ).trim();
+                const nombre = String(item.nombre ?? item.nombre_corto ?? item.nombreCorto ?? item.codigo ?? "").trim();
+                if (!id || !nombre) return null;
+                return {
+                  id,
+                  nombre,
+                  ...(facultadId ? { facultad_id: facultadId } : {}),
+                  ...(facultadNombre.length ? { facultad_nombre: facultadNombre } : {}),
+                };
+              })
+              .filter((item): item is BloqueOption => Boolean(item))
+          );
+
+          setTipoBloqueOptions(
+            tipoBloqueItems
+              .map((item) => {
+                const id = toPositiveInt(item.id);
+                const nombre = String(item.nombre ?? item.descripcion ?? "").trim();
+                return id && nombre ? { id, nombre } : null;
+              })
+              .filter((item): item is TipoBloqueOption => Boolean(item))
+          );
         }
       } catch {
         // noop
@@ -207,8 +277,21 @@ export default function BloquesDashboardPage() {
   const bloqueOptions = useMemo(() => {
     if (!filters.facultadIds.length) return allBloqueOptions;
     const selectedFacultades = new Set(filters.facultadIds);
-    return allBloqueOptions.filter((item) => selectedFacultades.has(item.facultad_id));
-  }, [allBloqueOptions, filters.facultadIds]);
+    const selectedFacultadNames = new Set(
+      facultadOptions
+        .filter((item) => selectedFacultades.has(item.id))
+        .map((item) => item.nombre.trim().toLowerCase())
+    );
+    return allBloqueOptions.filter((item) => {
+      if (typeof item.facultad_id === "number") {
+        return selectedFacultades.has(item.facultad_id);
+      }
+      if (item.facultad_nombre) {
+        return selectedFacultadNames.has(item.facultad_nombre.trim().toLowerCase());
+      }
+      return false;
+    });
+  }, [allBloqueOptions, filters.facultadIds, facultadOptions]);
 
   useEffect(() => {
     if (!filters.facultadIds.length) return;
