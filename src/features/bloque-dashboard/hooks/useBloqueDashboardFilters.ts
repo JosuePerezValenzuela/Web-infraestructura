@@ -140,6 +140,13 @@ export function useBloqueDashboardFilters() {
     [filters, pushWithFilters]
   );
 
+  const setFilters = useCallback(
+    (nextFilters: BloqueDashboardFilters) => {
+      pushWithFilters(nextFilters);
+    },
+    [pushWithFilters]
+  );
+
   return {
     filters,
     setCampusIds,
@@ -149,5 +156,6 @@ export function useBloqueDashboardFilters() {
     setIncludeInactive,
     setSlotMinutes,
     setDias,
+    setFilters,
   };
 }

@@ -189,7 +189,7 @@ function DaySelector({ value, onChange }: { value: number[]; onChange: (days: nu
 }
 
 export default function BloquesDashboardPage() {
-  const { filters, setCampusIds, setFacultadIds, setBloqueIds, setTipoBloqueIds, setIncludeInactive, setSlotMinutes, setDias } = useBloqueDashboardFilters();
+  const { filters, setCampusIds, setFacultadIds, setBloqueIds, setTipoBloqueIds, setIncludeInactive, setSlotMinutes, setDias, setFilters } = useBloqueDashboardFilters();
   const { data, loading } = useBloqueDashboardData({ filters });
 
   const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
@@ -369,8 +369,36 @@ export default function BloquesDashboardPage() {
       <ChartCard loading={loading} title="Heatmap semanal de ocupacion" option={buildWeeklyHeatmapOption(globalData?.charts.ocupacionHeatmapSemanal ?? [])} height={380} />
       <ChartCard loading={loading} title="Ocupacion por bloque" option={buildOccupationByBlockOption(globalData?.charts.ocupacionPorBloque ?? [])} height={360} />
 
-      <ResumenBloquesTable loading={loading} rows={globalData?.tables.resumenBloques ?? []} />
-      <PisosUtilizacionTable loading={loading} rows={globalData?.tables.pisosUtilizacion ?? []} />
+      <ResumenBloquesTable
+        loading={loading}
+        rows={globalData?.tables.resumenBloques ?? []}
+        onRowClick={(row) => {
+          const campusId = campusOptions.find(
+            (item) => item.nombre.trim().toLowerCase() === row.campusNombre.trim().toLowerCase()
+          )?.id;
+          const facultadId = allFacultadOptions.find(
+            (item) =>
+              item.nombre.trim().toLowerCase() === row.facultadNombre.trim().toLowerCase()
+          )?.id;
+
+          setFilters({
+            ...filters,
+            campusIds: campusId ? [campusId] : [],
+            facultadIds: facultadId ? [facultadId] : [],
+            bloqueIds: [row.bloqueId],
+          });
+        }}
+      />
+      <PisosUtilizacionTable
+        loading={loading}
+        rows={globalData?.tables.pisosUtilizacion ?? []}
+        onRowClick={(row) => {
+          setFilters({
+            ...filters,
+            bloqueIds: [row.bloqueId],
+          });
+        }}
+      />
     </div>
   );
 }
@@ -490,25 +518,124 @@ function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"])
   };
 }
 
-function ResumenBloquesTable({ loading, rows }: { loading: boolean; rows: BloqueDashboardGlobalResponse["data"]["tables"]["resumenBloques"] }) {
+function ResumenBloquesTable({
+  loading,
+  rows,
+  onRowClick,
+}: {
+  loading: boolean;
+  rows: BloqueDashboardGlobalResponse["data"]["tables"]["resumenBloques"];
+  onRowClick: (
+    row: BloqueDashboardGlobalResponse["data"]["tables"]["resumenBloques"][number]
+  ) => void;
+}) {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<
+    "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes" | "pctOcupacion"
+  >("pctOcupacion");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term.length) return rows;
-    return rows.filter((row) => row.bloqueNombre.toLowerCase().includes(term) || row.facultadNombre.toLowerCase().includes(term) || row.campusNombre.toLowerCase().includes(term) || row.tipoBloqueNombre.toLowerCase().includes(term));
-  }, [rows, search]);
+    const base = !term.length
+      ? rows
+      : rows.filter(
+          (row) =>
+            row.bloqueNombre.toLowerCase().includes(term) ||
+            row.facultadNombre.toLowerCase().includes(term) ||
+            row.campusNombre.toLowerCase().includes(term) ||
+            row.tipoBloqueNombre.toLowerCase().includes(term)
+        );
+
+    return [...base].sort((a, b) => {
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortDir === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      return sortDir === "asc"
+        ? String(aValue).localeCompare(String(bValue))
+        : String(bValue).localeCompare(String(aValue));
+    });
+  }, [rows, search, sortBy, sortDir]);
+
+  const toggleSort = (
+    column: "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes" | "pctOcupacion"
+  ) => {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(column);
+    setSortDir(column === "pctOcupacion" ? "desc" : "asc");
+  };
+
+  const sortIcon = (
+    column: "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes" | "pctOcupacion"
+  ) => (sortBy === column ? (sortDir === "asc" ? " ↑" : " ↓") : "");
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Resumen de bloques</h2>
-        <Input placeholder="Buscar campus, facultad, bloque o tipo" value={search} onChange={(event) => setSearch(event.target.value)} className="w-full max-w-xs" />
+        <Input
+          placeholder="Buscar campus, facultad, bloque o tipo"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="w-full max-w-xs"
+        />
       </div>
       <div className="mt-3 overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead><tr className="text-left text-muted-foreground"><th className="px-3 py-2">Campus</th><th className="px-3 py-2">Facultad</th><th className="px-3 py-2">Bloque</th><th className="px-3 py-2">Tipo</th><th className="px-3 py-2">Pisos</th><th className="px-3 py-2">Estado</th><th className="px-3 py-2">Ambientes</th><th className="px-3 py-2">Cap. total</th><th className="px-3 py-2">Cap. examen</th><th className="px-3 py-2">Activos</th><th className="px-3 py-2">Ocupacion</th></tr></thead>
+          <thead>
+            <tr className="text-left text-muted-foreground">
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("campusNombre")}>Campus{sortIcon("campusNombre")}</th>
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("facultadNombre")}>Facultad{sortIcon("facultadNombre")}</th>
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("bloqueNombre")}>Bloque{sortIcon("bloqueNombre")}</th>
+              <th className="px-3 py-2">Tipo</th>
+              <th className="px-3 py-2">Pisos</th>
+              <th className="px-3 py-2">Estado</th>
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("ambientes")}>Ambientes{sortIcon("ambientes")}</th>
+              <th className="px-3 py-2">Cap. total</th>
+              <th className="px-3 py-2">Cap. examen</th>
+              <th className="px-3 py-2">Activos</th>
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("pctOcupacion")}>Ocupacion{sortIcon("pctOcupacion")}</th>
+            </tr>
+          </thead>
           <tbody>
-            {loading ? <tr><td className="px-3 py-4" colSpan={11}><Skeleton className="h-5 w-48" /></td></tr> : filtered.length ? filtered.map((row) => <tr key={row.bloqueId} className="hover:bg-muted/50"><td className="px-3 py-2">{row.campusNombre}</td><td className="px-3 py-2">{row.facultadNombre}</td><td className="px-3 py-2">{row.bloqueNombre}</td><td className="px-3 py-2">{row.tipoBloqueNombre}</td><td className="px-3 py-2">{row.pisos}</td><td className="px-3 py-2">{row.activo ? "Activo" : "Inactivo"}</td><td className="px-3 py-2">{row.ambientes}</td><td className="px-3 py-2">{row.capacidadTotal}</td><td className="px-3 py-2">{row.capacidadExamen}</td><td className="px-3 py-2">{row.activosAsignados}</td><td className="px-3 py-2">{row.pctOcupacion}%</td></tr>) : <tr><td className="px-3 py-4 text-muted-foreground" colSpan={11}>Sin datos para mostrar.</td></tr>}
+            {loading ? (
+              <tr>
+                <td className="px-3 py-4" colSpan={11}>
+                  <Skeleton className="h-5 w-48" />
+                </td>
+              </tr>
+            ) : filtered.length ? (
+              filtered.map((row) => (
+                <tr
+                  key={row.bloqueId}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => onRowClick(row)}
+                >
+                  <td className="px-3 py-2">{row.campusNombre}</td>
+                  <td className="px-3 py-2">{row.facultadNombre}</td>
+                  <td className="px-3 py-2">{row.bloqueNombre}</td>
+                  <td className="px-3 py-2">{row.tipoBloqueNombre}</td>
+                  <td className="px-3 py-2">{row.pisos}</td>
+                  <td className="px-3 py-2">{row.activo ? "Activo" : "Inactivo"}</td>
+                  <td className="px-3 py-2">{row.ambientes}</td>
+                  <td className="px-3 py-2">{row.capacidadTotal}</td>
+                  <td className="px-3 py-2">{row.capacidadExamen}</td>
+                  <td className="px-3 py-2">{row.activosAsignados}</td>
+                  <td className="px-3 py-2">{row.pctOcupacion}%</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="px-3 py-4 text-muted-foreground" colSpan={11}>
+                  Sin datos para mostrar.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -516,15 +643,111 @@ function ResumenBloquesTable({ loading, rows }: { loading: boolean; rows: Bloque
   );
 }
 
-function PisosUtilizacionTable({ loading, rows }: { loading: boolean; rows: BloqueDashboardGlobalResponse["data"]["tables"]["pisosUtilizacion"] }) {
+function PisosUtilizacionTable({
+  loading,
+  rows,
+  onRowClick,
+}: {
+  loading: boolean;
+  rows: BloqueDashboardGlobalResponse["data"]["tables"]["pisosUtilizacion"];
+  onRowClick: (
+    row: BloqueDashboardGlobalResponse["data"]["tables"]["pisosUtilizacion"][number]
+  ) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"bloqueNombre" | "piso" | "ambientes" | "pctOcupacion">(
+    "pctOcupacion"
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const base = !term.length
+      ? rows
+      : rows.filter((row) => row.bloqueNombre.toLowerCase().includes(term));
+
+    return [...base].sort((a, b) => {
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortDir === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      return sortDir === "asc"
+        ? String(aValue).localeCompare(String(bValue))
+        : String(bValue).localeCompare(String(aValue));
+    });
+  }, [rows, search, sortBy, sortDir]);
+
+  const toggleSort = (column: "bloqueNombre" | "piso" | "ambientes" | "pctOcupacion") => {
+    if (sortBy === column) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(column);
+    setSortDir(column === "pctOcupacion" ? "desc" : "asc");
+  };
+
+  const sortIcon = (column: "bloqueNombre" | "piso" | "ambientes" | "pctOcupacion") =>
+    sortBy === column ? (sortDir === "asc" ? " ↑" : " ↓") : "";
+
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <h2 className="text-lg font-semibold">Utilizacion por piso</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Utilizacion por piso</h2>
+        <Input
+          placeholder="Buscar bloque"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="w-full max-w-xs"
+        />
+      </div>
       <div className="mt-3 overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead><tr className="text-left text-muted-foreground"><th className="px-3 py-2">Bloque</th><th className="px-3 py-2">Piso</th><th className="px-3 py-2">Ambientes</th><th className="px-3 py-2">Cap. total</th><th className="px-3 py-2">Cap. examen</th><th className="px-3 py-2">Activos</th><th className="px-3 py-2">Slots ocupados</th><th className="px-3 py-2">Slots totales</th><th className="px-3 py-2">Ocupacion</th></tr></thead>
+          <thead>
+            <tr className="text-left text-muted-foreground">
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("bloqueNombre")}>Bloque{sortIcon("bloqueNombre")}</th>
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("piso")}>Piso{sortIcon("piso")}</th>
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("ambientes")}>Ambientes{sortIcon("ambientes")}</th>
+              <th className="px-3 py-2">Cap. total</th>
+              <th className="px-3 py-2">Cap. examen</th>
+              <th className="px-3 py-2">Activos</th>
+              <th className="px-3 py-2">Slots ocupados</th>
+              <th className="px-3 py-2">Slots totales</th>
+              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("pctOcupacion")}>Ocupacion{sortIcon("pctOcupacion")}</th>
+            </tr>
+          </thead>
           <tbody>
-            {loading ? <tr><td className="px-3 py-4" colSpan={9}><Skeleton className="h-5 w-48" /></td></tr> : rows.length ? rows.map((row) => <tr key={`${row.bloqueId}-${row.piso}`} className="hover:bg-muted/50"><td className="px-3 py-2">{row.bloqueNombre}</td><td className="px-3 py-2">{row.piso}</td><td className="px-3 py-2">{row.ambientes}</td><td className="px-3 py-2">{row.capacidadTotal}</td><td className="px-3 py-2">{row.capacidadExamen}</td><td className="px-3 py-2">{row.activosAsignados}</td><td className="px-3 py-2">{row.slotsOcupados}</td><td className="px-3 py-2">{row.slotsTotales}</td><td className="px-3 py-2">{row.pctOcupacion}%</td></tr>) : <tr><td className="px-3 py-4 text-muted-foreground" colSpan={9}>Sin datos para mostrar.</td></tr>}
+            {loading ? (
+              <tr>
+                <td className="px-3 py-4" colSpan={9}>
+                  <Skeleton className="h-5 w-48" />
+                </td>
+              </tr>
+            ) : filtered.length ? (
+              filtered.map((row) => (
+                <tr
+                  key={`${row.bloqueId}-${row.piso}`}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => onRowClick(row)}
+                >
+                  <td className="px-3 py-2">{row.bloqueNombre}</td>
+                  <td className="px-3 py-2">{row.piso}</td>
+                  <td className="px-3 py-2">{row.ambientes}</td>
+                  <td className="px-3 py-2">{row.capacidadTotal}</td>
+                  <td className="px-3 py-2">{row.capacidadExamen}</td>
+                  <td className="px-3 py-2">{row.activosAsignados}</td>
+                  <td className="px-3 py-2">{row.slotsOcupados}</td>
+                  <td className="px-3 py-2">{row.slotsTotales}</td>
+                  <td className="px-3 py-2">{row.pctOcupacion}%</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="px-3 py-4 text-muted-foreground" colSpan={9}>
+                  Sin datos para mostrar.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
