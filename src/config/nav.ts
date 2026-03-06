@@ -25,7 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
     {
         label: 'Bloques',
         icon: Building2,
-        href: `/dashboard/bloques/list`
+        href: `/dashboard/bloques`
     },
     {
         label: 'Ambientes',
