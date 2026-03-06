@@ -28,12 +28,12 @@ describe("useBloqueDashboardFilters", () => {
     expect(result.current.filters.tipoBloqueIds).toEqual([]);
     expect(result.current.filters.includeInactive).toBe(true);
     expect(result.current.filters.slotMinutes).toBe(45);
-    expect(result.current.filters.dias).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(result.current.filters.dias).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   it("parsea correctamente query params validos", () => {
     currentSearch =
-      "campusIds=1,2&facultadIds=10&bloqueIds=100&tipoBloqueIds=3&includeInactive=0&slotMinutes=60&dias=1,2,4";
+      "campusIds=1,2&facultadIds=10&bloqueIds=100&tipoBloqueIds=3&includeInactive=0&slotMinutes=45&dias=1,2,4";
 
     const { result } = renderHook(() => useBloqueDashboardFilters());
 
@@ -42,7 +42,7 @@ describe("useBloqueDashboardFilters", () => {
     expect(result.current.filters.bloqueIds).toEqual([100]);
     expect(result.current.filters.tipoBloqueIds).toEqual([3]);
     expect(result.current.filters.includeInactive).toBe(false);
-    expect(result.current.filters.slotMinutes).toBe(60);
+    expect(result.current.filters.slotMinutes).toBe(45);
     expect(result.current.filters.dias).toEqual([1, 2, 4]);
   });
 
@@ -54,7 +54,7 @@ describe("useBloqueDashboardFilters", () => {
     });
 
     expect(pushMock).toHaveBeenCalledWith(
-      "/dashboard/bloques?campusIds=1&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5%2C6"
+      "/dashboard/bloques?campusIds=1&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5"
     );
 
     act(() => {
@@ -62,7 +62,7 @@ describe("useBloqueDashboardFilters", () => {
     });
 
     expect(pushMock).toHaveBeenLastCalledWith(
-      "/dashboard/bloques?facultadIds=10&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5%2C6"
+      "/dashboard/bloques?facultadIds=10&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5"
     );
 
     act(() => {
@@ -70,7 +70,7 @@ describe("useBloqueDashboardFilters", () => {
     });
 
     expect(pushMock).toHaveBeenLastCalledWith(
-      "/dashboard/bloques?bloqueIds=100&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5%2C6"
+      "/dashboard/bloques?bloqueIds=100&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5"
     );
 
     act(() => {
@@ -78,7 +78,9 @@ describe("useBloqueDashboardFilters", () => {
     });
 
     expect(pushMock).toHaveBeenLastCalledWith(
-      "/dashboard/bloques?tipoBloqueIds=3&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5%2C6"
+      "/dashboard/bloques?tipoBloqueIds=3&includeInactive=true&slotMinutes=45&dias=0%2C1%2C2%2C3%2C4%2C5"
     );
   });
 });
+
+

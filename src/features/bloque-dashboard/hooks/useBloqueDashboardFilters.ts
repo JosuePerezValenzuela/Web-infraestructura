@@ -14,19 +14,19 @@ function parseNumberCsv(value: string | null): number[] {
 }
 
 function parseDaysCsv(value: string | null): number[] {
-  if (!value || !value.trim().length) return [0, 1, 2, 3, 4, 5, 6];
+  if (!value || !value.trim().length) return [0, 1, 2, 3, 4, 5];
 
   const parsed = value
     .split(",")
     .map((item) => Number.parseInt(item.trim(), 10))
-    .filter((item) => Number.isInteger(item) && item >= 0 && item <= 6);
+    .filter((item) => Number.isInteger(item) && item >= 0 && item <= 5);
 
-  return parsed.length ? parsed : [0, 1, 2, 3, 4, 5, 6];
+  return parsed.length ? parsed : [0, 1, 2, 3, 4, 5];
 }
 
-function parseSlotMinutes(value: string | null): 15 | 30 | 45 | 60 | 90 {
+function parseSlotMinutes(value: string | null): 45 | 90 {
   const parsed = Number.parseInt(String(value ?? ""), 10);
-  if (parsed === 15 || parsed === 30 || parsed === 45 || parsed === 60 || parsed === 90) {
+  if (parsed === 45 || parsed === 90) {
     return parsed;
   }
   return 45;
@@ -127,7 +127,7 @@ export function useBloqueDashboardFilters() {
   );
 
   const setSlotMinutes = useCallback(
-    (slotMinutes: 15 | 30 | 45 | 60 | 90) => {
+    (slotMinutes: 45 | 90) => {
       pushWithFilters({ ...filters, slotMinutes });
     },
     [filters, pushWithFilters]

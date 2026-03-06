@@ -26,7 +26,7 @@ function buildGlobalPayload() {
       tipoBloqueIds: [3],
       includeInactive: true,
       slotMinutes: 45,
-      dias: [0, 1, 2, 3, 4, 5, 6],
+      dias: [0, 1, 2, 3, 4, 5],
     },
     layout: { mode: "global" as const },
     data: {
@@ -79,7 +79,7 @@ describe("useBloqueDashboardData", () => {
           bloqueIds: [100],
           tipoBloqueIds: [3],
           includeInactive: true,
-          slotMinutes: 60,
+          slotMinutes: 45,
           dias: [1, 2, 3],
         },
       })
@@ -91,7 +91,7 @@ describe("useBloqueDashboardData", () => {
     });
 
     expect(apiFetch).toHaveBeenCalledWith(
-      "/dashboards/bloques/global?campusIds=1&facultadIds=10&bloqueIds=100&tipoBloqueIds=3&includeInactive=true&slotMinutes=60&dias=1%2C2%2C3"
+      "/dashboards/bloques/global?campusIds=1&facultadIds=10&bloqueIds=100&tipoBloqueIds=3&includeInactive=true&slotMinutes=45&dias=1%2C2%2C3"
     );
     expect(result.current.error).toBeNull();
   });
@@ -108,7 +108,7 @@ describe("useBloqueDashboardData", () => {
           tipoBloqueIds: [],
           includeInactive: true,
           slotMinutes: 45,
-          dias: [0, 1, 2, 3, 4, 5, 6],
+          dias: [0, 1, 2, 3, 4, 5],
         },
       })
     );
@@ -124,3 +124,5 @@ describe("useBloqueDashboardData", () => {
     });
   });
 });
+
+

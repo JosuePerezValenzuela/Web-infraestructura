@@ -14,7 +14,7 @@ describe("bloqueDashboardFiltersSchema", () => {
     expect(parsed.tipoBloqueIds).toEqual([]);
     expect(parsed.includeInactive).toBe(true);
     expect(parsed.slotMinutes).toBe(45);
-    expect(parsed.dias).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(parsed.dias).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   it("acepta coercion y filtros validos", () => {
@@ -24,7 +24,7 @@ describe("bloqueDashboardFiltersSchema", () => {
       bloqueIds: "100,101",
       tipoBloqueIds: ["1", "3"],
       includeInactive: "0",
-      slotMinutes: "60",
+      slotMinutes: "90",
       dias: "1,2,5",
     });
 
@@ -33,11 +33,11 @@ describe("bloqueDashboardFiltersSchema", () => {
     expect(parsed.bloqueIds).toEqual([100, 101]);
     expect(parsed.tipoBloqueIds).toEqual([1, 3]);
     expect(parsed.includeInactive).toBe(false);
-    expect(parsed.slotMinutes).toBe(60);
+    expect(parsed.slotMinutes).toBe(90);
     expect(parsed.dias).toEqual([1, 2, 5]);
   });
 
-  it("rechaza slotMinutes fuera de 15|30|45|60|90", () => {
+  it("rechaza slotMinutes fuera de 45|90", () => {
     expect(() =>
       bloqueDashboardFiltersSchema.parse({
         slotMinutes: "20",
@@ -45,10 +45,10 @@ describe("bloqueDashboardFiltersSchema", () => {
     ).toThrow();
   });
 
-  it("rechaza dias fuera del rango 0..6", () => {
+  it("rechaza dias fuera del rango 0..5", () => {
     expect(() =>
       bloqueDashboardFiltersSchema.parse({
-        dias: "0,7",
+        dias: "0,6",
       })
     ).toThrow();
   });
@@ -65,7 +65,7 @@ describe("bloqueDashboardGlobalResponseSchema", () => {
         tipoBloqueIds: [2],
         includeInactive: true,
         slotMinutes: 45,
-        dias: [0, 1, 2, 3, 4, 5, 6],
+        dias: [0, 1, 2, 3, 4, 5],
       },
       layout: { mode: "global" },
       data: {
@@ -231,3 +231,5 @@ describe("bloqueDashboardGlobalResponseSchema", () => {
     expect(() => bloqueDashboardGlobalResponseSchema.parse(payload)).toThrow();
   });
 });
+
+

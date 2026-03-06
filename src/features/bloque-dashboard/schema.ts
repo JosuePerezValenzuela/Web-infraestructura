@@ -39,11 +39,11 @@ function parseCsvDayArray(value: unknown): number[] {
 }
 
 const positiveIntArraySchema = z.array(z.coerce.number().int().positive());
-const dayArraySchema = z.array(z.coerce.number().int().min(0).max(6));
+const dayArraySchema = z.array(z.coerce.number().int().min(0).max(5));
 const slotMinutesSchema = z.coerce.number().int().refine(
-  (value) => [15, 30, 45, 60, 90].includes(value),
+  (value) => [45, 90].includes(value),
   {
-    message: "slotMinutes debe ser 15, 30, 45, 60 o 90",
+    message: "slotMinutes debe ser 45 o 90",
   }
 );
 
@@ -67,10 +67,10 @@ export const bloqueDashboardFiltersSchema = z.object({
   dias: z
     .preprocess(
       (value) =>
-        value === undefined ? [0, 1, 2, 3, 4, 5, 6] : parseCsvDayArray(value),
+        value === undefined ? [0, 1, 2, 3, 4, 5] : parseCsvDayArray(value),
       dayArraySchema
     )
-    .default([0, 1, 2, 3, 4, 5, 6]),
+    .default([0, 1, 2, 3, 4, 5]),
 });
 
 const stateCountSchema = z.object({

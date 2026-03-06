@@ -41,7 +41,15 @@ function toPositiveInt(value: unknown): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function SwitchInactive({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (value: boolean) => void }) {
+function SwitchInactive({
+  checked,
+  onCheckedChange,
+  className,
+}: {
+  checked: boolean;
+  onCheckedChange: (value: boolean) => void;
+  className?: string;
+}) {
   return (
     <button
       type="button"
@@ -51,7 +59,7 @@ function SwitchInactive({ checked, onCheckedChange }: { checked: boolean; onChec
       onClick={() => onCheckedChange(!checked)}
       className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition ${
         checked ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-muted-foreground/40 bg-muted text-muted-foreground"
-      }`}
+      } ${className ?? ""}`}
     >
       <span className={`flex h-4 w-7 items-center rounded-full transition ${checked ? "bg-emerald-500/80" : "bg-muted-foreground/30"}`}>
         <span className={`h-3.5 w-3.5 rounded-full bg-white shadow transition ${checked ? "translate-x-3" : "translate-x-0.5"}`} />
@@ -151,7 +159,6 @@ function DaySelector({ value, onChange }: { value: number[]; onChange: (days: nu
     { id: 3, short: "J" },
     { id: 4, short: "V" },
     { id: 5, short: "S" },
-    { id: 6, short: "D" },
   ];
   const selected = new Set(value);
 
@@ -169,7 +176,7 @@ function DaySelector({ value, onChange }: { value: number[]; onChange: (days: nu
               if (active) next.delete(day.id);
               else next.add(day.id);
               const sorted = Array.from(next).sort((a, b) => a - b);
-              onChange(sorted.length ? sorted : [0, 1, 2, 3, 4, 5, 6]);
+              onChange(sorted.length ? sorted : [0, 1, 2, 3, 4, 5]);
             }}
             aria-label={`Dia ${day.id}`}
           >
@@ -313,23 +320,21 @@ export default function BloquesDashboardPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold">Dashboard Bloques</h1>
         </div>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <MultiSelect label="Campus" options={campusOptions} selectedIds={filters.campusIds} emptyLabel="Selecciona campus" onChange={setCampusIds} />
-            <MultiSelect label="Facultades" options={facultadOptions} selectedIds={filters.facultadIds} emptyLabel="Selecciona facultades" onChange={setFacultadIds} />
-            <MultiSelect label="Bloques" options={bloqueOptions} selectedIds={filters.bloqueIds} emptyLabel="Selecciona bloques" onChange={setBloqueIds} />
-            <MultiSelect label="Tipos de bloque" options={tipoBloqueOptions} selectedIds={filters.tipoBloqueIds} emptyLabel="Selecciona tipos" onChange={setTipoBloqueIds} />
-            <SwitchInactive checked={filters.includeInactive} onCheckedChange={setIncludeInactive} />
-          </div>
-          <Button asChild>
+        <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="w-full"><MultiSelect label="Campus" options={campusOptions} selectedIds={filters.campusIds} emptyLabel="Selecciona campus" onChange={setCampusIds} /></div>
+          <div className="w-full"><MultiSelect label="Facultades" options={facultadOptions} selectedIds={filters.facultadIds} emptyLabel="Selecciona facultades" onChange={setFacultadIds} /></div>
+          <div className="w-full"><MultiSelect label="Bloques" options={bloqueOptions} selectedIds={filters.bloqueIds} emptyLabel="Selecciona bloques" onChange={setBloqueIds} /></div>
+          <div className="w-full"><MultiSelect label="Tipos de bloque" options={tipoBloqueOptions} selectedIds={filters.tipoBloqueIds} emptyLabel="Selecciona tipos" onChange={setTipoBloqueIds} /></div>
+          <div className="w-full"><SwitchInactive checked={filters.includeInactive} onCheckedChange={setIncludeInactive} className="w-full justify-center" /></div>
+          <Button asChild className="w-full">
             <Link href="/dashboard/bloques/list">Administrar Bloques</Link>
           </Button>
         </div>
-        <div className="flex flex-wrap items-end gap-6">
+        <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="slot-minutes-filter">Periodo de tiempo</Label>
-            <select id="slot-minutes-filter" aria-label="Periodo de tiempo" className="h-9 rounded-md border bg-background px-3 text-sm" value={filters.slotMinutes} onChange={(event) => setSlotMinutes(Number(event.target.value) as 15 | 30 | 45 | 60 | 90)}>
-              <option value={15}>15 min</option><option value={30}>30 min</option><option value={45}>45 min</option><option value={60}>60 min</option><option value={90}>90 min</option>
+            <select id="slot-minutes-filter" aria-label="Periodo de tiempo" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={filters.slotMinutes} onChange={(event) => setSlotMinutes(Number(event.target.value) as 45 | 90)}>
+              <option value={45}>45 min</option><option value={90}>90 min</option>
             </select>
           </div>
           <div className="space-y-2"><Label>Dias</Label><DaySelector value={filters.dias} onChange={setDias} /></div>
@@ -465,10 +470,11 @@ function buildTopFloorUtilizationOption(rows: GlobalCharts["topPisosUtilizacion"
 }
 
 function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"]) {
-  const dayLabels: Record<number, string> = { 0: "Lunes", 1: "Martes", 2: "Miercoles", 3: "Jueves", 4: "Viernes", 5: "Sabado", 6: "Domingo" };
-  const fixedDays = [6, 5, 4, 3, 2, 1, 0];
-  const franjas = Array.from(new Set(rows.map((item) => item.franja)));
-  const data = rows.map((row) => [franjas.indexOf(row.franja), fixedDays.indexOf(row.dia), row.pctOcupacion]);
+  const dayLabels: Record<number, string> = { 0: "Lunes", 1: "Martes", 2: "Miercoles", 3: "Jueves", 4: "Viernes", 5: "Sabado" };
+  const weekdays = rows.filter((row) => row.dia >= 0 && row.dia <= 5);
+  const fixedDays = [5, 4, 3, 2, 1, 0];
+  const franjas = Array.from(new Set(weekdays.map((item) => item.franja)));
+  const data = weekdays.map((row) => [franjas.indexOf(row.franja), fixedDays.indexOf(row.dia), row.pctOcupacion]);
 
   return {
     tooltip: { formatter: (params: { data: [number, number, number] }) => { const [x, y, pct] = params.data; return `${dayLabels[fixedDays[y]]} ${franjas[x]}: ${pct}%`; } },
