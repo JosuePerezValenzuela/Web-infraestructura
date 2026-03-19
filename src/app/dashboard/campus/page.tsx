@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -142,6 +142,33 @@ function CampusMultiSelect({
 }
 
 export default function CampusDashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <CampusDashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 pt-2">
+      <div className="space-y-3 border-b py-3">
+        <Skeleton className="h-8 w-48" />
+        <div className="flex gap-3">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CampusDashboardContent() {
   const router = useRouter();
   const { filters, setIncludeInactive, setCampusIds, buildDetailHref } =
     useCampusDashboardFilters();

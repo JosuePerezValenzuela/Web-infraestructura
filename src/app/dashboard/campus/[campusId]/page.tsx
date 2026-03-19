@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { Suspense, use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -57,6 +57,38 @@ function SwitchInactive({
 }
 
 export default function CampusDashboardDetailPage({
+  params,
+}: {
+  params: { campusId: string } | Promise<{ campusId: string }>;
+}) {
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <CampusDashboardDetailContent params={params} />
+    </Suspense>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-6 pt-2">
+      <div className="space-y-3 border-b py-3">
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-10 w-48" />
+        <div className="flex gap-3">
+          <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CampusDashboardDetailContent({
   params,
 }: {
   params: { campusId: string } | Promise<{ campusId: string }>;
