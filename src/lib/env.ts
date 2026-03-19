@@ -1,45 +1,35 @@
-﻿const apiHost = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ?? "http://localhost";
-const apiPort = process.env.NEXT_PUBLIC_API_BASE_PORT?.trim() ?? "3000";
-const apiPrefix = process.env.NEXT_PUBLIC_API_BASE_PREFIX?.trim() ?? "/api";
+/**
+ * Lee variables de entorno y las exporta para la app.
+ * 
+ * Variables necesarias:
+ * - NEXT_PUBLIC_API_BASE_URL: URL base del backend SIN prefijo (ej: http://localhost:3000)
+ * - NEXT_PUBLIC_FRONTEND_URL: URL del frontend (ej: http://localhost:8000)
+ * - NEXT_PUBLIC_GOODS_API_BASE_URL: URL de la API de bienes (ej: http://167.157.60.25/v1)
+ * 
+ * Nota: API_BASE_URL incluye /api como prefijo (ej: http://localhost:3000/api)
+ */
 
-const frontendHostEnv = process.env.NEXT_PUBLIC_FRONTEND_URL?.trim();
-const frontendPort = process.env.NEXT_PUBLIC_FRONTEND_PORT?.trim() ?? "3001";
-const metabaseUrl = process.env.NEXT_PUBLIC_METABASE_URL?.trim();
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL?.trim();
+const goodsApiBaseUrl = process.env.NEXT_PUBLIC_GOODS_API_BASE_URL?.trim();
 
-function normalizePrefix(raw: string): string {
-  const trimmed = raw || "/api";
-  const withLeading = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  return withLeading.replace(/\/$/, "");
-}
-
-function buildApiBase(host: string, port: string | undefined, prefix: string): string {
-  const cleanPrefix = normalizePrefix(prefix);
+function normalizeUrl(raw: string | undefined, fallback: string): string {
+  if (!raw) return fallback;
   try {
-    const url = new URL(host);
-    if (port) url.port = port;
-    return `${url.origin}${cleanPrefix}`;
-  } catch (error) {
-    const base = host.replace(/\/$/, "").replace(/:$/, "");
-    const portSegment = port ? `:${port}` : "";
-    return `${base}${portSegment}${cleanPrefix}`;
-  }
-}
-
-function buildOrigin(host: string, port: string | undefined): string {
-  try {
-    const url = new URL(host);
-    if (port) url.port = port;
+    const url = new URL(raw);
     return url.origin;
-  } catch (error) {
-    const base = host.replace(/\/$/, "").replace(/:$/, "");
-    const portSegment = port ? `:${port}` : "";
-    return `${base}${portSegment}`;
+  } catch {
+    return fallback;
   }
+}
+
+function buildApiUrl(baseUrl: string | undefined, fallback: string): string {
+  const origin = normalizeUrl(baseUrl, fallback);
+  return `${origin}/api`;
 }
 
 export const env = {
-  API_BASE_URL:
-    buildApiBase(apiHost, apiPort, apiPrefix),
-  FRONTEND_URL: buildOrigin(frontendHostEnv ?? "http://localhost", frontendPort),
-  METABASE_URL: metabaseUrl && metabaseUrl.length ? metabaseUrl : null,
+  API_BASE_URL: buildApiUrl(apiBaseUrl, "http://localhost:3000"),
+  FRONTEND_URL: normalizeUrl(frontendUrl, "http://localhost:8000"),
+  GOODS_API_BASE_URL: goodsApiBaseUrl || "http://167.157.60.25/v1",
 };
