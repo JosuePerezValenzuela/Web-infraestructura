@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +14,11 @@ import { CapacityKpiCard } from "@/features/campus-dashboard/components/Capacity
 import { useFacultadDashboardFilters } from "@/features/facultad-dashboard/hooks/useFacultadDashboardFilters";
 import { useFacultadDashboardData } from "@/features/facultad-dashboard/hooks/useFacultadDashboardData";
 import type { FacultadDashboardGlobalResponse } from "@/features/facultad-dashboard/schema";
+import type { BloqueDashboardFilters } from "@/features/bloque-dashboard/schema";
 
 type CampusOption = { id: number; nombre: string };
 type FacultadOption = { id: number; nombre: string; campus_id: number };
+type BloqueOption = { id: number; nombre: string; facultad_nombre: string };
 type GlobalCharts = FacultadDashboardGlobalResponse["data"]["charts"];
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
@@ -256,6 +259,7 @@ function DashboardSkeleton() {
 }
 
 function FacultadDashboardContent() {
+  const router = useRouter();
   const {
     filters,
     setCampusIds,
@@ -271,6 +275,7 @@ function FacultadDashboardContent() {
 
   const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
   const [allFacultadOptions, setAllFacultadOptions] = useState<FacultadOption[]>([]);
+  const [allBloqueOptions, setAllBloqueOptions] = useState<BloqueOption[]>([]);
   const [facultadCatalogReady, setFacultadCatalogReady] = useState(false);
 
   useEffect(() => {
@@ -278,9 +283,10 @@ function FacultadDashboardContent() {
 
     async function loadCatalogs() {
       try {
-        const [campus, facultades] = await Promise.all([
+        const [campus, facultades, bloques] = await Promise.all([
           apiFetch<{ items: CampusOption[] }>("/campus?page=1&limit=50"),
           apiFetch<{ items: Array<FacultadOption | (Omit<FacultadOption, "campus_id"> & { campus_id: string })> }>("/facultades?page=1&limit=200"),
+          apiFetch<{ items: Array<BloqueOption | { id?: unknown; nombre?: unknown; facultad_id?: unknown; facultad_nombre?: unknown }> }>("/bloques?page=1&limit=500"),
         ]);
 
         if (active) {
@@ -300,6 +306,15 @@ function FacultadDashboardContent() {
                   item.campus_id > 0 &&
                   item.nombre.trim().length > 0
               )
+          );
+          setAllBloqueOptions(
+            (bloques.items ?? [])
+              .map((item) => ({
+                id: Number(item.id),
+                nombre: String(item.nombre ?? item.codigo ?? "").trim(),
+                facultad_nombre: item.facultad_nombre ? String(item.facultad_nombre).trim() : "",
+              }))
+              .filter((item) => Number.isInteger(item.id) && item.id > 0 && item.nombre.length > 0)
           );
           setFacultadCatalogReady(true);
         }
@@ -336,6 +351,42 @@ function FacultadDashboardContent() {
       setFacultadIds(next);
     }
   }, [facultadCatalogReady, facultadOptions, filters.facultadIds, setFacultadIds]);
+
+  const navigateToBloque = (row: { bloqueId?: number; bloqueNombre: string; facultadNombre?: string }) => {
+    const params = new URLSearchParams();
+    
+    let bloqueId: number | undefined = row.bloqueId;
+    
+    // Intentar encontrar el bloque por ID o por nombre
+    if (!bloqueId) {
+      const matchedBloque = allBloqueOptions.find(
+        (b) => b.nombre.trim().toLowerCase() === row.bloqueNombre.trim().toLowerCase()
+      );
+      if (matchedBloque) {
+        bloqueId = matchedBloque.id;
+      }
+    }
+    
+    if (!bloqueId) return;
+    params.set("bloqueIds", String(bloqueId));
+    
+    // Buscar facultad por nombre desde el catálogo de bloques
+    const matchedBloque = allBloqueOptions.find((b) => b.id === bloqueId);
+    const facultadNombreToSearch = matchedBloque?.facultad_nombre || row.facultadNombre;
+    
+    if (facultadNombreToSearch) {
+      const matchedFacultad = allFacultadOptions.find(
+        (f) => f.nombre.trim().toLowerCase() === facultadNombreToSearch.trim().toLowerCase()
+      );
+      if (matchedFacultad) {
+        params.set("facultadIds", String(matchedFacultad.id));
+        params.set("campusIds", String(matchedFacultad.campus_id));
+      }
+    }
+    
+    params.set("includeInactive", String(filters.includeInactive));
+    router.push(`/dashboard/bloques?${params.toString()}`);
+  };
 
   return (
     <div className="space-y-6 pt-2">
@@ -470,6 +521,7 @@ function FacultadDashboardContent() {
       <ResumenBloquesTable
         loading={loading}
         rows={globalData?.tables.resumenBloques ?? []}
+        onRowClick={navigateToBloque}
       />
     </div>
   );
@@ -840,9 +892,11 @@ function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"])
 function ResumenBloquesTable({
   loading,
   rows,
+  onRowClick,
 }: {
   loading: boolean;
   rows: FacultadDashboardGlobalResponse["data"]["tables"]["resumenBloques"];
+  onRowClick: (row: FacultadDashboardGlobalResponse["data"]["tables"]["resumenBloques"][number]) => void;
 }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<
@@ -971,7 +1025,11 @@ function ResumenBloquesTable({
               </tr>
             ) : filtered.length ? (
               filtered.map((row) => (
-                <tr key={row.bloqueId ?? `${row.bloqueNombre}-${row.tipoBloqueNombre}`} className="hover:bg-muted/50">
+                <tr 
+                  key={row.bloqueId ?? `${row.bloqueNombre}-${row.tipoBloqueNombre}`} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => onRowClick(row)}
+                >
                   <td className="px-3 py-2">{row.facultadNombre}</td>
                   <td className="px-3 py-2">{row.bloqueNombre}</td>
                   <td className="px-3 py-2">{row.tipoBloqueNombre}</td>

@@ -225,6 +225,7 @@ function BloquesDashboardContent() {
   const [allFacultadOptions, setAllFacultadOptions] = useState<FacultadOption[]>([]);
   const [allBloqueOptions, setAllBloqueOptions] = useState<BloqueOption[]>([]);
   const [tipoBloqueOptions, setTipoBloqueOptions] = useState<TipoBloqueOption[]>([]);
+  const [catalogReady, setCatalogReady] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -293,6 +294,7 @@ function BloquesDashboardContent() {
               })
               .filter((item): item is TipoBloqueOption => Boolean(item))
           );
+          setCatalogReady(true);
         }
       } catch {
         // noop
@@ -330,18 +332,28 @@ function BloquesDashboardContent() {
   }, [allBloqueOptions, filters.facultadIds, facultadOptions]);
 
   useEffect(() => {
+    if (!catalogReady) return;
+    if (!filters.campusIds.length) return;
+    const allowed = new Set(campusOptions.map((item) => item.id));
+    const next = filters.campusIds.filter((id) => allowed.has(id));
+    if (next.length !== filters.campusIds.length) setCampusIds(next);
+  }, [catalogReady, campusOptions, filters.campusIds, setCampusIds]);
+
+  useEffect(() => {
+    if (!catalogReady) return;
     if (!filters.facultadIds.length) return;
     const allowed = new Set(facultadOptions.map((item) => item.id));
     const next = filters.facultadIds.filter((id) => allowed.has(id));
     if (next.length !== filters.facultadIds.length) setFacultadIds(next);
-  }, [facultadOptions, filters.facultadIds, setFacultadIds]);
+  }, [catalogReady, facultadOptions, filters.facultadIds, setFacultadIds]);
 
   useEffect(() => {
+    if (!catalogReady) return;
     if (!filters.bloqueIds.length) return;
-    const allowed = new Set(bloqueOptions.map((item) => item.id));
+    const allowed = new Set(allBloqueOptions.map((item) => item.id));
     const next = filters.bloqueIds.filter((id) => allowed.has(id));
     if (next.length !== filters.bloqueIds.length) setBloqueIds(next);
-  }, [bloqueOptions, filters.bloqueIds, setBloqueIds]);
+  }, [catalogReady, allBloqueOptions, filters.bloqueIds, setBloqueIds]);
 
   return (
     <div className="space-y-6 pt-2">
