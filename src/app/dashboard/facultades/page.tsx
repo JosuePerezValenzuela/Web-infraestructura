@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { DonutKpiCard } from "@/features/campus-dashboard/components/DonutKpiCard";
@@ -14,7 +13,6 @@ import { CapacityKpiCard } from "@/features/campus-dashboard/components/Capacity
 import { useFacultadDashboardFilters } from "@/features/facultad-dashboard/hooks/useFacultadDashboardFilters";
 import { useFacultadDashboardData } from "@/features/facultad-dashboard/hooks/useFacultadDashboardData";
 import type { FacultadDashboardGlobalResponse } from "@/features/facultad-dashboard/schema";
-import type { BloqueDashboardFilters } from "@/features/bloque-dashboard/schema";
 
 type CampusOption = { id: number; nombre: string };
 type FacultadOption = { id: number; nombre: string; campus_id: number };
@@ -265,8 +263,6 @@ function FacultadDashboardContent() {
     setCampusIds,
     setFacultadIds,
     setIncludeInactive,
-    setSlotMinutes,
-    setDias,
   } = useFacultadDashboardFilters();
   const { data, loading } = useFacultadDashboardData({
     mode: "global",
@@ -311,7 +307,7 @@ function FacultadDashboardContent() {
             (bloques.items ?? [])
               .map((item) => ({
                 id: Number(item.id),
-                nombre: String(item.nombre ?? item.codigo ?? "").trim(),
+                nombre: String(item.nombre ?? "").trim(),
                 facultad_nombre: item.facultad_nombre ? String(item.facultad_nombre).trim() : "",
               }))
               .filter((item) => Number.isInteger(item.id) && item.id > 0 && item.nombre.length > 0)
@@ -423,28 +419,6 @@ function FacultadDashboardContent() {
             </Button>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-end gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="slot-minutes-filter">Periodo de tiempo</Label>
-            <select
-              id="slot-minutes-filter"
-              aria-label="Periodo de tiempo"
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-              value={filters.slotMinutes}
-              onChange={(event) =>
-                setSlotMinutes(Number(event.target.value) as 45 | 90)
-              }
-            >
-              <option value={45}>45 min</option>
-              <option value={90}>90 min</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label>Días</Label>
-            <DaySelector value={filters.dias} onChange={setDias} />
-          </div>
-        </div>
       </div>
 
       <KpiGrid kpis={globalData?.kpis} loading={loading} />
@@ -479,43 +453,11 @@ function FacultadDashboardContent() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <ChartCard
-          loading={loading}
-          title="Ambientes activos vs inactivos por bloque"
-          option={buildStackedStateOption(globalData?.charts.ambientesActivosInactivosPorBloque ?? [])}
-          height={420}
-        />
-        <ChartCard
-          loading={loading}
-          title="Ocupación por bloque"
-          option={buildOccupationByBlockOption(globalData?.charts.ocupacionPorBloque ?? [])}
-          height={400}
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <ChartCard
-          loading={loading}
-          title="Top ambientes sobrecargados"
-          option={buildTopUtilizationOption(
-            globalData?.charts.topAmbientesUtilizacion.sobrecargados ?? []
-          )}
-        />
-        <ChartCard
-          loading={loading}
-          title="Top ambientes subutilizados"
-          option={buildTopUtilizationOption(
-            globalData?.charts.topAmbientesUtilizacion.subutilizados ?? []
-          )}
-        />
-      </div>
-
       <ChartCard
         loading={loading}
-        title="Heatmap semanal de ocupación"
-        option={buildWeeklyHeatmapOption(globalData?.charts.ocupacionHeatmapSemanal ?? [])}
-        height={360}
+        title="Ambientes activos vs inactivos por bloque"
+        option={buildStackedStateOption(globalData?.charts.ambientesActivosInactivosPorBloque ?? [])}
+        height={420}
       />
 
       <ResumenBloquesTable
@@ -774,118 +716,6 @@ function buildStackedStateOption(
         data: sorted.map((row) => row.inactivos),
       },
     ],
-  };
-}
-
-function buildOccupationByBlockOption(rows: GlobalCharts["ocupacionPorBloque"]) {
-  const sorted = [...rows].sort((a, b) => b.pctOcupacion - a.pctOcupacion);
-  const hasZoom = sorted.length > 10;
-  const zoomEnd = Math.min(100, (10 / Math.max(sorted.length, 1)) * 100);
-  return {
-    tooltip: { trigger: "axis" },
-    grid: { left: 40, right: 20, top: 20, bottom: hasZoom ? 90 : 50, containLabel: true },
-    dataZoom:
-      hasZoom
-        ? [
-            { type: "inside", xAxisIndex: 0, start: 0, end: zoomEnd },
-            { type: "slider", xAxisIndex: 0, height: 14, bottom: 16, start: 0, end: zoomEnd },
-          ]
-        : undefined,
-    xAxis: {
-      type: "category",
-      data: sorted.map((row) => row.bloqueNombre),
-      axisLabel: { interval: 0, hideOverlap: false, rotate: 25 },
-    },
-    yAxis: {
-      type: "value",
-      max: 100,
-    },
-    series: [
-      {
-        type: "bar",
-        data: sorted.map((row) => row.pctOcupacion),
-        itemStyle: { color: "#2563eb" },
-        label: {
-          show: true,
-          position: "top",
-          formatter: ({ value }: { value: number }) => `${value}%`,
-        },
-      },
-    ],
-  };
-}
-
-function buildTopUtilizationOption(
-  rows: GlobalCharts["topAmbientesUtilizacion"]["sobrecargados"]
-) {
-  return {
-    tooltip: { trigger: "axis" },
-    xAxis: { type: "value", max: 100 },
-    yAxis: {
-      type: "category",
-      inverse: true,
-      data: rows.map((row) =>
-        row.bloqueNombre ? `${row.ambienteNombre} (${row.bloqueNombre})` : row.ambienteNombre
-      ),
-    },
-    series: [
-      {
-        type: "bar",
-        data: rows.map((row) => row.pctOcupacion),
-        itemStyle: { color: "#ef4444" },
-        label: {
-          show: true,
-          position: "right",
-          formatter: ({ value }: { value: number }) => `${value}%`,
-        },
-      },
-    ],
-  };
-}
-
-function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"]) {
-  const weekdayRows = rows.filter((row) => row.dia >= 0 && row.dia <= 5);
-  const dayLabels: Record<number, string> = {
-    0: "Lunes",
-    1: "Martes",
-    2: "Miércoles",
-    3: "Jueves",
-    4: "Viernes",
-    5: "Sábado",
-  };
-  const fixedDays = [5, 4, 3, 2, 1, 0];
-  const franjas = Array.from(new Set(weekdayRows.map((item) => item.franja)));
-  const data = weekdayRows.map((row) => [
-    franjas.indexOf(row.franja),
-    fixedDays.indexOf(row.dia),
-    row.pctOcupacion,
-  ]);
-
-  return {
-    tooltip: {
-      formatter: (params: { data: [number, number, number] }) => {
-        const [x, y, pct] = params.data;
-        return `${dayLabels[fixedDays[y]]} ${franjas[x]}: ${pct}%`;
-      },
-    },
-    grid: { left: 90, right: 90, top: 20, bottom: 40 },
-    xAxis: { type: "category", data: franjas },
-    yAxis: {
-      type: "category",
-      data: fixedDays.map((day) => dayLabels[day]),
-    },
-    visualMap: {
-      min: 0,
-      max: 100,
-      calculable: true,
-      orient: "vertical",
-      right: 10,
-      top: "middle",
-      inRange: {
-        color: ["#dbeafe", "#fbcfe8", "#fecaca"],
-      },
-    },
-    series: [{ type: "heatmap", data }],
   };
 }
 
