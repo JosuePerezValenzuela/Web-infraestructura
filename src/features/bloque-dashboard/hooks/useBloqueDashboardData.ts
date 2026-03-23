@@ -57,8 +57,6 @@ export function useBloqueDashboardData(
     }
 
     search.set("includeInactive", String(parsedFilters.includeInactive));
-    search.set("slotMinutes", String(parsedFilters.slotMinutes));
-    search.set("dias", parsedFilters.dias.join(","));
 
     const query = search.toString();
     return `/dashboards/bloques/global${query ? `?${query}` : ""}`;

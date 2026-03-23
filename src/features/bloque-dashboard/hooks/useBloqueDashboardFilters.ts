@@ -13,25 +13,6 @@ function parseNumberCsv(value: string | null): number[] {
     .filter((item) => Number.isInteger(item) && item > 0);
 }
 
-function parseDaysCsv(value: string | null): number[] {
-  if (!value || !value.trim().length) return [0, 1, 2, 3, 4, 5];
-
-  const parsed = value
-    .split(",")
-    .map((item) => Number.parseInt(item.trim(), 10))
-    .filter((item) => Number.isInteger(item) && item >= 0 && item <= 5);
-
-  return parsed.length ? parsed : [0, 1, 2, 3, 4, 5];
-}
-
-function parseSlotMinutes(value: string | null): 45 | 90 {
-  const parsed = Number.parseInt(String(value ?? ""), 10);
-  if (parsed === 45 || parsed === 90) {
-    return parsed;
-  }
-  return 45;
-}
-
 function parseSearchParams(searchParams: URLSearchParams): BloqueDashboardFilters {
   const includeInactiveParam = searchParams.get("includeInactive");
 
@@ -44,8 +25,6 @@ function parseSearchParams(searchParams: URLSearchParams): BloqueDashboardFilter
       includeInactiveParam === null
         ? true
         : includeInactiveParam === "true" || includeInactiveParam === "1",
-    slotMinutes: parseSlotMinutes(searchParams.get("slotMinutes")),
-    dias: parseDaysCsv(searchParams.get("dias")),
   };
 
   return bloqueDashboardFiltersSchema.parse(raw);
@@ -68,8 +47,6 @@ function buildSearchString(filters: BloqueDashboardFilters): string {
   }
 
   params.set("includeInactive", String(filters.includeInactive));
-  params.set("slotMinutes", String(filters.slotMinutes));
-  params.set("dias", filters.dias.join(","));
 
   const query = params.toString();
   return query.length ? `?${query}` : "";
@@ -126,20 +103,6 @@ export function useBloqueDashboardFilters() {
     [filters, pushWithFilters]
   );
 
-  const setSlotMinutes = useCallback(
-    (slotMinutes: 45 | 90) => {
-      pushWithFilters({ ...filters, slotMinutes });
-    },
-    [filters, pushWithFilters]
-  );
-
-  const setDias = useCallback(
-    (dias: number[]) => {
-      pushWithFilters({ ...filters, dias });
-    },
-    [filters, pushWithFilters]
-  );
-
   const setFilters = useCallback(
     (nextFilters: BloqueDashboardFilters) => {
       pushWithFilters(nextFilters);
@@ -154,8 +117,6 @@ export function useBloqueDashboardFilters() {
     setBloqueIds,
     setTipoBloqueIds,
     setIncludeInactive,
-    setSlotMinutes,
-    setDias,
     setFilters,
   };
 }

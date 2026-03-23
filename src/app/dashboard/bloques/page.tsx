@@ -5,7 +5,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import { DonutKpiCard } from "@/features/campus-dashboard/components/DonutKpiCard";
@@ -151,42 +150,6 @@ function MultiSelect({ label, options, selectedIds, emptyLabel, onChange }: { la
     </div>
   );
 }
-function DaySelector({ value, onChange }: { value: number[]; onChange: (days: number[]) => void }) {
-  const labels = [
-    { id: 0, short: "L" },
-    { id: 1, short: "M" },
-    { id: 2, short: "X" },
-    { id: 3, short: "J" },
-    { id: 4, short: "V" },
-    { id: 5, short: "S" },
-  ];
-  const selected = new Set(value);
-
-  return (
-    <div className="inline-flex items-center gap-1 rounded-lg border bg-card p-1">
-      {labels.map((day) => {
-        const active = selected.has(day.id);
-        return (
-          <button
-            key={day.id}
-            type="button"
-            className={`h-8 w-8 rounded-md text-xs font-semibold ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-            onClick={() => {
-              const next = new Set(selected);
-              if (active) next.delete(day.id);
-              else next.add(day.id);
-              const sorted = Array.from(next).sort((a, b) => a - b);
-              onChange(sorted.length ? sorted : [0, 1, 2, 3, 4, 5]);
-            }}
-            aria-label={`Dia ${day.id}`}
-          >
-            {day.short}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function BloquesDashboardPage() {
   return (
@@ -218,7 +181,7 @@ function DashboardSkeleton() {
 }
 
 function BloquesDashboardContent() {
-  const { filters, setCampusIds, setFacultadIds, setBloqueIds, setTipoBloqueIds, setIncludeInactive, setSlotMinutes, setDias, setFilters } = useBloqueDashboardFilters();
+  const { filters, setCampusIds, setFacultadIds, setBloqueIds, setTipoBloqueIds, setIncludeInactive, setFilters } = useBloqueDashboardFilters();
   const { data, loading } = useBloqueDashboardData({ filters });
 
   const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
@@ -375,15 +338,6 @@ function BloquesDashboardContent() {
             </Button>
           </div>
         </div>
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="space-y-2 shrink-0">
-            <Label htmlFor="slot-minutes-filter">Periodo de tiempo</Label>
-            <select id="slot-minutes-filter" aria-label="Periodo de tiempo" className="h-9 rounded-md border bg-background px-3 text-sm" value={filters.slotMinutes} onChange={(event) => setSlotMinutes(Number(event.target.value) as 45 | 90)}>
-              <option value={45}>45 min</option><option value={90}>90 min</option>
-            </select>
-          </div>
-          <div className="space-y-2 shrink-0"><Label>Dias</Label><DaySelector value={filters.dias} onChange={setDias} /></div>
-        </div>
       </div>
       <KpiGrid kpis={globalData?.kpis} loading={loading} />
 
@@ -396,19 +350,6 @@ function BloquesDashboardContent() {
         <ChartCard loading={loading} title="Capacidad por bloque" option={buildCapacityByBlockOption(globalData?.charts.capacidadPorBloque ?? [])} height={420} />
         <ChartCard loading={loading} title="Activos por bloque" option={buildSimpleBarOption(globalData?.charts.activosPorBloque ?? [], "bloqueNombre", "activosAsignados")} height={420} />
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <ChartCard loading={loading} title="Top bloques sobrecargados" option={buildTopUtilizationOption(globalData?.charts.topBloquesUtilizacion.sobrecargadosTop10 ?? [])} />
-        <ChartCard loading={loading} title="Top bloques subutilizados" option={buildTopUtilizationOption(globalData?.charts.topBloquesUtilizacion.subutilizadosTop10 ?? [])} />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <ChartCard loading={loading} title="Top pisos sobrecargados" option={buildTopFloorUtilizationOption(globalData?.charts.topPisosUtilizacion.sobrecargadosTop10 ?? [])} />
-        <ChartCard loading={loading} title="Top pisos subutilizados" option={buildTopFloorUtilizationOption(globalData?.charts.topPisosUtilizacion.subutilizadosTop10 ?? [])} />
-      </div>
-
-      <ChartCard loading={loading} title="Heatmap semanal de ocupacion" option={buildWeeklyHeatmapOption(globalData?.charts.ocupacionHeatmapSemanal ?? [])} height={380} />
-      <ChartCard loading={loading} title="Ocupacion por bloque" option={buildOccupationByBlockOption(globalData?.charts.ocupacionPorBloque ?? [])} height={360} />
 
       <ResumenBloquesTable
         loading={loading}
@@ -426,16 +367,6 @@ function BloquesDashboardContent() {
             ...filters,
             campusIds: campusId ? [campusId] : [],
             facultadIds: facultadId ? [facultadId] : [],
-            bloqueIds: [row.bloqueId],
-          });
-        }}
-      />
-      <PisosUtilizacionTable
-        loading={loading}
-        rows={globalData?.tables.pisosUtilizacion ?? []}
-        onRowClick={(row) => {
-          setFilters({
-            ...filters,
             bloqueIds: [row.bloqueId],
           });
         }}
@@ -510,55 +441,6 @@ function buildCapacityByBlockOption(rows: GlobalCharts["capacidadPorBloque"]) {
   };
 }
 
-function buildOccupationByBlockOption(rows: GlobalCharts["ocupacionPorBloque"]) {
-  const sorted = [...rows].sort((a, b) => b.pctOcupacion - a.pctOcupacion);
-  const hasZoom = sorted.length > 10;
-  const zoomEnd = Math.min(100, (10 / Math.max(sorted.length, 1)) * 100);
-  return {
-    tooltip: { trigger: "axis" },
-    grid: { left: 40, right: 20, top: 20, bottom: hasZoom ? 90 : 50, containLabel: true },
-    dataZoom: hasZoom ? [{ type: "inside", xAxisIndex: 0, start: 0, end: zoomEnd }, { type: "slider", xAxisIndex: 0, height: 14, bottom: 16, start: 0, end: zoomEnd }] : undefined,
-    xAxis: { type: "category", data: sorted.map((row) => row.bloqueNombre), axisLabel: { interval: 0, hideOverlap: false, rotate: 25 } },
-    yAxis: { type: "value", max: 100 },
-    series: [{ type: "bar", data: sorted.map((row) => row.pctOcupacion), itemStyle: { color: "#2563eb" }, label: { show: true, position: "top", formatter: ({ value }: { value: number }) => `${value}%` } }],
-  };
-}
-
-function buildTopUtilizationOption(rows: GlobalCharts["topBloquesUtilizacion"]["sobrecargadosTop10"]) {
-  return {
-    tooltip: { trigger: "axis" },
-    xAxis: { type: "value", max: 100 },
-    yAxis: { type: "category", inverse: true, data: rows.map((row) => row.bloqueNombre) },
-    series: [{ type: "bar", data: rows.map((row) => row.pctOcupacion), itemStyle: { color: "#ef4444" }, label: { show: true, position: "right", formatter: ({ value }: { value: number }) => `${value}%` } }],
-  };
-}
-
-function buildTopFloorUtilizationOption(rows: GlobalCharts["topPisosUtilizacion"]["sobrecargadosTop10"]) {
-  return {
-    tooltip: { trigger: "axis" },
-    xAxis: { type: "value", max: 100 },
-    yAxis: { type: "category", inverse: true, data: rows.map((row) => `${row.bloqueNombre} - Piso ${row.piso}`) },
-    series: [{ type: "bar", data: rows.map((row) => row.pctOcupacion), itemStyle: { color: "#f97316" }, label: { show: true, position: "right", formatter: ({ value }: { value: number }) => `${value}%` } }],
-  };
-}
-
-function buildWeeklyHeatmapOption(rows: GlobalCharts["ocupacionHeatmapSemanal"]) {
-  const dayLabels: Record<number, string> = { 0: "Lunes", 1: "Martes", 2: "Miercoles", 3: "Jueves", 4: "Viernes", 5: "Sabado" };
-  const weekdays = rows.filter((row) => row.dia >= 0 && row.dia <= 5);
-  const fixedDays = [5, 4, 3, 2, 1, 0];
-  const franjas = Array.from(new Set(weekdays.map((item) => item.franja)));
-  const data = weekdays.map((row) => [franjas.indexOf(row.franja), fixedDays.indexOf(row.dia), row.pctOcupacion]);
-
-  return {
-    tooltip: { formatter: (params: { data: [number, number, number] }) => { const [x, y, pct] = params.data; return `${dayLabels[fixedDays[y]]} ${franjas[x]}: ${pct}%`; } },
-    grid: { left: 90, right: 90, top: 20, bottom: 40 },
-    xAxis: { type: "category", data: franjas },
-    yAxis: { type: "category", data: fixedDays.map((day) => dayLabels[day]) },
-    visualMap: { min: 0, max: 100, calculable: true, orient: "vertical", right: 10, top: "middle", inRange: { color: ["#dbeafe", "#fbcfe8", "#fecaca"] } },
-    series: [{ type: "heatmap", data }],
-  };
-}
-
 function ResumenBloquesTable({
   loading,
   rows,
@@ -572,9 +454,9 @@ function ResumenBloquesTable({
 }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<
-    "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes" | "pctOcupacion"
-  >("pctOcupacion");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+    "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes"
+  >("campusNombre");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -601,18 +483,18 @@ function ResumenBloquesTable({
   }, [rows, search, sortBy, sortDir]);
 
   const toggleSort = (
-    column: "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes" | "pctOcupacion"
+    column: "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes"
   ) => {
     if (sortBy === column) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
       return;
     }
     setSortBy(column);
-    setSortDir(column === "pctOcupacion" ? "desc" : "asc");
+    setSortDir("asc");
   };
 
   const sortIcon = (
-    column: "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes" | "pctOcupacion"
+    column: "campusNombre" | "facultadNombre" | "bloqueNombre" | "ambientes"
   ) => (sortBy === column ? (sortDir === "asc" ? " ↑" : " ↓") : "");
 
   return (
@@ -640,13 +522,12 @@ function ResumenBloquesTable({
               <th className="px-3 py-2">Cap. total</th>
               <th className="px-3 py-2">Cap. examen</th>
               <th className="px-3 py-2">Activos</th>
-              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("pctOcupacion")}>Ocupacion{sortIcon("pctOcupacion")}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="px-3 py-4" colSpan={11}>
+                <td className="px-3 py-4" colSpan={10}>
                   <Skeleton className="h-5 w-48" />
                 </td>
               </tr>
@@ -667,124 +548,11 @@ function ResumenBloquesTable({
                   <td className="px-3 py-2">{row.capacidadTotal}</td>
                   <td className="px-3 py-2">{row.capacidadExamen}</td>
                   <td className="px-3 py-2">{row.activosAsignados}</td>
-                  <td className="px-3 py-2">{row.pctOcupacion}%</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td className="px-3 py-4 text-muted-foreground" colSpan={11}>
-                  Sin datos para mostrar.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function PisosUtilizacionTable({
-  loading,
-  rows,
-  onRowClick,
-}: {
-  loading: boolean;
-  rows: BloqueDashboardGlobalResponse["data"]["tables"]["pisosUtilizacion"];
-  onRowClick: (
-    row: BloqueDashboardGlobalResponse["data"]["tables"]["pisosUtilizacion"][number]
-  ) => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"bloqueNombre" | "piso" | "ambientes" | "pctOcupacion">(
-    "pctOcupacion"
-  );
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const base = !term.length
-      ? rows
-      : rows.filter((row) => row.bloqueNombre.toLowerCase().includes(term));
-
-    return [...base].sort((a, b) => {
-      const aValue = a[sortBy];
-      const bValue = b[sortBy];
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDir === "asc" ? aValue - bValue : bValue - aValue;
-      }
-      return sortDir === "asc"
-        ? String(aValue).localeCompare(String(bValue))
-        : String(bValue).localeCompare(String(aValue));
-    });
-  }, [rows, search, sortBy, sortDir]);
-
-  const toggleSort = (column: "bloqueNombre" | "piso" | "ambientes" | "pctOcupacion") => {
-    if (sortBy === column) {
-      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortBy(column);
-    setSortDir(column === "pctOcupacion" ? "desc" : "asc");
-  };
-
-  const sortIcon = (column: "bloqueNombre" | "piso" | "ambientes" | "pctOcupacion") =>
-    sortBy === column ? (sortDir === "asc" ? " ↑" : " ↓") : "";
-
-  return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Utilizacion por piso</h2>
-        <Input
-          placeholder="Buscar bloque"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className="w-full max-w-xs"
-        />
-      </div>
-      <div className="mt-3 overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-muted-foreground">
-              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("bloqueNombre")}>Bloque{sortIcon("bloqueNombre")}</th>
-              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("piso")}>Piso{sortIcon("piso")}</th>
-              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("ambientes")}>Ambientes{sortIcon("ambientes")}</th>
-              <th className="px-3 py-2">Cap. total</th>
-              <th className="px-3 py-2">Cap. examen</th>
-              <th className="px-3 py-2">Activos</th>
-              <th className="px-3 py-2">Slots ocupados</th>
-              <th className="px-3 py-2">Slots totales</th>
-              <th className="cursor-pointer px-3 py-2" onClick={() => toggleSort("pctOcupacion")}>Ocupacion{sortIcon("pctOcupacion")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td className="px-3 py-4" colSpan={9}>
-                  <Skeleton className="h-5 w-48" />
-                </td>
-              </tr>
-            ) : filtered.length ? (
-              filtered.map((row) => (
-                <tr
-                  key={`${row.bloqueId}-${row.piso}`}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onRowClick(row)}
-                >
-                  <td className="px-3 py-2">{row.bloqueNombre}</td>
-                  <td className="px-3 py-2">{row.piso}</td>
-                  <td className="px-3 py-2">{row.ambientes}</td>
-                  <td className="px-3 py-2">{row.capacidadTotal}</td>
-                  <td className="px-3 py-2">{row.capacidadExamen}</td>
-                  <td className="px-3 py-2">{row.activosAsignados}</td>
-                  <td className="px-3 py-2">{row.slotsOcupados}</td>
-                  <td className="px-3 py-2">{row.slotsTotales}</td>
-                  <td className="px-3 py-2">{row.pctOcupacion}%</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td className="px-3 py-4 text-muted-foreground" colSpan={9}>
+                <td className="px-3 py-4 text-muted-foreground" colSpan={10}>
                   Sin datos para mostrar.
                 </td>
               </tr>
