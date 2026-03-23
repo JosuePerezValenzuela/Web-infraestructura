@@ -8,6 +8,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -386,14 +387,30 @@ export default function EnvironmentListPage() {
 
   const [appliedSearch, setAppliedSearch] = useState("");
 
-  // Este estado conserva los filtros visibles en el formulario.
+  // Leer query params de la URL para inicializar filtros
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const tipoAmbienteId = searchParams.get("tipoAmbienteId") || "";
+    const bloqueId = searchParams.get("bloqueId") || "";
+    const facultadId = searchParams.get("facultadId") || "";
+    const activo = searchParams.get("activo") || "";
+    const clases = searchParams.get("clases") || "";
+    const pisoMin = searchParams.get("pisoMin") || "";
+    const pisoMax = searchParams.get("pisoMax") || "";
+    return { tipoAmbienteId, bloqueId, facultadId, activo, clases, pisoMin, pisoMax };
+  });
 
   // Este estado traduce los filtros confirmados hacia la API.
 
   const [appliedFilters, setAppliedFilters] =
-    useState<FilterState>(INITIAL_FILTERS);
+    useState<FilterState>(filters);
+
+  // Inicializar appliedFilters con los filtros de URL
+  useEffect(() => {
+    setAppliedFilters(filters);
+  }, [filters]);
 
   // Catálogos para filtros (incluyen registros inactivos).
 
@@ -657,11 +674,11 @@ export default function EnvironmentListPage() {
 
           facultiesActiveResponse,
         ] = await Promise.all([
-          apiFetch<CatalogResponse>("/bloques?page=1&limit=50", {
+          apiFetch<CatalogResponse>("/bloques?page=1&limit=100", {
             signal: controller.signal,
           }),
 
-          apiFetch<CatalogResponse>("/bloques?page=1&limit=50&activo=true", {
+          apiFetch<CatalogResponse>("/bloques?page=1&limit=100&activo=true", {
             signal: controller.signal,
           }),
 
@@ -676,11 +693,11 @@ export default function EnvironmentListPage() {
             }
           ),
 
-          apiFetch<CatalogResponse>("/facultades?page=1&limit=50", {
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=100", {
             signal: controller.signal,
           }),
 
-          apiFetch<CatalogResponse>("/facultades?page=1&limit=50&activo=true", {
+          apiFetch<CatalogResponse>("/facultades?page=1&limit=100&activo=true", {
             signal: controller.signal,
           }),
         ]);
@@ -928,6 +945,19 @@ export default function EnvironmentListPage() {
 
     setAppliedFilters(filters);
 
+    // Actualizar URL con los filtros aplicados
+    const params = new URLSearchParams();
+    if (normalizedSearch) params.set("search", normalizedSearch);
+    if (filters.tipoAmbienteId) params.set("tipoAmbienteId", filters.tipoAmbienteId);
+    if (filters.bloqueId) params.set("bloqueId", filters.bloqueId);
+    if (filters.facultadId) params.set("facultadId", filters.facultadId);
+    if (filters.activo) params.set("activo", filters.activo);
+    if (filters.clases) params.set("clases", filters.clases);
+    if (filters.pisoMin) params.set("pisoMin", filters.pisoMin);
+    if (filters.pisoMax) params.set("pisoMax", filters.pisoMax);
+    const queryString = params.toString();
+    router.push(queryString ? `?${queryString}` : "/dashboard/ambientes/list");
+
     // Regresamos a la primera pagina para mostrar los resultados mas recientes.
 
     setPage(1);
@@ -951,6 +981,9 @@ export default function EnvironmentListPage() {
     // Quitamos cualquier termino de busqueda aplicado anteriormente.
 
     setAppliedSearch("");
+
+    // Limpiar URL de filtros
+    router.push("/dashboard/ambientes/list");
 
     // Volvemos a la primera pagina para reiniciar la paginacion.
 
