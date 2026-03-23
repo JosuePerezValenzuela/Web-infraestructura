@@ -1158,6 +1158,10 @@ export default function EnvironmentListPage() {
     setEnvironmentForSchedules(row);
     setSchedulesOpen(true);
   }, []);
+  // Navega a la pagina de detalles del ambiente.
+  const handleViewDetails = useCallback((row: EnvironmentRow) => {
+    router.push(`/dashboard/ambientes/${row.id}`);
+  }, [router]);
 
   // Restablece los estados relacionados al dialogo de eliminación.
 
@@ -1279,10 +1283,11 @@ export default function EnvironmentListPage() {
         handleEdit,
         handleDelete,
         handleAssociateAssets,
-        handleAssignSchedules
+        handleAssignSchedules,
+        handleViewDetails
       ),
 
-    [handleAssignSchedules, handleAssociateAssets, handleDelete, handleEdit]
+    [handleAssignSchedules, handleAssociateAssets, handleDelete, handleEdit, handleViewDetails]
   );
 
   return (

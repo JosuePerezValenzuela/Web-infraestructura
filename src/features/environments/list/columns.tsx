@@ -1,11 +1,10 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Clock3, Link2, Pencil, Trash2 } from "lucide-react";
+import { Clock3, Eye, Link2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
-import { EnvironmentReportAction } from "@/features/reports/environment/EnvironmentReportAction";
 
 type BaseEnvironmentRow = {
   id: number;
@@ -131,7 +130,8 @@ export function environmentColumns(
   onEdit?: (row: EnvironmentRow) => void,
   onDelete?: (row: EnvironmentRow) => void,
   onAssociateAssets?: (row: EnvironmentRow) => void,
-  onAssignSchedules?: (row: EnvironmentRow) => void
+  onAssignSchedules?: (row: EnvironmentRow) => void,
+  onViewDetails?: (row: EnvironmentRow) => void
 ): ColumnDef<EnvironmentRow>[] {
   // Construimos y devolvemos la configuracion completa de columnas para la tabla de ambientes.
   return [
@@ -299,10 +299,16 @@ export function environmentColumns(
       enableHiding: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <EnvironmentReportAction
-            code={row.original.codigo}
-            name={row.original.nombre}
-          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Ver detalles del ambiente"
+            title="Ver detalles del ambiente"
+            onClick={() => onViewDetails?.(row.original)}
+          >
+            <Eye className="h-4 w-4" aria-hidden />
+          </Button>
           <Button
             type="button"
             variant="ghost"
