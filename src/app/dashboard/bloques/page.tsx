@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,7 +182,8 @@ function DashboardSkeleton() {
 }
 
 function BloquesDashboardContent() {
-  const { filters, setCampusIds, setFacultadIds, setBloqueIds, setTipoBloqueIds, setIncludeInactive, setFilters } = useBloqueDashboardFilters();
+  const router = useRouter();
+  const { filters, setCampusIds, setFacultadIds, setBloqueIds, setTipoBloqueIds, setIncludeInactive } = useBloqueDashboardFilters();
   const { data, loading } = useBloqueDashboardData({ filters });
 
   const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
@@ -355,20 +357,18 @@ function BloquesDashboardContent() {
         loading={loading}
         rows={globalData?.tables.resumenBloques ?? []}
         onRowClick={(row) => {
-          const campusId = campusOptions.find(
-            (item) => item.nombre.trim().toLowerCase() === row.campusNombre.trim().toLowerCase()
-          )?.id;
+          const params = new URLSearchParams();
+          params.set("bloqueId", String(row.bloqueId));
+          
           const facultadId = allFacultadOptions.find(
             (item) =>
               item.nombre.trim().toLowerCase() === row.facultadNombre.trim().toLowerCase()
           )?.id;
+          if (facultadId) {
+            params.set("facultadId", String(facultadId));
+          }
 
-          setFilters({
-            ...filters,
-            campusIds: campusId ? [campusId] : [],
-            facultadIds: facultadId ? [facultadId] : [],
-            bloqueIds: [row.bloqueId],
-          });
+          router.push(`/dashboard/ambientes/list?${params.toString()}`);
         }}
       />
     </div>
