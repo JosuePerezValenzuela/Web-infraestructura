@@ -407,10 +407,44 @@ export default function EnvironmentListPage() {
   const [appliedFilters, setAppliedFilters] =
     useState<FilterState>(filters);
 
-  // Inicializar appliedFilters con los filtros de URL
+  // Función para sincronizar filtros con URL y appliedFilters
+  const syncFiltersToUrl = useCallback((currentFilters: FilterState, currentSearch: string) => {
+    setAppliedFilters(currentFilters);
+    setAppliedSearch(currentSearch);
+    setPage(1);
+    
+    const params = new URLSearchParams();
+    const normalizedSearch = currentSearch.trim();
+    if (normalizedSearch) params.set("search", normalizedSearch);
+    if (currentFilters.tipoAmbienteId) params.set("tipoAmbienteId", currentFilters.tipoAmbienteId);
+    if (currentFilters.bloqueId) params.set("bloqueId", currentFilters.bloqueId);
+    if (currentFilters.facultadId) params.set("facultadId", currentFilters.facultadId);
+    if (currentFilters.activo) params.set("activo", currentFilters.activo);
+    if (currentFilters.clases) params.set("clases", currentFilters.clases);
+    if (currentFilters.pisoMin) params.set("pisoMin", currentFilters.pisoMin);
+    if (currentFilters.pisoMax) params.set("pisoMax", currentFilters.pisoMax);
+    const queryString = params.toString();
+    router.push(queryString ? `?${queryString}` : "/dashboard/ambientes/list");
+  }, [router]);
+
+  // Debounce para el search
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    setAppliedFilters(filters);
-  }, [filters]);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      syncFiltersToUrl(filters, search);
+    }, 500);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [search, filters]);
 
   // Catálogos para filtros (incluyen registros inactivos).
 
@@ -929,65 +963,16 @@ export default function EnvironmentListPage() {
   // Aplica los filtros visibles y evita que el formulario recargue la pagina.
 
   function handleApplyFilters(event?: FormEvent<HTMLFormElement>) {
-    // Cancelamos el comportamiento por defecto del formulario.
-
     event?.preventDefault();
-
-    // Normalizamos el texto de busqueda quitando espacios innecesarios.
-
-    const normalizedSearch = search.trim();
-
-    // Guardamos el termino ya limpio para que forme parte de la consulta.
-
-    setAppliedSearch(normalizedSearch);
-
-    // Sincronizamos los filtros confirmados con los que usa la API.
-
-    setAppliedFilters(filters);
-
-    // Actualizar URL con los filtros aplicados
-    const params = new URLSearchParams();
-    if (normalizedSearch) params.set("search", normalizedSearch);
-    if (filters.tipoAmbienteId) params.set("tipoAmbienteId", filters.tipoAmbienteId);
-    if (filters.bloqueId) params.set("bloqueId", filters.bloqueId);
-    if (filters.facultadId) params.set("facultadId", filters.facultadId);
-    if (filters.activo) params.set("activo", filters.activo);
-    if (filters.clases) params.set("clases", filters.clases);
-    if (filters.pisoMin) params.set("pisoMin", filters.pisoMin);
-    if (filters.pisoMax) params.set("pisoMax", filters.pisoMax);
-    const queryString = params.toString();
-    router.push(queryString ? `?${queryString}` : "/dashboard/ambientes/list");
-
-    // Regresamos a la primera pagina para mostrar los resultados mas recientes.
-
-    setPage(1);
+    syncFiltersToUrl(filters, search);
   }
 
   // Limpia todos los filtros y regresa la tabla a su estado inicial.
 
   function handleResetFilters() {
-    // Restauramos los filtros visibles a sus valores base.
-
     setFilters(INITIAL_FILTERS);
-
-    // Vaciamos el campo de busqueda que ve la persona usuaria.
-
     setSearch("");
-
-    // Reiniciamos los filtros aplicados para la consulta real.
-
-    setAppliedFilters(INITIAL_FILTERS);
-
-    // Quitamos cualquier termino de busqueda aplicado anteriormente.
-
-    setAppliedSearch("");
-
-    // Limpiar URL de filtros
     router.push("/dashboard/ambientes/list");
-
-    // Volvemos a la primera pagina para reiniciar la paginacion.
-
-    setPage(1);
   }
 
   function formatEnvironmentLabel(row: EnvironmentRow | null): string {
@@ -1377,13 +1362,11 @@ export default function EnvironmentListPage() {
             emptyLabel="Sin resultados"
             allLabel="Todas"
             value={filters.facultadId}
-            onChange={(value) =>
-              setFilters((prev) => ({
-                ...prev,
-
-                facultadId: value,
-              }))
-            }
+            onChange={(value) => {
+              const newFilters = { ...filters, facultadId: value };
+              setFilters(newFilters);
+              syncFiltersToUrl(newFilters, debouncedSearch);
+            }}
             options={filterCatalogs.faculties}
             loading={loadingCatalogs}
           />
@@ -1396,13 +1379,11 @@ export default function EnvironmentListPage() {
             emptyLabel="Sin resultados"
             allLabel="Todos"
             value={filters.bloqueId}
-            onChange={(value) =>
-              setFilters((prev) => ({
-                ...prev,
-
-                bloqueId: value,
-              }))
-            }
+            onChange={(value) => {
+              const newFilters = { ...filters, bloqueId: value };
+              setFilters(newFilters);
+              syncFiltersToUrl(newFilters, debouncedSearch);
+            }}
             options={filterCatalogs.blocks}
             loading={loadingCatalogs}
           />
@@ -1415,13 +1396,11 @@ export default function EnvironmentListPage() {
             emptyLabel="Sin resultados"
             allLabel="Todos"
             value={filters.tipoAmbienteId}
-            onChange={(value) =>
-              setFilters((prev) => ({
-                ...prev,
-
-                tipoAmbienteId: value,
-              }))
-            }
+            onChange={(value) => {
+              const newFilters = { ...filters, tipoAmbienteId: value };
+              setFilters(newFilters);
+              syncFiltersToUrl(newFilters, debouncedSearch);
+            }}
             options={filterCatalogs.environmentTypes}
             loading={loadingCatalogs}
           />
@@ -1435,13 +1414,11 @@ export default function EnvironmentListPage() {
               type="number"
               placeholder="Ej. 1"
               value={filters.pisoMin}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-
-                  pisoMin: event.target.value,
-                }))
-              }
+              onChange={(event) => {
+                const newFilters = { ...filters, pisoMin: event.target.value };
+                setFilters(newFilters);
+                syncFiltersToUrl(newFilters, debouncedSearch);
+              }}
             />
           </div>
 
@@ -1454,13 +1431,11 @@ export default function EnvironmentListPage() {
               type="number"
               placeholder="Ej. 4"
               value={filters.pisoMax}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-
-                  pisoMax: event.target.value,
-                }))
-              }
+              onChange={(event) => {
+                const newFilters = { ...filters, pisoMax: event.target.value };
+                setFilters(newFilters);
+                syncFiltersToUrl(newFilters, debouncedSearch);
+              }}
             />
           </div>
 
@@ -1470,13 +1445,11 @@ export default function EnvironmentListPage() {
 
               <Select
                 value={filters.clases || ALL_VALUE}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({
-                    ...prev,
-
-                    clases: value === ALL_VALUE ? "" : value,
-                  }))
-                }
+                onValueChange={(value) => {
+                  const newFilters = { ...filters, clases: value === ALL_VALUE ? "" : value };
+                  setFilters(newFilters);
+                  syncFiltersToUrl(newFilters, debouncedSearch);
+                }}
               >
                 <SelectTrigger id="classes-filter" aria-label="Uso academico">
                   <SelectValue placeholder="Todos" />
@@ -1497,13 +1470,11 @@ export default function EnvironmentListPage() {
 
               <Select
                 value={filters.activo || ALL_VALUE}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({
-                    ...prev,
-
-                    activo: value === ALL_VALUE ? "" : value,
-                  }))
-                }
+                onValueChange={(value) => {
+                  const newFilters = { ...filters, activo: value === ALL_VALUE ? "" : value };
+                  setFilters(newFilters);
+                  syncFiltersToUrl(newFilters, debouncedSearch);
+                }}
               >
                 <SelectTrigger id="status-filter" aria-label="Estado">
                   <SelectValue placeholder="Todos" />
