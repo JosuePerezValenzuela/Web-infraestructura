@@ -807,6 +807,41 @@ export default function EnvironmentListPage() {
     return () => controller.abort();
   }, []);
 
+  // Refetch blocks when faculty filter changes
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadBlocksByFaculty() {
+      if (!filters.facultadId) {
+        // Si no hay filtro de facultad, recargar todos los bloques
+        const response = await apiFetch<CatalogResponse>(
+          `/bloques?page=1&limit=100`,
+          { signal: controller.signal }
+        );
+        const items = (response.items ?? []).map((item) => ({
+          value: String(item.id),
+          label: String(item.nombre ?? item.codigo ?? item.id),
+        }));
+        setFilterCatalogs((prev) => ({ ...prev, blocks: items }));
+        return;
+      }
+
+      // Filtrar bloques por facultad
+      const response = await apiFetch<CatalogResponse>(
+        `/bloques?page=1&limit=100&facultadId=${filters.facultadId}`,
+        { signal: controller.signal }
+      );
+      const items = (response.items ?? []).map((item) => ({
+        value: String(item.id),
+        label: String(item.nombre ?? item.codigo ?? item.id),
+      }));
+      setFilterCatalogs((prev) => ({ ...prev, blocks: items }));
+    }
+
+    void loadBlocksByFaculty();
+    return () => controller.abort();
+  }, [filters.facultadId]);
+
   // Construimos la query string a partir de los filtros confirmados y la pagina actual.
 
   const queryString = useMemo(() => {
