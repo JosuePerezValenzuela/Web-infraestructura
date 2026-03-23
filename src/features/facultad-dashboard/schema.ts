@@ -18,33 +18,7 @@ function parseCsvNumberArray(value: unknown): number[] {
   return [];
 }
 
-function parseCsvDayArray(value: unknown): number[] {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => Number.parseInt(String(item), 10))
-      .filter((item) => Number.isInteger(item));
-  }
-
-  if (typeof value === "string") {
-    if (!value.trim().length) return [];
-    return value
-      .split(",")
-      .map((item) => Number.parseInt(item.trim(), 10))
-      .filter((item) => Number.isInteger(item));
-  }
-
-  return [];
-}
-
 const positiveIntArraySchema = z.array(z.coerce.number().int().positive());
-const dayArraySchema = z.array(z.coerce.number().int().min(0).max(5));
-const slotMinutesSchema = z
-  .coerce
-  .number()
-  .int()
-  .refine((value) => [15, 30, 45, 60, 90].includes(value), {
-    message: "slotMinutes debe ser 15, 30, 45, 60 o 90",
-  });
 
 export const facultadDashboardFiltersSchema = z.object({
   campusIds: z.preprocess(parseCsvNumberArray, positiveIntArraySchema).default([]),
@@ -58,10 +32,6 @@ export const facultadDashboardFiltersSchema = z.object({
       return value;
     }, z.boolean())
     .default(true),
-  slotMinutes: z.preprocess((value) => value ?? 45, slotMinutesSchema).default(45),
-  dias: z
-    .preprocess((value) => (value === undefined ? [0, 1, 2, 3, 4, 5] : parseCsvDayArray(value)), dayArraySchema)
-    .default([0, 1, 2, 3, 4, 5]),
 });
 
 const stateCountSchema = z.object({
@@ -81,19 +51,6 @@ const commonKpisSchema = z.object({
     asignados: z.number().nonnegative(),
     noAsignadosGlobal: z.number().nonnegative(),
   }),
-});
-
-const utilizationRowSchema = z.object({
-  ambienteId: z.number().int().positive().optional(),
-  ambienteNombre: z.string(),
-  bloqueNombre: z
-    .preprocess(
-      (value) => (value === null || value === undefined ? "" : value),
-      z.string()
-    ),
-  pctOcupacion: z.number().nonnegative(),
-  slotsOcupados: z.number().nonnegative(),
-  slotsTotales: z.number().nonnegative(),
 });
 
 const commonChartsSchema = z.object({
@@ -129,27 +86,6 @@ const commonChartsSchema = z.object({
       inactivos: z.number().nonnegative(),
     })
   ),
-  ocupacionHeatmapSemanal: z.array(
-    z.object({
-      dia: z.number().int().min(0).max(6),
-      franja: z.string(),
-      slotsOcupados: z.number().nonnegative(),
-      slotsTotales: z.number().nonnegative(),
-      pctOcupacion: z.number().nonnegative(),
-    })
-  ),
-  ocupacionPorBloque: z.array(
-    z.object({
-      bloqueNombre: z.string(),
-      pctOcupacion: z.number().nonnegative(),
-      slotsOcupados: z.number().nonnegative(),
-      slotsTotales: z.number().nonnegative(),
-    })
-  ),
-  topAmbientesUtilizacion: z.object({
-    sobrecargados: z.array(utilizationRowSchema),
-    subutilizados: z.array(utilizationRowSchema),
-  }),
 });
 
 const commonTablesSchema = z.object({
@@ -168,7 +104,6 @@ const commonTablesSchema = z.object({
       activosAsignados: z.number().nonnegative(),
     })
   ),
-  ambientesUtilizacion: z.array(utilizationRowSchema),
 });
 
 export const facultadDashboardGlobalResponseSchema = z.object({
@@ -187,8 +122,6 @@ export const facultadDashboardDetailResponseSchema = z.object({
   filtersApplied: z.object({
     facultadId: z.coerce.number().int().positive(),
     includeInactive: facultadDashboardFiltersSchema.shape.includeInactive,
-    slotMinutes: slotMinutesSchema.default(45),
-    dias: dayArraySchema.default([0, 1, 2, 3, 4, 5]),
   }),
   layout: z.object({ mode: z.literal("detail") }),
   data: z.object({

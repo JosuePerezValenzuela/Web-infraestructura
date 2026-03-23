@@ -54,15 +54,11 @@ export function useFacultadDashboardData(
         search.set("facultadIds", parsedFilters.facultadIds.join(","));
       }
       search.set("includeInactive", String(parsedFilters.includeInactive));
-      search.set("slotMinutes", String(parsedFilters.slotMinutes));
-      search.set("dias", parsedFilters.dias.join(","));
       const query = search.toString();
       return `/dashboards/facultades/global${query ? `?${query}` : ""}`;
     }
 
     search.set("includeInactive", String(parsedFilters.includeInactive));
-    search.set("slotMinutes", String(parsedFilters.slotMinutes));
-    search.set("dias", parsedFilters.dias.join(","));
     const query = search.toString();
     return `/dashboards/facultades/${params.facultadId}${query ? `?${query}` : ""}`;
   }, [params]);

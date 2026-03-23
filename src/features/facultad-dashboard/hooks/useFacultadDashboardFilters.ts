@@ -60,8 +60,6 @@ function buildSearchString(filters: FacultadDashboardFilters): string {
   }
 
   params.set("includeInactive", String(filters.includeInactive));
-  params.set("slotMinutes", String(filters.slotMinutes));
-  params.set("dias", filters.dias.join(","));
 
   const query = params.toString();
   return query.length ? `?${query}` : "";
@@ -107,20 +105,6 @@ export function useFacultadDashboardFilters() {
     [filters, pushWithFilters]
   );
 
-  const setSlotMinutes = useCallback(
-    (slotMinutes: 15 | 30 | 45 | 60 | 90) => {
-      pushWithFilters({ ...filters, slotMinutes });
-    },
-    [filters, pushWithFilters]
-  );
-
-  const setDias = useCallback(
-    (dias: number[]) => {
-      pushWithFilters({ ...filters, dias });
-    },
-    [filters, pushWithFilters]
-  );
-
   const buildDetailHref = useCallback(
     (facultadId: number) => {
       const query = buildSearchString(filters);
@@ -139,8 +123,6 @@ export function useFacultadDashboardFilters() {
     setIncludeInactive,
     setCampusIds,
     setFacultadIds,
-    setSlotMinutes,
-    setDias,
     buildDetailHref,
     buildGlobalHref,
   };
