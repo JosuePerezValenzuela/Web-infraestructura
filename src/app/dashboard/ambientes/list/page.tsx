@@ -683,77 +683,52 @@ export default function EnvironmentListPage() {
   // Apenas se monta la pantalla consultamos los catálogos necesarios para los filtros.
 
   useEffect(() => {
-    // Creamos un AbortController para poder cancelar las peticiones si la vista se desmonta.
-
+    let mounted = true;
     const controller = new AbortController();
 
     async function loadCatalogs() {
       try {
-        // Marcamos que estamos cargando la información auxiliar.
-
         setLoadingCatalogs(true);
-
-        // Consultamos catálogos completos (para filtros) y activos (para formularios) en paralelo.
 
         const [
           blocksAllResponse,
-
           blocksActiveResponse,
-
           environmentTypesAllResponse,
-
           environmentTypesActiveResponse,
-
           facultiesAllResponse,
-
           facultiesActiveResponse,
         ] = await Promise.all([
           apiFetch<CatalogResponse>("/bloques?page=1&limit=100", {
             signal: controller.signal,
           }),
-
           apiFetch<CatalogResponse>("/bloques?page=1&limit=100&activo=true", {
             signal: controller.signal,
           }),
-
           apiFetch<CatalogResponse>("/tipo_ambientes?page=1&limit=50", {
             signal: controller.signal,
           }),
-
           apiFetch<CatalogResponse>(
             "/tipo_ambientes?page=1&limit=50&activo=true",
-            {
-              signal: controller.signal,
-            }
+            { signal: controller.signal }
           ),
-
           apiFetch<CatalogResponse>("/facultades?page=1&limit=100", {
             signal: controller.signal,
           }),
-
           apiFetch<CatalogResponse>("/facultades?page=1&limit=100&activo=true", {
             signal: controller.signal,
           }),
         ]);
 
-        // Normalizamos las opciones y las guardamos separando filtros vs formularios.
+        if (!mounted) return;
 
         setFilterCatalogs({
-          blocks: normalizeCatalogOptions(
-            blocksAllResponse.items,
-
-            "Bloque"
-          ),
-
+          blocks: normalizeCatalogOptions(blocksAllResponse.items, "Bloque"),
           environmentTypes: normalizeCatalogOptions(
             environmentTypesAllResponse.items,
-
             "Tipo de ambiente"
           ),
-
           faculties: normalizeCatalogOptions(
             facultiesAllResponse.items,
-
             "Facultad"
           ),
         });
@@ -761,85 +736,81 @@ export default function EnvironmentListPage() {
         setActiveCatalogs({
           blocks: normalizeCatalogOptions(
             blocksActiveResponse.items,
-
             "Bloque"
           ),
-
           environmentTypes: normalizeCatalogOptions(
             environmentTypesActiveResponse.items,
-
             "Tipo de ambiente"
           ),
-
           faculties: normalizeCatalogOptions(
             facultiesActiveResponse.items,
-
             "Facultad"
           ),
         });
       } catch (error) {
-        // Si abortamos manualmente no mostramos mensajes de error.
-
+        if (!mounted) return;
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-
-        // Comunicamos que la carga de catálogos falló para que la persona sepa cómo proceder.
-
         notify.error({
           title: "No pudimos cargar los filtros",
-
           description: "Intenta nuevamente en unos segundos.",
         });
       } finally {
-        // Restablecemos el indicador sin importar el resultado.
-
-        setLoadingCatalogs(false);
+        if (mounted) {
+          setLoadingCatalogs(false);
+        }
       }
     }
 
-    // Lanzamos la carga inicial de catálogos.
-
-    void loadCatalogs();
-
-    // Si el componente se desmonta abortamos las solicitudes pendientes.
-
-    return () => controller.abort();
+    loadCatalogs();
+    return () => {
+      mounted = false;
+      controller.abort("Component unmounted");
+    };
   }, []);
 
   // Refetch blocks when faculty filter changes
   useEffect(() => {
+    let mounted = true;
     const controller = new AbortController();
 
     async function loadBlocksByFaculty() {
-      if (!filters.facultadId) {
-        // Si no hay filtro de facultad, recargar todos los bloques
+      try {
+        if (!filters.facultadId) {
+          const response = await apiFetch<CatalogResponse>(
+            `/bloques?page=1&limit=100`,
+            { signal: controller.signal }
+          );
+          if (!mounted) return;
+          const items = (response.items ?? []).map((item) => ({
+            value: String(item.id),
+            label: String(item.nombre ?? item.codigo ?? item.id),
+          }));
+          setFilterCatalogs((prev) => ({ ...prev, blocks: items }));
+          return;
+        }
+
         const response = await apiFetch<CatalogResponse>(
-          `/bloques?page=1&limit=100`,
+          `/bloques?page=1&limit=100&facultadId=${filters.facultadId}`,
           { signal: controller.signal }
         );
+        if (!mounted) return;
         const items = (response.items ?? []).map((item) => ({
           value: String(item.id),
           label: String(item.nombre ?? item.codigo ?? item.id),
         }));
         setFilterCatalogs((prev) => ({ ...prev, blocks: items }));
-        return;
+      } catch {
+        // Silently ignore errors from cleanup
       }
-
-      // Filtrar bloques por facultad
-      const response = await apiFetch<CatalogResponse>(
-        `/bloques?page=1&limit=100&facultadId=${filters.facultadId}`,
-        { signal: controller.signal }
-      );
-      const items = (response.items ?? []).map((item) => ({
-        value: String(item.id),
-        label: String(item.nombre ?? item.codigo ?? item.id),
-      }));
-      setFilterCatalogs((prev) => ({ ...prev, blocks: items }));
     }
 
-    void loadBlocksByFaculty();
-    return () => controller.abort();
+    loadBlocksByFaculty();
+    return () => {
+      mounted = false;
+      controller.abort("Effect cleanup");
+    };
   }, [filters.facultadId]);
 
   // Construimos la query string a partir de los filtros confirmados y la pagina actual.
@@ -909,29 +880,21 @@ export default function EnvironmentListPage() {
   // Cada vez que cambia la query construida consultamos el backend para refrescar la tabla.
 
   useEffect(() => {
-    // AbortController que permite cancelar la consulta si se reemplaza antes de terminar.
-
+    let mounted = true;
     const controller = new AbortController();
 
     async function loadEnvironments() {
       try {
-        // Mostramos que la tabla se esta actualizando.
-
         setLoadingTable(true);
-
-        // Ejecutamos la peticion principal usando el helper centralizado.
 
         const data = await apiFetch<EnvironmentListResponse>(
           `/ambientes?${queryString}`,
-
           { signal: controller.signal }
         );
 
-        // Guardamos las filas recibidas validando que realmente sea un arreglo.
+        if (!mounted) return;
 
         setItems(Array.isArray(data.items) ? data.items : []);
-
-        // Calculamos el total de paginas priorizando el valor entregado por el backend o derivandolo desde total y take.
 
         const totalFromMeta =
           typeof data.meta?.total === "number" ? data.meta.total : null;
@@ -953,46 +916,35 @@ export default function EnvironmentListPage() {
 
         const basePages = pagesFromMeta ?? pagesFromTotal ?? 1;
 
-        // Si el backend indica que hay mas paginas pero no entrega el total, extendemos una pagina mas para habilitar el boton siguiente.
-
         const resolvedPages =
           data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
 
         setPages(resolvedPages);
 
-        // Sincronizamos la pagina actual por si el backend la ajusto.
-
         if (typeof data.meta?.page === "number") {
           setPage(data.meta.page);
         }
       } catch (error) {
-        // Omitimos el error si la peticion fue cancelada manualmente.
-
+        if (!mounted) return;
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-
-        // Cualquier otro fallo se comunica mediante una notificacion clara.
-
         notify.error({
           title: "No pudimos cargar los ambientes",
-
           description: "Revisa tu conexion o ajusta los filtros.",
         });
       } finally {
-        // Ocultamos el indicador de carga siempre que termine la operacion.
-
-        setLoadingTable(false);
+        if (mounted) {
+          setLoadingTable(false);
+        }
       }
     }
 
-    // Ejecutamos la carga principal.
-
-    void loadEnvironments();
-
-    // Abortamos la solicitud si el efecto se limpia antes de completar.
-
-    return () => controller.abort();
+    loadEnvironments();
+    return () => {
+      mounted = false;
+      controller.abort("Effect cleanup");
+    };
   }, [queryString, reloadKey]);
 
   // Aplica los filtros visibles y evita que el formulario recargue la pagina.

@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type FormEvent,
-} from "react"; // React nos brinda el estado y los efectos necesarios para manejar la UI.
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button"; // Botones reutilizables con los estilos del sistema.
 import { Input } from "@/components/ui/input"; // Campo de texto accesible y consistente.
 import { Label } from "@/components/ui/label"; // Etiquetas accesibles para todos los controles.
@@ -398,13 +400,63 @@ function SearchableSelect({
 }
 
 export default function BlockListPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [items, setItems] = useState<BlockRow[]>([]); // Contendrá las filas visibles en la tabla.
   const [page, setPage] = useState(1); // Página actual que estamos mostrando.
   const [pages, setPages] = useState(1); // Cantidad total de páginas disponibles.
   const [search, setSearch] = useState(""); // Texto que la persona escribe en el campo de búsqueda.
-  const [appliedSearch, setAppliedSearch] = useState(""); // Texto efectivamente aplicado como filtro.
-  const [filters, setFilters] = useState<FilterState>({ ...INITIAL_FILTERS }); // Estado con los filtros seleccionados en el formulario.
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...INITIAL_FILTERS }); // Filtros efectivamente aplicados al listado.
+  
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const facultadId = searchParams.get("facultadId") || "";
+    const tipoBloqueId = searchParams.get("tipoBloqueId") || "";
+    const activo = searchParams.get("activo") || "";
+    const pisosMin = searchParams.get("pisosMin") || "";
+    const pisosMax = searchParams.get("pisosMax") || "";
+    return { facultadId, tipoBloqueId, activo, pisosMin, pisosMax };
+  });
+  
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(filters);
+  
+  // Sync filters to URL and applied state
+  const syncFiltersToUrl = useCallback((currentFilters: FilterState, currentSearch: string) => {
+    setAppliedFilters(currentFilters);
+    setPage(1);
+    
+    const params = new URLSearchParams();
+    const normalizedSearch = currentSearch.trim();
+    if (normalizedSearch) params.set("search", normalizedSearch);
+    if (currentFilters.facultadId) params.set("facultadId", currentFilters.facultadId);
+    if (currentFilters.tipoBloqueId) params.set("tipoBloqueId", currentFilters.tipoBloqueId);
+    if (currentFilters.activo) params.set("activo", currentFilters.activo);
+    if (currentFilters.pisosMin) params.set("pisosMin", currentFilters.pisosMin);
+    if (currentFilters.pisosMax) params.set("pisosMax", currentFilters.pisosMax);
+    const queryString = params.toString();
+    router.push(queryString ? `?${queryString}` : "/dashboard/bloques/list");
+  }, [router]);
+
+  // Initialize appliedFilters from URL params
+  useEffect(() => {
+    setAppliedFilters(filters);
+  }, [filters]);
+
+  // Debounce for search
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      syncFiltersToUrl(filters, search);
+    }, 500);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [search, filters, syncFiltersToUrl]);
+
   const [facultiesFilter, setFacultiesFilter] = useState<CatalogOption[]>([]); // Opciones de facultad para filtros (todas).
   const [blockTypesFilter, setBlockTypesFilter] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque para filtros (todas).
   const [facultiesActive, setFacultiesActive] = useState<CatalogOption[]>([]); // Opciones activas para formularios.
@@ -574,7 +626,11 @@ export default function BlockListPage() {
     }
 
     void loadCatalogs(); // Disparamos la carga.
-    return () => controller.abort(); // Abortamos las solicitudes cuando el componente se desmonta.
+    return () => {
+      if (!controller.signal.aborted) {
+        controller.abort("Component unmounted");
+      }
+    };
   }, []);
 
   // Construimos la query string cada vez que la página, los filtros o la búsqueda cambian.
@@ -582,8 +638,8 @@ export default function BlockListPage() {
     const params = new URLSearchParams(); // Preparamos el objeto que traduciremos a ?clave=valor.
     params.set("page", String(page)); // Siempre enviamos la p?gina actual.
     params.set("limit", String(TAKE)); // El backend necesita saber cu?ntos registros devolver.
-    if (appliedSearch) {
-      params.set("search", appliedSearch); // Solo agregamos la b?squeda si la persona la confirm?.
+    if (search.trim()) {
+      params.set("search", search.trim()); // Agregamos la b?squeda.
     }
     if (appliedFilters.facultadId) {
       params.set("facultadId", appliedFilters.facultadId); // Traduce el filtro de facultades.
@@ -607,7 +663,7 @@ export default function BlockListPage() {
       }
     }
     return params.toString(); // Finalmente devolvemos la cadena para ejecutar la solicitud.
-  }, [page, appliedSearch, appliedFilters]);
+  }, [page, search, appliedFilters]);
 
 
   // Cada vez que la query string cambia consultamos el backend para actualizar la tabla.
@@ -656,37 +712,33 @@ export default function BlockListPage() {
     }
 
     void loadBlocks(); // Ejecutamos la consulta.
-    return () => controller.abort(); // Abortamos si el efecto se limpia antes de completar.
+    return () => {
+      if (!controller.signal.aborted) {
+        controller.abort("Effect cleanup");
+      }
+    };
   }, [queryString, reloadKey]);
 
   // Handlers auxiliares para mantener el componente ordenado.
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); // Evitamos la recarga del navegador.
-    const nextFilters = { ...filters }; // Capturamos los filtros elegidos para aplicarlos juntos.
-    setAppliedFilters(nextFilters); // Solo estos filtros se env?an al backend tras confirmar.
-    setAppliedSearch(search.trim()); // Guardamos la versi?n limpia de la b?squeda.
-    setPage(1); // Volvemos a la primera p?gina seg?n la regla de negocio.
+    event.preventDefault();
+    syncFiltersToUrl(filters, search);
   }
-
-  
 
   function updateFilter<Key extends keyof FilterState>(
     key: Key,
     value: string
   ) {
-    setFilters((prev) => ({ ...prev, [key]: value })); // Solo actualizamos el formulario; aplicaremos los filtros al enviar.
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    syncFiltersToUrl(newFilters, search);
   }
 
   function handleClearFilters() {
-    const resetFilters = { ...INITIAL_FILTERS }; // Reconstruimos el estado base para no reutilizar referencias.
-    setFilters(resetFilters); // Restauramos los filtros visibles.
-    setAppliedFilters(resetFilters); // Sincronizamos los filtros aplicados con el estado inicial.
-    setSearch(""); // Limpiamos el campo de b?squeda visible.
-    setAppliedSearch(""); // Eliminamos el filtro aplicado en la query.
-    setPage(1); // Regresamos a la primera p?gina.
+    setFilters(INITIAL_FILTERS);
+    setSearch("");
+    router.push("/dashboard/bloques/list");
   }
-
-  
 
   function handleEdit(block: BlockRow) {
     const enriched = { ...block } as Record<string, unknown>;
