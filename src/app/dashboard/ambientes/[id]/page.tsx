@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type ColumnDef, type SortingState } from "@tanstack/react-table";
@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataTableColumnHeader } from "@/components/data-table-column-header";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 
@@ -59,7 +60,7 @@ type Horario = {
 
 type ActivoItem = {
   id: number;
-  nia: string;
+  nia: number;
   nombre: string;
   descripcion: string;
   creado_en: string;
@@ -126,8 +127,8 @@ function ScheduleGrid({ horarios }: { horarios: Horario[] }) {
 
   const slots = useMemo(() => buildSlots(aperturaMasBaja, cierreMasAlto, periodo), [aperturaMasBaja, cierreMasAlto, periodo]);
 
-  const getHorarioForCell = (diaIndex: number, slot: string): Horario | undefined => {
-    return horarios.find(h => {
+  const isCellActive = (diaIndex: number, slot: string): boolean => {
+    return horarios.some(h => {
       if (h.dia !== diaIndex) return false;
       const aperturaMin = toMinutes(h.apertura);
       const cierreMin = toMinutes(h.cierre);
@@ -137,31 +138,27 @@ function ScheduleGrid({ horarios }: { horarios: Horario[] }) {
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="rounded-md border overflow-hidden">
       <Table className="w-full">
         <TableHeader>
-          <TableRow>
-            <TableHead className="w-24">Hora</TableHead>
+          <TableRow className="bg-muted/50">
+            <TableHead className="w-20 h-10 text-center">Hora</TableHead>
             {DAY_NAMES.map((day) => (
-              <TableHead key={day} className="text-center">{day}</TableHead>
+              <TableHead key={day} className="h-10 text-center p-0">{day}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
           {slots.map((slot) => (
-            <TableRow key={slot}>
-              <TableCell className="font-mono text-xs">{slot}</TableCell>
+            <TableRow key={slot} className="hover:bg-muted/30">
+              <TableCell className="p-1 text-center font-mono text-xs w-20">{slot}</TableCell>
               {DAY_NAMES.map((_, diaIndex) => {
-                const horario = getHorarioForCell(diaIndex, slot);
+                const active = isCellActive(diaIndex, slot);
                 return (
-                  <TableCell key={diaIndex} className="text-center">
-                    {horario ? (
-                      <span className="inline-block rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-100">
-                        {horario.apertura} - {horario.cierre}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
+                  <TableCell key={diaIndex} className="p-1 text-center">
+                    <div
+                      className={`h-6 rounded-md transition-colors ${active ? "bg-emerald-400 dark:bg-emerald-600" : "bg-muted/30"}`}
+                    />
                   </TableCell>
                 );
               })}
@@ -174,15 +171,17 @@ function ScheduleGrid({ horarios }: { horarios: Horario[] }) {
 }
 
 function AssetTable({ initialAssets }: { initialAssets: ActivoItem[] }) {
-  const [data, setData] = useState<ActivoItem[]>(initialAssets);
+  const [data] = useState<ActivoItem[]>(
+    initialAssets.map(item => ({ ...item, nia: Number(item.nia) }))
+  );
   const [search, setSearch] = useState("");
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "nia", desc: false }]);
 
   const filteredData = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return data;
     return data.filter(item =>
-      item.nia.toLowerCase().includes(term) ||
+      String(item.nia).includes(term) ||
       item.nombre.toLowerCase().includes(term)
     );
   }, [data, search]);
@@ -190,16 +189,16 @@ function AssetTable({ initialAssets }: { initialAssets: ActivoItem[] }) {
   const columns: ColumnDef<ActivoItem>[] = useMemo(() => [
     {
       accessorKey: "nia",
-      header: "NIA",
-      cell: ({ row }) => <span className="font-mono">{row.original.nia}</span>,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="NIA" />,
+      cell: ({ row }) => <span className="font-mono text-right block">{row.original.nia}</span>,
     },
     {
       accessorKey: "nombre",
-      header: "Nombre",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Nombre" />,
     },
     {
       accessorKey: "descripcion",
-      header: "Descripción",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Descripción" />,
     },
   ], []);
 
@@ -225,18 +224,16 @@ function AssetTable({ initialAssets }: { initialAssets: ActivoItem[] }) {
           />
         </div>
       </div>
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-hidden">
+        <Table className="w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="cursor-pointer" onClick={header.column.getToggleSortingHandler()}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    {{
-                      asc: " 🔼",
-                      desc: " 🔽",
-                    }[header.column.getIsSorted() as string] ?? null}
+                  <TableHead key={header.id} className={header.column.id === "nia" ? "w-20" : ""}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -253,7 +250,13 @@ function AssetTable({ initialAssets }: { initialAssets: ActivoItem[] }) {
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell 
+                      key={cell.id} 
+                      className={`
+                        ${cell.column.id === "nia" ? "text-right w-24" : "text-left"}
+                        align-top whitespace-normal
+                      `}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -329,6 +332,7 @@ function EnvironmentDetailContent({ id }: { id: string }) {
   }
 
   const { ambiente, horarios, activos } = detail;
+  const periodo = horarios.length > 0 ? horarios[0].periodo : 45;
 
   return (
     <div className="space-y-6">
@@ -342,95 +346,123 @@ function EnvironmentDetailContent({ id }: { id: string }) {
             <p className="text-muted-foreground">Código: {ambiente.codigo}</p>
           </div>
         </div>
-        <EnvironmentReportAction code={ambiente.codigo} name={ambiente.nombre} />
+        <EnvironmentReportAction code={ambiente.codigo} name={ambiente.nombre} showLabel />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Información del Ambiente</h2>
-          <dl className="grid grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Código</dt>
-              <dd>{ambiente.codigo}</dd>
+          <h2 className="text-lg font-semibold mb-4">Ubicación</h2>
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-3">
+            <div className="col-span-2">
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Campus</dt>
+              <dd className="text-base font-medium">{ambiente.campus_nombre}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Nombre</dt>
-              <dd>{ambiente.nombre}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Facultad</dt>
+              <dd className="text-sm">{ambiente.facultad_nombre}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bloque</dt>
+              <dd className="text-sm">{ambiente.bloque_nombre}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo de Bloque</dt>
+              <dd className="text-sm">{ambiente.tipo_bloque_nombre}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Piso</dt>
+              <dd className="text-sm">{ambiente.piso}</dd>
+            </div>
+            <div className="col-span-2 border-t pt-3 mt-1">
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Identificación</dt>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Código</dt>
+              <dd className="text-sm font-mono">{ambiente.codigo}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre</dt>
+              <dd className="text-sm">{ambiente.nombre}</dd>
             </div>
             {ambiente.nombre_corto && (
               <div>
-                <dt className="text-sm font-medium text-muted-foreground">Nombre Corto</dt>
-                <dd>{ambiente.nombre_corto}</dd>
+                <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre Corto</dt>
+                <dd className="text-sm">{ambiente.nombre_corto}</dd>
               </div>
             )}
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Piso</dt>
-              <dd>{ambiente.piso}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo de Ambiente</dt>
+              <dd className="text-sm">{ambiente.tipo_ambiente_nombre}</dd>
+            </div>
+            <div className="col-span-2 border-t pt-3 mt-1">
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</dt>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Tipo de Ambiente</dt>
-              <dd>{ambiente.tipo_ambiente_nombre}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</dt>
+              <dd className={`text-sm font-semibold ${ambiente.activo ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                {ambiente.activo ? "✓ Activo" : "✗ Inactivo"}
+              </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Bloque</dt>
-              <dd>{ambiente.bloque_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Tipo de Bloque</dt>
-              <dd>{ambiente.tipo_bloque_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Facultad</dt>
-              <dd>{ambiente.facultad_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Campus</dt>
-              <dd>{ambiente.campus_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Estado</dt>
-              <dd>{ambiente.activo ? "Activo" : "Inactivo"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">¿Admite Clases?</dt>
-              <dd>{ambiente.clases ? "Sí" : "No"}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">¿Admite Clases?</dt>
+              <dd className={`text-sm font-semibold ${ambiente.clases ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                {ambiente.clases ? "✓ Sí" : "✗ No"}
+              </dd>
             </div>
           </dl>
         </div>
 
         <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Capacidad y Dimensiones</h2>
-          <dl className="grid grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Capacidad Total</dt>
-              <dd>{ambiente.capacidad.total} personas</dd>
+          <h2 className="text-lg font-semibold mb-4">Propiedades</h2>
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-3">
+            <div className="col-span-2">
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capacidad</dt>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3">
+              <dd className="text-2xl font-bold">{ambiente.capacidad.total}</dd>
+              <dt className="text-xs text-muted-foreground">Total personas</dt>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3">
+              <dd className="text-2xl font-bold">{ambiente.capacidad.examen}</dd>
+              <dt className="text-xs text-muted-foreground">Para examen</dt>
+            </div>
+            <div className="col-span-2 border-t pt-3 mt-1">
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dimensiones</dt>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Capacidad Examen</dt>
-              <dd>{ambiente.capacidad.examen} personas</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Largo</dt>
+              <dd className="text-lg font-medium">{ambiente.dimension.largo} <span className="text-sm font-normal text-muted-foreground">{ambiente.dimension.unid_med}</span></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Largo</dt>
-              <dd>{ambiente.dimension.largo} {ambiente.dimension.unid_med}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ancho</dt>
+              <dd className="text-lg font-medium">{ambiente.dimension.ancho} <span className="text-sm font-normal text-muted-foreground">{ambiente.dimension.unid_med}</span></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Ancho</dt>
-              <dd>{ambiente.dimension.ancho} {ambiente.dimension.unid_med}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Alto</dt>
+              <dd className="text-lg font-medium">{ambiente.dimension.alto} <span className="text-sm font-normal text-muted-foreground">{ambiente.dimension.unid_med}</span></dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-muted-foreground">Alto</dt>
-              <dd>{ambiente.dimension.alto} {ambiente.dimension.unid_med}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Superficie</dt>
+              <dd className="text-lg font-medium">{ambiente.dimension.largo * ambiente.dimension.ancho} <span className="text-sm font-normal text-muted-foreground">m²</span></dd>
             </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Superficie</dt>
-              <dd>{ambiente.dimension.largo * ambiente.dimension.ancho} m²</dd>
+            <div className="col-span-2 border-t pt-3 mt-1">
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Activos</dt>
+            </div>
+            <div className="col-span-2 bg-muted/30 rounded-lg p-3">
+              <dd className="text-2xl font-bold">{activos.meta.total}</dd>
+              <dt className="text-xs text-muted-foreground">Activos asignados</dt>
             </div>
           </dl>
         </div>
       </div>
 
       <div className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">Horario de Atención</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Horario de Atención</h2>
+          {horarios.length > 0 && (
+            <span className="text-sm text-muted-foreground">Período: {periodo} min</span>
+          )}
+        </div>
         {horarios.length > 0 ? (
           <ScheduleGrid horarios={horarios} />
         ) : (

@@ -154,6 +154,43 @@ function buildSelectionFromItems(
   return selection;
 }
 
+// Construye la selección a partir del nuevo formato de API
+function buildSelectionFromHorarios(
+  horarios: Array<{
+    dia: number;
+    nombre_dia?: string;
+    apertura: string;
+    cierre: string;
+  }>,
+  slots: string[]
+): SelectedSlots {
+  const selection = buildEmptySelection();
+  if (!Array.isArray(horarios) || !slots.length) return selection;
+
+  const orderedSlots = [...slots].sort((a, b) => toMinutes(a) - toMinutes(b));
+
+  horarios.forEach((item) => {
+    const dia = typeof item.dia === "number" ? item.dia : NaN;
+    if (!Number.isInteger(dia) || dia < 0 || dia > 6) return;
+
+    const start = normalizeTime(item.apertura);
+    const end = normalizeTime(item.cierre);
+    if (!timeRegex.test(start) || !timeRegex.test(end)) return;
+
+    const startMinutes = toMinutes(start);
+    const endMinutes = toMinutes(end);
+
+    orderedSlots.forEach((slot) => {
+      const slotMinutes = toMinutes(slot);
+      if (slotMinutes >= startMinutes && slotMinutes < endMinutes) {
+        selection[dia]?.add(slot);
+      }
+    });
+  });
+
+  return selection;
+}
+
 export function EnvironmentSchedulesDialog({
   open,
   environment,
@@ -203,42 +240,58 @@ export function EnvironmentSchedulesDialog({
             method: "GET",
           }
         )) as {
-          hora_apertura?: string;
-          hora_cierre?: string;
           periodo?: number | string;
-          items?: Array<{ dia: number; hora_inicio: string; hora_fin: string }>;
+          horarios?: Array<{
+            dia: number;
+            nombre_dia?: string;
+            apertura: string;
+            cierre: string;
+          }>;
         };
 
         if (!active) return;
 
-        const start = normalizeTime(
-          typeof response?.hora_apertura === "string"
-            ? response.hora_apertura
-            : ""
-        );
-        const end = normalizeTime(
-          typeof response?.hora_cierre === "string" ? response.hora_cierre : ""
-        );
-        const period = Number(response?.periodo ?? 0);
-
-        if (!start || !end || period <= 0) {
+        const horarios = response?.horarios;
+        if (!Array.isArray(horarios) || horarios.length === 0) {
           setInitialConfig(null);
           return;
         }
 
-        const generatedSlots = buildSlots(start, end, period);
-        const selection = buildSelectionFromItems(
-          response?.items,
-          generatedSlots
+        const period = Number(response?.periodo ?? 0);
+        if (period <= 0) {
+          setInitialConfig(null);
+          return;
+        }
+
+        const aperturaMin = normalizeTime(
+          horarios.reduce((min, h) => {
+            const hMin = normalizeTime(h.apertura);
+            return hMin && toMinutes(hMin) < toMinutes(min) ? hMin : min;
+          }, normalizeTime(horarios[0].apertura))
         );
 
-        setStartTime(start);
-        setEndTime(end);
+        const cierreMax = normalizeTime(
+          horarios.reduce((max, h) => {
+            const hMax = normalizeTime(h.cierre);
+            return hMax && toMinutes(hMax) > toMinutes(max) ? hMax : max;
+          }, normalizeTime(horarios[0].cierre))
+        );
+
+        if (!aperturaMin || !cierreMax || period <= 0) {
+          setInitialConfig(null);
+          return;
+        }
+
+        const generatedSlots = buildSlots(aperturaMin, cierreMax, period);
+        const selection = buildSelectionFromHorarios(horarios, generatedSlots);
+
+        setStartTime(aperturaMin);
+        setEndTime(cierreMax);
         setPeriodMinutes(period);
         setSlots(generatedSlots);
         setSelectedSlots(selection);
         setLastSelection(null);
-        setInitialConfig({ start, end, period });
+        setInitialConfig({ start: aperturaMin, end: cierreMax, period });
       } catch (error) {
         if (!active) return;
         notify.error({
@@ -530,19 +583,40 @@ export function EnvironmentSchedulesDialog({
     }
 
     try {
+      const diasConHorario = DAY_OPTIONS
+        .map((dayOption) => {
+          const times = Array.from(selectedSlots[dayOption.value] ?? []).sort(
+            (a, b) => toMinutes(a) - toMinutes(b)
+          );
+          if (!times.length) return null;
+
+          return {
+            dia: dayOption.value,
+            apertura: times[0],
+            cierre: toTimeString(toMinutes(times[times.length - 1]) + periodMinutes),
+          };
+        })
+        .filter(Boolean) as Array<{ dia: number; apertura: string; cierre: string }>;
+
+      if (!diasConHorario.length) {
+        notify.info({
+          title: "Selecciona al menos una franja",
+          description: "Haz clic en una o varias celdas para asignar horarios.",
+        });
+        return;
+      }
+
       await apiFetch(`/ambientes/${environment.id}/horarios`, {
         method: "PUT",
         json: {
-          hora_apertura: startTime,
-          hora_cierre: endTime,
           periodo: periodMinutes,
-          franjas,
+          horarios: diasConHorario,
         },
       });
 
       notify.success({
         title: "Horarios guardados",
-        description: `Se asignaron ${franjas.length} franjas al ambiente.`,
+        description: `Se asignaron horarios en ${diasConHorario.length} días.`,
       });
 
       onSuccess();

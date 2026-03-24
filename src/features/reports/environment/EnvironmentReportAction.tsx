@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type JSX } from "react";
-import { FileDown, FileSpreadsheet, FileText } from "lucide-react";
+import { FileDown, FileSpreadsheet, FileText, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,9 +21,10 @@ import {
 type Props = {
   code: string;
   name?: string;
+  showLabel?: boolean;
 };
 
-export function EnvironmentReportAction({ code, name }: Props) {
+export function EnvironmentReportAction({ code, name, showLabel = false }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<EnvironmentReportFormat | null>(null);
 
@@ -72,16 +73,27 @@ export function EnvironmentReportAction({ code, name }: Props) {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        title="Descargar reporte del ambiente"
-        aria-label="Descargar reporte del ambiente"
-        onClick={() => setOpen(true)}
-      >
-        <FileDown className="h-4 w-4" aria-hidden />
-      </Button>
+      {showLabel ? (
+        <Button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{ backgroundColor: "oklch(0.147 0.004 49.25)", color: "white" }}
+        >
+          <Printer className="h-4 w-4 mr-2" />
+          Imprimir
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          title="Descargar reporte del ambiente"
+          aria-label="Descargar reporte del ambiente"
+          onClick={() => setOpen(true)}
+        >
+          <FileDown className="h-4 w-4" aria-hidden />
+        </Button>
+      )}
 
       <Dialog
         open={open}
