@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -399,7 +400,7 @@ function SearchableSelect({
   );
 }
 
-export default function BlockListPage() {
+function BlockListPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -1072,5 +1073,13 @@ export default function BlockListPage() {
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+export default function BlockListPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Cargando filtros...</div>}>
+      <BlockListPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -366,7 +367,7 @@ function SearchableSelect({
   );
 }
 
-export default function EnvironmentListPage() {
+function EnvironmentListPageContent() {
   // Guardamos las filas que alimentaran la tabla principal.
 
   const [items, setItems] = useState<EnvironmentRow[]>([]);
@@ -1638,5 +1639,13 @@ export default function EnvironmentListPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function EnvironmentListPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Cargando ambientes...</div>}>
+      <EnvironmentListPageContent />
+    </Suspense>
   );
 }
