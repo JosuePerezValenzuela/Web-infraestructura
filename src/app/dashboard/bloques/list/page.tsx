@@ -402,7 +402,19 @@ function SearchableSelect({
 
 function BlockListPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+    const searchParams = useSearchParams();
+  
+  function isAbortError(error: unknown): boolean {
+    if (!error) return false;
+    if (error instanceof DOMException) {
+      return error.name === "AbortError";
+    }
+    if (error instanceof Error) {
+      return error.name === "AbortError";
+    }
+    return false;
+  }
+  
   
   const [items, setItems] = useState<BlockRow[]>([]); // Contendrá las filas visibles en la tabla.
   const [page, setPage] = useState(1); // Página actual que estamos mostrando.
@@ -614,7 +626,7 @@ function BlockListPageContent() {
           normalizeCatalogOptions(blockTypesActiveData.items, "Tipo de bloque")
         ); // Tipos de bloque activos para formularios.
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
+        if (isAbortError(error)) {
           return; // Si abortamos manualmente salimos silenciosamente.
         }
         notify.error({
@@ -700,7 +712,7 @@ function BlockListPageContent() {
           data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
         setPages(resolvedPages); // Ajustamos la paginación incluso si el backend omite pages.
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
+        if (isAbortError(error)) {
           return; // Si abortamos manualmente no mostramos errores.
         }
         notify.error({
