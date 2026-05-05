@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -151,221 +152,10 @@ function normalizeCatalogOptions(
   );
 }
 
-type SearchableSelectProps = {
-  id: string;
-
-  label: string;
-
-  ariaLabel: string;
-
-  placeholder: string;
-
-  emptyLabel: string;
-
-  allLabel: string;
-
+type FilterOption = {
   value: string;
-
-  onChange: (value: string) => void;
-
-  options: FilterOption[];
-
-  loading?: boolean;
+  label: string;
 };
-
-function SearchableSelect({
-  id,
-
-  label,
-
-  ariaLabel,
-
-  placeholder,
-
-  emptyLabel,
-
-  allLabel,
-
-  value,
-
-  onChange,
-
-  options,
-
-  loading = false,
-}: SearchableSelectProps) {
-  const [open, setOpen] = useState(false);
-
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-
-  const filteredOptions = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-
-    if (!term) {
-      return options;
-    }
-
-    return options.filter((option) =>
-      option.label.toLowerCase().includes(term)
-    );
-  }, [options, searchTerm]);
-
-  const selectedOption = options.find((option) => option.value === value);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-
-      if (
-        dropdownRef.current?.contains(target) ||
-        triggerRef.current?.contains(target) ||
-        containerRef.current?.contains(target)
-      ) {
-        return;
-      }
-
-      setOpen(false);
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    window.addEventListener("pointerdown", handlePointerDown);
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  const labelId = `${id}-label`;
-
-  const triggerId = `${id}-trigger`;
-
-  const listboxId = `${id}-listbox`;
-
-  const searchInputId = `${id}-search`;
-
-  return (
-    <div className="space-y-2">
-      <Label id={labelId} htmlFor={triggerId}>
-        {label}
-      </Label>
-
-      <div className="relative" ref={containerRef}>
-        <Button
-          ref={triggerRef}
-          type="button"
-          variant="outline"
-          id={triggerId}
-          className="w-full justify-between"
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={listboxId}
-          aria-labelledby={`${labelId} ${triggerId}`}
-          disabled={loading}
-          onClick={() => {
-            setOpen((previous) => !previous);
-
-            setSearchTerm("");
-          }}
-        >
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : allLabel}
-          </span>
-
-          <span aria-hidden className="text-xs text-muted-foreground">
-            {open ? "Cerrar" : "Abrir"}
-          </span>
-        </Button>
-
-        {open ? (
-          <div
-            ref={dropdownRef}
-            className="absolute z-30 mt-2 w-full rounded-md border bg-popover shadow-md"
-          >
-            <div className="p-2">
-              <Input
-                id={searchInputId}
-                placeholder={placeholder}
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <ul
-              id={listboxId}
-              role="listbox"
-              aria-label={ariaLabel}
-              className="max-h-56 overflow-y-auto px-1 pb-2"
-            >
-              <li className="p-1">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={value === ""}
-                  className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => {
-                    onChange("");
-
-                    setOpen(false);
-                  }}
-                >
-                  {allLabel}
-                </button>
-              </li>
-
-              {loading ? (
-                <li className="px-3 py-2 text-sm text-muted-foreground">
-                  Cargando opciones...
-                </li>
-              ) : filteredOptions.length ? (
-                filteredOptions.map((option) => (
-                  <li key={option.value} className="p-1">
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={value === option.value}
-                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => {
-                        onChange(option.value);
-
-                        setOpen(false);
-                      }}
-                    >
-                      {option.label}
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <li className="px-3 py-2 text-sm text-muted-foreground">
-                  {emptyLabel}
-                </li>
-              )}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
 
 function EnvironmentListPageContent() {
   // Guardamos las filas que alimentaran la tabla principal.
@@ -379,6 +169,14 @@ function EnvironmentListPageContent() {
   // Almacenamos el total de paginas disponible.
 
   const [pages, setPages] = useState(1);
+
+  // Almacenamos el total de registros para la paginacion.
+
+  const [total, setTotal] = useState<number | null>(null);
+
+  // Almacenamos el take (registros por pagina) para la paginacion.
+
+  const [take, setTake] = useState(TAKE);
 
   // Conservamos el texto que la persona escribe en el buscador.
 
@@ -900,10 +698,14 @@ function EnvironmentListPageContent() {
         const totalFromMeta =
           typeof data.meta?.total === "number" ? data.meta.total : null;
 
+        setTotal(totalFromMeta);
+
         const takeFromMeta =
           typeof data.meta?.take === "number" && data.meta.take > 0
             ? data.meta.take
             : TAKE;
+
+        setTake(takeFromMeta);
 
         const pagesFromMeta =
           typeof data.meta?.pages === "number" && data.meta.pages > 0
@@ -1293,65 +1095,30 @@ function EnvironmentListPageContent() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Ambientes</h1>
+      <h1 className="text-lg font-semibold">Ambientes</h1>
 
-      <form
+<form
         onSubmit={handleApplyFilters}
-        className="space-y-4 rounded-lg border bg-card p-4 shadow-sm"
+        className="space-y-3 rounded-lg border bg-card p-3 shadow-sm"
         noValidate
       >
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          {/* FILA / COLUMNA 1: input + Buscar + Limpiar */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-            <div className="flex min-w-0 flex-col gap-2">
-              <Label htmlFor="environment-search">Buscar ambientes</Label>
-              <Input
-                id="environment-search"
-                aria-label="Buscar ambientes"
-                placeholder="Buscar por nombre o codigo"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loadingTable}
-              className="w-full sm:w-auto"
-            >
-              {loadingTable ? "Buscando..." : "Buscar"}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleResetFilters}
-              disabled={loadingTable && !items.length}
-              className="w-full sm:w-auto"
-            >
-              Limpiar
-            </Button>
+        {/* Fila 1: Buscador + Filtros principales */}
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2">
+            <Label htmlFor="environment-search">Buscar por</Label>
+            <Input
+              id="environment-search"
+              aria-label="Buscar ambientes"
+              placeholder="Nombre o código..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
           </div>
 
-          {/* FILA / COLUMNA 2: Nuevo ambiente + Mostrar/ocultar */}
-          <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
-            <Button type="button" onClick={handleCreateClick}>
-              Nuevo ambiente
-            </Button>
-
-            {tableInstance ? (
-              <DataTableViewOptions table={tableInstance} />
-            ) : null}
-          </div>
-        </div>
-
-        <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
           <SearchableSelect
             id="faculty-filter"
             label="Facultad"
-            ariaLabel="Opciones de facultad"
-            placeholder="Escribe para filtrar facultades"
+            searchPlaceholder="Escribe para filtrar facultades"
             emptyLabel="Sin resultados"
             allLabel="Todas"
             value={filters.facultadId}
@@ -1367,8 +1134,7 @@ function EnvironmentListPageContent() {
           <SearchableSelect
             id="block-filter"
             label="Bloque"
-            ariaLabel="Opciones de bloque"
-            placeholder="Busca por nombre o codigo"
+            searchPlaceholder="Busca por nombre o código"
             emptyLabel="Sin resultados"
             allLabel="Todos"
             value={filters.bloqueId}
@@ -1384,8 +1150,7 @@ function EnvironmentListPageContent() {
           <SearchableSelect
             id="environment-type-filter"
             label="Tipo de ambiente"
-            ariaLabel="Opciones de tipo de ambiente"
-            placeholder="Escribe para filtrar tipos"
+            searchPlaceholder="Escribe para filtrar tipos"
             emptyLabel="Sin resultados"
             allLabel="Todos"
             value={filters.tipoAmbienteId}
@@ -1397,15 +1162,18 @@ function EnvironmentListPageContent() {
             options={filterCatalogs.environmentTypes}
             loading={loadingCatalogs}
           />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="floor-min">Piso minimo</Label>
-
+        {/* Fila 2: Filtros secundarios + Acciones */}
+        <div className="flex flex-wrap items-end gap-2">
+          {/* Piso Min */}
+          <div className="w-20">
+            <Label htmlFor="floor-min">Piso min</Label>
             <Input
               id="floor-min"
-              aria-label="Piso minimo"
+              aria-label="Piso mínimo"
               type="number"
-              placeholder="Ej. 1"
+              placeholder="Min"
               value={filters.pisoMin}
               onChange={(event) => {
                 const newFilters = { ...filters, pisoMin: event.target.value };
@@ -1415,14 +1183,14 @@ function EnvironmentListPageContent() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="floor-max">Piso maximo</Label>
-
+          {/* Piso Max */}
+          <div className="w-20">
+            <Label htmlFor="floor-max">Piso max</Label>
             <Input
               id="floor-max"
-              aria-label="Piso maximo"
+              aria-label="Piso máximo"
               type="number"
-              placeholder="Ej. 4"
+              placeholder="Max"
               value={filters.pisoMax}
               onChange={(event) => {
                 const newFilters = { ...filters, pisoMax: event.target.value };
@@ -1432,56 +1200,63 @@ function EnvironmentListPageContent() {
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="classes-filter">Uso academico</Label>
+          {/* Uso académico */}
+          <div className="w-[140px]">
+            <Label htmlFor="classes-filter">Uso académico</Label>
+            <Select
+              value={filters.clases || ALL_VALUE}
+              onValueChange={(value) => {
+                const newFilters = { ...filters, clases: value === ALL_VALUE ? "" : value };
+                setFilters(newFilters);
+                syncFiltersToUrl(newFilters, debouncedSearch);
+              }}
+            >
+              <SelectTrigger id="classes-filter" aria-label="Uso académico" className="w-full">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={4}>
+                <SelectItem value={ALL_VALUE}>Todos</SelectItem>
+                <SelectItem value="true">Sí</SelectItem>
+                <SelectItem value="false">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <Select
-                value={filters.clases || ALL_VALUE}
-                onValueChange={(value) => {
-                  const newFilters = { ...filters, clases: value === ALL_VALUE ? "" : value };
-                  setFilters(newFilters);
-                  syncFiltersToUrl(newFilters, debouncedSearch);
-                }}
-              >
-                <SelectTrigger id="classes-filter" aria-label="Uso academico">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
+          {/* Estado */}
+          <div className="w-[140px]">
+            <Label htmlFor="status-filter">Estado</Label>
+            <Select
+              value={filters.activo || ALL_VALUE}
+              onValueChange={(value) => {
+                const newFilters = { ...filters, activo: value === ALL_VALUE ? "" : value };
+                setFilters(newFilters);
+                syncFiltersToUrl(newFilters, debouncedSearch);
+              }}
+            >
+              <SelectTrigger id="status-filter" aria-label="Estado" className="w-full">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={4}>
+                <SelectItem value={ALL_VALUE}>Todos</SelectItem>
+                <SelectItem value="true">Activo</SelectItem>
+                <SelectItem value="false">Inactivo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                <SelectContent>
-                  <SelectItem value={ALL_VALUE}>Todos</SelectItem>
-
-                  <SelectItem value="true">Dicta clases</SelectItem>
-
-                  <SelectItem value="false">No dicta clases</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status-filter">Estado</Label>
-
-              <Select
-                value={filters.activo || ALL_VALUE}
-                onValueChange={(value) => {
-                  const newFilters = { ...filters, activo: value === ALL_VALUE ? "" : value };
-                  setFilters(newFilters);
-                  syncFiltersToUrl(newFilters, debouncedSearch);
-                }}
-              >
-                <SelectTrigger id="status-filter" aria-label="Estado">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value={ALL_VALUE}>Todos</SelectItem>
-
-                  <SelectItem value="true">Activos</SelectItem>
-
-                  <SelectItem value="false">Inactivos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Botones de acción */}
+          <div className="flex gap-2 ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResetFilters}
+              disabled={loadingTable && !items.length}
+            >
+              Limpiar
+            </Button>
+            <Button type="button" onClick={handleCreateClick}>
+              Nuevo
+            </Button>
           </div>
         </div>
       </form>
@@ -1497,6 +1272,9 @@ function EnvironmentListPageContent() {
         data={items}
         page={page}
         pages={pages}
+        total={total ?? undefined}
+        take={take}
+        loading={loadingTable}
         onPageChange={setPage}
         showViewOptions={false}
         onTableReady={setTableInstance}
