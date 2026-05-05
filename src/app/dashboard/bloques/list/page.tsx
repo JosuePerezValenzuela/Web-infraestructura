@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select";
 import {
   Dialog,
   DialogClose,
@@ -219,185 +220,6 @@ function normalizeCatalogOptions(
       };
     })
     .filter((option): option is CatalogOption => Boolean(option));
-}
-
-type SearchableSelectProps = {
-  id: string;
-  label: string;
-  ariaLabel: string;
-  placeholder: string;
-  emptyLabel: string;
-  allLabel: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: CatalogOption[];
-  loading?: boolean;
-};
-
-function SearchableSelect({
-  id,
-  label,
-  ariaLabel,
-  placeholder,
-  emptyLabel,
-  allLabel,
-  value,
-  onChange,
-  options,
-  loading = false,
-}: SearchableSelectProps) {
-  const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const filteredOptions = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return options;
-    }
-    return options.filter((option) =>
-      option.nombre.toLowerCase().includes(term)
-    );
-  }, [options, searchTerm]);
-
-  const selectedOption = options.find((option) => String(option.id) === value);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (
-        dropdownRef.current?.contains(target) ||
-        triggerRef.current?.contains(target) ||
-        containerRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setOpen(false);
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  const labelId = `${id}-label`;
-  const triggerId = `${id}-trigger`;
-  const searchInputId = `${id}-search`;
-
-  return (
-    <div className="space-y-2">
-      <Label id={labelId} htmlFor={triggerId}>
-        {label}
-      </Label>
-      <div className="relative" ref={containerRef}>
-        <Button
-          ref={triggerRef}
-          type="button"
-          variant="outline"
-          id={triggerId}
-          className="w-full justify-between"
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={`${id}-listbox`}
-          aria-labelledby={`${labelId} ${triggerId}`}
-          onClick={() => {
-            setOpen((previous) => !previous);
-            setSearchTerm("");
-          }}
-        >
-          <span className="truncate">
-            {selectedOption ? selectedOption.nombre : allLabel}
-          </span>
-          <span
-            aria-hidden
-            className="text-xs text-muted-foreground"
-          >
-            {open ? "Cerrar" : "Abrir"}
-          </span>
-        </Button>
-
-        {open ? (
-          <div
-            ref={dropdownRef}
-            className="absolute z-30 mt-2 w-full rounded-md border bg-popover shadow-md"
-          >
-            <div className="p-2">
-              <Input
-                id={searchInputId}
-                placeholder={placeholder}
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <ul
-              id={`${id}-listbox`}
-              role="listbox"
-              aria-label={ariaLabel}
-              className="max-h-56 overflow-y-auto px-1 pb-2"
-            >
-              <li className="p-1">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={value === ""}
-                  className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => {
-                    onChange("");
-                    setOpen(false);
-                  }}
-                >
-                  {allLabel}
-                </button>
-              </li>
-
-              {loading ? (
-                <li className="px-3 py-2 text-sm text-muted-foreground">
-                  Cargando opciones...
-                </li>
-              ) : filteredOptions.length ? (
-                filteredOptions.map((option) => (
-                  <li key={option.id} className="p-1">
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={value === String(option.id)}
-                      className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => {
-                        onChange(String(option.id));
-                        setOpen(false);
-                      }}
-                    >
-                      {option.nombre}
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <li className="px-3 py-2 text-sm text-muted-foreground">
-                  {emptyLabel}
-                </li>
-              )}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
 }
 
 function BlockListPageContent() {
@@ -870,26 +692,24 @@ function BlockListPageContent() {
           <SearchableSelect
             id="facultad-filter"
             label="Filtrar por facultad"
-            ariaLabel="Listado de facultades para filtrar bloques"
-            placeholder="Buscar facultad"
+            searchPlaceholder="Buscar facultad"
             emptyLabel="No se encontraron facultades"
             allLabel="Todas las facultades"
             value={filters.facultadId}
             onChange={(value) => updateFilter("facultadId", value)}
-            options={facultiesFilter}
+            options={facultiesFilter.map(f => ({ value: String(f.id), label: f.nombre }))}
             loading={loadingCatalogs}
           />
 
           <SearchableSelect
             id="tipo-bloque-filter"
             label="Filtrar por tipo de bloque"
-            ariaLabel="Listado de tipos de bloque para filtrar"
-            placeholder="Buscar tipo de bloque"
+            searchPlaceholder="Buscar tipo de bloque"
             emptyLabel="No se encontraron tipos"
             allLabel="Todos los tipos"
             value={filters.tipoBloqueId}
             onChange={(value) => updateFilter("tipoBloqueId", value)}
-            options={blockTypesFilter}
+            options={blockTypesFilter.map(t => ({ value: String(t.id), label: t.nombre }))}
             loading={loadingCatalogs}
           />
 
