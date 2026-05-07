@@ -8,11 +8,18 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { InventoryReportAction } from "@/features/reports/inventory/InventoryReportAction";
 
+type FacultyCampus = {
+  id: number;
+  nombre: string;
+};
+
 export type FacultyRow = {
   id: number;
   codigo: string;
   nombre: string;
   nombre_corto: string | null;
+  campus_ids: number[];
+  campuses: FacultyCampus[];
   campus_nombre: string;
   activo: boolean;
   creado_en: string;
@@ -50,11 +57,25 @@ export function facultyColumns(
       cell: ({ getValue }) => getValue<string | null>() ?? "-",
     },
     {
-      accessorKey: "campus_nombre",
+      id: "campus",
+      accessorFn: (row) => row.campuses.map((campus) => campus.nombre).join("\n"),
       meta: { label: "Campus" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Campus" />
       ),
+      cell: ({ row }) => {
+        if (row.original.campuses.length === 0) {
+          return "-";
+        }
+
+        return (
+          <div className="space-y-1 text-left">
+            {row.original.campuses.map((campus) => (
+              <div key={campus.id}>{campus.nombre}</div>
+            ))}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "activo",
@@ -62,6 +83,12 @@ export function facultyColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Estado" />
       ),
+      sortingFn: (rowA, rowB, columnId) => {
+        const labelA = rowA.getValue<boolean>(columnId) ? "Activo" : "Inactivo";
+        const labelB = rowB.getValue<boolean>(columnId) ? "Activo" : "Inactivo";
+
+        return labelA.localeCompare(labelB, "es");
+      },
       cell: ({ getValue }) => {
         const active = getValue<boolean>();
         return (
@@ -69,25 +96,6 @@ export function facultyColumns(
             {active ? "Activo" : "Inactivo"}
           </Badge>
         );
-      },
-    },
-    {
-      accessorKey: "creado_en",
-      meta: { label: "Creado en" },
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Creado en" />
-      ),
-      cell: ({ row }) => {
-        const iso = row.original.creado_en;
-        const parsed = new Date(iso);
-        if (Number.isNaN(parsed.getTime())) {
-          return "-";
-        }
-        return parsed.toLocaleDateString("es-BO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
       },
     },
     {

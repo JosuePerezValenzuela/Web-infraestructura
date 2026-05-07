@@ -25,8 +25,26 @@ import { notify } from "@/lib/notify";
 
 const TAKE = 8;
 
+type FacultyCampus = {
+  id: number;
+  nombre: string;
+};
+
+type FacultyApiItem = {
+  id: number;
+  codigo: string;
+  nombre: string;
+  nombre_corto: string | null;
+  campus_ids?: number[];
+  campuses?: FacultyCampus[];
+  activo: boolean;
+  lat: number | null;
+  lng: number | null;
+  creado_en: string;
+};
+
 type FacultyListResponse = {
-  items: FacultyRow[];
+  items: FacultyApiItem[];
   meta: {
     page: number;
     pages?: number;
@@ -41,6 +59,7 @@ export default function FacultyListPage() {
   const [items, setItems] = useState<FacultyRow[]>([]);
   const [page, setPage] = useState<number>(1);
   const [pages, setPages] = useState<number>(1);
+  const [total, setTotal] = useState<number>(0);
   const [search, setSearch] = useState<string>("");
   const [openCreate, setOpenCreate] = useState<boolean>(false);
   const [openEdit, setOpenEdit] = useState<boolean>(false);
@@ -65,7 +84,29 @@ export default function FacultyListPage() {
           { signal }
         );
 
-        setItems(data.items);
+        const normalizedItems: FacultyRow[] = data.items.map((item) => {
+          const campuses = Array.isArray(item.campuses) ? item.campuses : [];
+          const campusIds = Array.isArray(item.campus_ids) ? item.campus_ids : [];
+          const primaryCampus = campuses[0];
+
+          return {
+            id: item.id,
+            codigo: item.codigo,
+            nombre: item.nombre,
+            nombre_corto: item.nombre_corto,
+            campus_ids: campusIds,
+            campuses,
+            campus_nombre: primaryCampus?.nombre ?? "-",
+            activo: item.activo,
+            creado_en: item.creado_en,
+            campus_id: primaryCampus?.id ?? campusIds[0] ?? 0,
+            lat: typeof item.lat === "number" ? item.lat : null,
+            lng: typeof item.lng === "number" ? item.lng : null,
+          };
+        });
+
+        setItems(normalizedItems);
+        setTotal(typeof data.meta?.total === "number" ? data.meta.total : 0);
         const totalFromMeta =
           typeof data.meta?.total === "number" ? data.meta.total : null;
         const takeFromMeta =
@@ -193,6 +234,9 @@ export default function FacultyListPage() {
         data={items}
         page={page}
         pages={pages}
+        total={total}
+        take={TAKE}
+        initialSorting={[{ id: "activo", desc: false }]}
         onPageChange={setPage}
       />
 

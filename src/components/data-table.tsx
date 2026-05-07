@@ -42,6 +42,7 @@ type Props<TData, TValue> = {
   onTableReady?: (table: ReactTableInstance<TData>) => void;
   density?: "comfortable" | "compact";
   wrapCells?: boolean;
+  initialSorting?: SortingState;
   emptyState?: {
     title: string;
     description?: string;
@@ -62,12 +63,13 @@ export function DataTable<TData, TValue>({
   onTableReady,
   density = "compact",
   wrapCells = true,
+  initialSorting = [],
   emptyState,
   loading = false,
 }: Props<TData, TValue>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
 
   const table = useReactTable({
     data,
