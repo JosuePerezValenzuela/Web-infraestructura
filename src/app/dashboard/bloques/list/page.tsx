@@ -224,15 +224,33 @@ function normalizeCatalogOptions(
 
 function BlockListPageContent() {
   const router = useRouter();
-    const searchParams = useSearchParams();
-  
+  const searchParams = useSearchParams();
+
+  // Flag to prevent state updates after unmount
+  const mountedRef = useRef(true);
+
   function isAbortError(error: unknown): boolean {
     if (!error) return false;
+    // Check for DOMException/AbortError
     if (error instanceof DOMException) {
       return error.name === "AbortError";
     }
     if (error instanceof Error) {
       return error.name === "AbortError";
+    }
+    // Check for our thrown error object (from api.ts: { status, message, details, raw })
+    if (typeof error === 'object' && error !== null) {
+      const err = error as { status?: number; name?: string; message?: string };
+      if (err.name === "AbortError") return true;
+      if (err.status === 0) return true;
+      // Check message for "abort"
+      if (err.message && typeof err.message === 'string' && err.message.toLowerCase().includes('abort')) {
+        return true;
+      }
+    }
+    // Check for plain string error with abort message
+    if (typeof error === 'string') {
+      return error.toLowerCase().includes('abort');
     }
     return false;
   }
@@ -448,6 +466,7 @@ function BlockListPageContent() {
           normalizeCatalogOptions(blockTypesActiveData.items, "Tipo de bloque")
         ); // Tipos de bloque activos para formularios.
       } catch (error) {
+        if (!mountedRef.current) return;
         if (isAbortError(error)) {
           return; // Si abortamos manualmente salimos silenciosamente.
         }
@@ -456,14 +475,16 @@ function BlockListPageContent() {
           description: "Facultades y tipos de bloque no están disponibles. Intenta nuevamente.",
         }); // Mostramos un mensaje amable cuando falla la carga.
       } finally {
-        setLoadingCatalogs(false); // Restablecemos el indicador en cualquier caso.
+        if (mountedRef.current) {
+          setLoadingCatalogs(false); // Restablecemos el indicador en cualquier caso.
+        }
       }
     }
 
     void loadCatalogs(); // Disparamos la carga.
     return () => {
       if (!controller.signal.aborted) {
-        controller.abort("Component unmounted");
+        controller.abort();
       }
     };
   }, []);
@@ -505,8 +526,9 @@ function BlockListPageContent() {
   useEffect(() => {
     const controller = new AbortController(); // Creamos un controlador para abortar la petición si es necesario.
 
-    async function loadBlocks() {
+async function loadBlocks() {
       try {
+        if (!mountedRef.current) return;
         setIsFetching(true); // Indicamos que estamos sincronizando datos.
         const data = await apiFetch<BlockListResponse>(
           `/bloques?${queryString}`,
@@ -514,6 +536,7 @@ function BlockListPageContent() {
             signal: controller.signal,
           }
         ); // Realizamos la consulta principal de bloques.
+        if (!mountedRef.current) return;
         setItems(Array.isArray(data.items) ? data.items : []); // Guardamos las filas recibidas.
         const totalFromMeta =
           typeof data.meta?.total === "number" ? data.meta.total : null;
@@ -534,22 +557,25 @@ function BlockListPageContent() {
           data.meta?.hasNextPage && page >= basePages ? page + 1 : basePages;
         setPages(resolvedPages); // Ajustamos la paginación incluso si el backend omite pages.
       } catch (error) {
+        if (!mountedRef.current) return;
         if (isAbortError(error)) {
-          return; // Si abortamos manualmente no mostramos errores.
+          return; // Si abortamos manualmente no necesitamos hacer nada.
         }
         notify.error({
           title: "No pudimos cargar el listado de bloques",
           description: "Reintenta en unos segundos.",
         }); // Comunicamos el fallo a la persona usuaria de manera controlada.
       } finally {
-        setIsFetching(false); // Siempre restablecemos el indicador.
+        if (mountedRef.current) {
+          setIsFetching(false); // Siempre restablecemos el indicador.
+        }
       }
     }
 
     void loadBlocks(); // Ejecutamos la consulta.
     return () => {
       if (!controller.signal.aborted) {
-        controller.abort("Effect cleanup");
+        controller.abort();
       }
     };
   }, [queryString, reloadKey]);
@@ -646,49 +672,27 @@ function BlockListPageContent() {
 
   return (
     <section className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Bloques</h1>
+<header>
+        <h1 className="text-lg font-semibold">Bloques</h1>
       </header>
 
       <form
         onSubmit={handleSearchSubmit}
-        className="space-y-4 rounded-lg border bg-card p-4 shadow-sm"
+        className="space-y-3 rounded-lg border bg-card p-3 shadow-sm"
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-2 lg:min-w-[280px]">
-            <Label htmlFor="block-search">Buscar</Label>
+        {/* Fila 1: Buscador + Facultad + Tipo */}
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="block-search">Buscar por</Label>
             <Input
               id="block-search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por codigo, nombre o nombre corto"
+              placeholder="Buscar por código, nombre o nombre corto"
               aria-label="Buscar bloques"
             />
           </div>
 
-          <div className="flex w-full flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center lg:w-auto">
-            <Button type="submit" className="w-full min-[480px]:w-auto">
-              Buscar
-            </Button>
-            <Button
-              type="button"
-          variant="outline"
-          onClick={handleClearFilters}
-          className="w-full min-[480px]:w-auto"
-        >
-          Limpiar filtros
-        </Button>
-        <Button
-          type="button"
-          className="w-full min-[480px]:w-auto"
-          onClick={() => setCreateOpen(true)}
-        >
-          Nuevo bloque
-        </Button>
-      </div>
-    </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SearchableSelect
             id="facultad-filter"
             label="Filtrar por facultad"
@@ -697,7 +701,7 @@ function BlockListPageContent() {
             allLabel="Todas las facultades"
             value={filters.facultadId}
             onChange={(value) => updateFilter("facultadId", value)}
-            options={facultiesFilter.map(f => ({ value: String(f.id), label: f.nombre }))}
+            options={facultiesFilter.map((f) => ({ value: String(f.id), label: f.nombre }))}
             loading={loadingCatalogs}
           />
 
@@ -709,69 +713,68 @@ function BlockListPageContent() {
             allLabel="Todos los tipos"
             value={filters.tipoBloqueId}
             onChange={(value) => updateFilter("tipoBloqueId", value)}
-            options={blockTypesFilter.map(t => ({ value: String(t.id), label: t.nombre }))}
+            options={blockTypesFilter.map((t) => ({ value: String(t.id), label: t.nombre }))}
             loading={loadingCatalogs}
           />
+        </div>
 
-          <div className="space-y-2">
-            <Label id="estado-filter-label">Filtrar por estado</Label>
-            <Select
-              value={filters.activo || ALL_VALUE}
-              onValueChange={(value) =>
-                updateFilter("activo", value === ALL_VALUE ? "" : value)
-              }
-            >
-              <SelectTrigger
-                aria-labelledby="estado-filter-label"
-                aria-label="Filtrar por estado"
-              >
-                <SelectValue placeholder="Todos los estados" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE}>Todos los estados</SelectItem>
-                <SelectItem value="true">Solo activos</SelectItem>
-                <SelectItem value="false">Solo inactivos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="pisos-min">Pisos mínimos</Label>
+        {/* Fila 2: Pisos + Estado + Botones */}
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="w-20">
+            <Label htmlFor="pisos-min">Piso min</Label>
             <Input
               id="pisos-min"
               type="number"
               inputMode="numeric"
               pattern="[0-9]*"
               min={0}
-              placeholder="Ej. 2"
+              placeholder="Min"
               aria-label="Pisos mínimos"
               value={filters.pisosMin}
               onChange={(event) => updateFilter("pisosMin", event.target.value)}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="pisos-max">Pisos máximos</Label>
+          <div className="w-20">
+            <Label htmlFor="pisos-max">Piso max</Label>
             <Input
               id="pisos-max"
               type="number"
               inputMode="numeric"
               pattern="[0-9]*"
               min={0}
-              placeholder="Ej. 10"
+              placeholder="Max"
               aria-label="Pisos máximos"
               value={filters.pisosMax}
               onChange={(event) => updateFilter("pisosMax", event.target.value)}
             />
           </div>
 
-          {tableInstance ? (
-            <div className="flex items-end justify-end">
-              <DataTableViewOptions table={tableInstance} />
-            </div>
-          ) : (
-            <div aria-hidden />
-          )}
+          <div className="w-[140px]">
+            <Label id="estado-filter-label">Estado</Label>
+            <Select
+              value={filters.activo || ALL_VALUE}
+              onValueChange={(value) => updateFilter("activo", value === ALL_VALUE ? "" : value)}
+            >
+              <SelectTrigger aria-labelledby="estado-filter-label" aria-label="Filtrar por estado" className="w-full">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={4}>
+                <SelectItem value={ALL_VALUE}>Todos</SelectItem>
+                <SelectItem value="true">Activo</SelectItem>
+                <SelectItem value="false">Inactivo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex gap-2 ml-auto">
+            <Button type="button" variant="outline" onClick={handleClearFilters} disabled={isFetching && !items.length}>
+              Limpiar
+            </Button>
+            <Button type="button" onClick={() => setCreateOpen(true)}>
+              Nuevo
+            </Button>
+          </div>
         </div>
       </form>
 
@@ -780,9 +783,21 @@ function BlockListPageContent() {
         data={items}
         page={page}
         pages={pages}
+        total={items.length > 0 ? (page - 1) * TAKE + items.length : undefined}
+        take={TAKE}
+        loading={isFetching}
         onPageChange={setPage}
         showViewOptions={false}
         onTableReady={setTableInstance}
+        emptyState={{
+          title: "No encontramos bloques con esos filtros",
+          description: "Prueba con otros criterios o restablece la búsqueda.",
+          action: (
+            <Button type="button" variant="outline" onClick={handleClearFilters}>
+              Quitar filtros
+            </Button>
+          ),
+        }}
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
