@@ -241,23 +241,28 @@ export default function FacultyListPage() {
       />
 
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="max-h-[90vh] max-w-full overflow-auto pb-2 sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Registrar nueva facultad</DialogTitle>
-            <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Cerrar</span>
-            </DialogClose>
-          </DialogHeader>
+        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
+          <div className="flex max-h-[90vh] flex-col">
+            <div className="flex items-center justify-between border-b px-6 py-3">
+              <DialogHeader className="space-y-1 text-left">
+                <DialogTitle>Registrar nueva facultad</DialogTitle>
+              </DialogHeader>
+              <DialogClose className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Cerrar</span>
+              </DialogClose>
+            </div>
 
-          <FacultyForm
-            submitLabel="Crear facultad"
-            onSubmitSuccess={async () => {
-              setPage(1);
-              await fetchData();
-              setOpenCreate(false);
-            }}
-          />
+            <FacultyForm
+              submitLabel="Crear facultad"
+              onCancel={() => setOpenCreate(false)}
+              onSubmitSuccess={async () => {
+                setPage(1);
+                await fetchData();
+                setOpenCreate(false);
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -270,28 +275,33 @@ export default function FacultyListPage() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-full overflow-auto pb-2 sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Editar facultad</DialogTitle>
-            <DialogDescription>
-              Revisa y actualiza los datos antes de guardar los cambios.
-            </DialogDescription>
-            <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Cerrar</span>
-            </DialogClose>
-          </DialogHeader>
+        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
+          <div className="flex max-h-[90vh] flex-col">
+            <div className="flex items-center justify-between border-b px-6 py-3">
+              <DialogHeader className="space-y-1 text-left">
+                <DialogTitle>Editar facultad</DialogTitle>
+              </DialogHeader>
+              <DialogClose className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Cerrar</span>
+              </DialogClose>
+            </div>
 
-          {selectedFaculty ? (
-            <FacultyEditForm
-              faculty={selectedFaculty}
-              onSubmitSuccess={async () => {
-                await fetchData();
-                setOpenEdit(false);
-                setSelectedFaculty(null);
-              }}
-            />
-          ) : null}
+            {selectedFaculty ? (
+              <FacultyEditForm
+                faculty={selectedFaculty}
+                onCancel={() => {
+                  setOpenEdit(false);
+                  setSelectedFaculty(null);
+                }}
+                onSubmitSuccess={async () => {
+                  await fetchData();
+                  setOpenEdit(false);
+                  setSelectedFaculty(null);
+                }}
+              />
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -306,9 +316,9 @@ export default function FacultyListPage() {
       >
         <DialogContent className="max-h-[90vh] max-w-full overflow-auto pb-2 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Eliminar facultad</DialogTitle>
+            <DialogTitle>Desactivar facultad</DialogTitle>
             <DialogDescription>
-              Esta acción eliminará definitivamente el registro y no se puede deshacer.
+              Esta acción desactivará el registro y sus dependientes.
             </DialogDescription>
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <X className="h-4 w-4" />
@@ -318,7 +328,7 @@ export default function FacultyListPage() {
 
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>
-              Los bloques y ambientes quedarán eliminados junto con la facultad seleccionada.
+              Los bloques y ambientes quedarán desactivados junto con la facultad seleccionada.
             </p>
             {facultyToDelete ? (
               <p>

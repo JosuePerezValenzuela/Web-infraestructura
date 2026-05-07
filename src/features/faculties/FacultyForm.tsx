@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { notify } from "@/lib/notify";
-import dynamic from "next/dynamic";
+import { MultiSelectChecklist } from "@/components/ui/multi-select-checklist";
 
 type FacultyCreateFormValues = z.input<typeof facultyCreateSchema>;
 
@@ -25,8 +25,6 @@ type CampusOption = {
   id: number;
   nombre: string;
   codigo: string;
-  lat: number | null;
-  lng: number | null;
 };
 
 type CampusListResponse = {
@@ -36,19 +34,14 @@ type CampusListResponse = {
 type Props = {
   submitLabel?: string;
   onSubmitSuccess?: () => Promise<void> | void;
+  onCancel?: () => void;
 };
-
-const INITIAL_POSITION = { lat: -17.3939, lng: -66.157 };
-
-const MapPicker = dynamic(() => import("@/features/campus/MapPicker"), {
-  ssr: false,
-});
 
 export default function FacultyForm({
   submitLabel = "Crear facultad",
   onSubmitSuccess,
+  onCancel,
 }: Props) {
-  // Creamos el formulario con react-hook-form aplicando la validaciÃ³n de Zod.
   const form = useForm<FacultyCreateFormValues>({
     resolver: zodResolver(facultyCreateSchema),
     mode: "onTouched",
@@ -56,29 +49,22 @@ export default function FacultyForm({
       codigo: "",
       nombre: "",
       nombre_corto: "",
-      campus_id: undefined,
-      lat: INITIAL_POSITION.lat,
-      lng: INITIAL_POSITION.lng,
+      campus_ids: [],
     },
   });
 
   const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
-  const [campusSearch, setCampusSearch] = useState<string>("");
-  const [campusDropdownOpen, setCampusDropdownOpen] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-
-  const filteredCampusOptions = useMemo(() => {
-    const term = campusSearch.trim().toLowerCase();
-    if (!term) {
-      return campusOptions;
-    }
-    return campusOptions.filter((option) =>
-      option.nombre.toLowerCase().includes(term)
-    );
-  }, [campusOptions, campusSearch]);
+  const campusSelectOptions = useMemo(
+    () =>
+      campusOptions.map((option) => ({
+        value: String(option.id),
+        label: option.nombre,
+        description: option.codigo,
+      })),
+    [campusOptions]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,13 +75,7 @@ export default function FacultyForm({
           "/campus?page=1&limit=1000&activo=true",
           { signal: controller.signal }
         );
-        setCampusOptions(
-          data.items.map((item) => ({
-            ...item,
-            lat: typeof item.lat === "number" ? item.lat : null,
-            lng: typeof item.lng === "number" ? item.lng : null,
-          }))
-        );
+        setCampusOptions(data.items);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
@@ -113,27 +93,6 @@ export default function FacultyForm({
     return () => controller.abort();
   }, []);
 
-  useEffect(() => {
-    if (!campusDropdownOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      if (dropdownRef.current?.contains(event.target as Node)) {
-        return;
-      }
-
-      if (triggerRef.current?.contains(event.target as Node)) {
-        return;
-      }
-
-      setCampusDropdownOpen(false);
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [campusDropdownOpen]);
-
   const handleSubmit = useCallback(
     async (values: FacultyCreateFormValues) => {
       const parsed = facultyCreateSchema.parse(values);
@@ -144,9 +103,7 @@ export default function FacultyForm({
           codigo: parsed.codigo,
           nombre: parsed.nombre,
           nombre_corto: parsed.nombre_corto,
-          campus_id: parsed.campus_id,
-          lat: parsed.lat,
-          lng: parsed.lng,
+          campus_ids: parsed.campus_ids,
         };
 
         await apiFetch("/facultades", {
@@ -163,13 +120,8 @@ export default function FacultyForm({
           codigo: "",
           nombre: "",
           nombre_corto: "",
-          campus_id: undefined,
-          lat: INITIAL_POSITION.lat,
-          lng: INITIAL_POSITION.lng,
+          campus_ids: [],
         });
-
-        setCampusSearch("");
-        setCampusDropdownOpen(false);
 
         await onSubmitSuccess?.();
       } catch (error: unknown) {
@@ -190,184 +142,110 @@ export default function FacultyForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
-        <div className="space-y-2">
-          <FormField
-            control={form.control}
-            name="codigo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel htmlFor="codigo-facultad">
-                  Codigo de la facultad
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    id="codigo-facultad"
-                    placeholder="FAC-001"
-                    type="text"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 py-4">
+          <section className="space-y-4 rounded-lg border bg-card p-4">
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-foreground">Datos generales</h2>
+            </div>
 
-          <FormField
-            control={form.control}
-            name="nombre"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel htmlFor="nombre-facultad">
-                  Nombre de la facultad
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    id="nombre-facultad"
-                    placeholder="Facultad de ciencias y tecnologia"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="codigo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="codigo-facultad">Codigo de la facultad</FormLabel>
+                    <FormControl>
+                      <Input
+                        id="codigo-facultad"
+                        placeholder="FAC-001"
+                        type="text"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        </div>
+              <FormField
+                control={form.control}
+                name="nombre_corto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="nombre-corto">Nombre corto (opcional)</FormLabel>
+                    <FormControl>
+                      <Input id="nombre-corto" placeholder="FCyT" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        <div
-          className="grid gap-4 md:grid-cols-2"
-          data-testid="faculty-short-campus-grid"
-        >
-          <FormField
-            control={form.control}
-            name="nombre_corto"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel htmlFor="nombre-corto">Nombre corto (opcional)</FormLabel>
-                <FormControl>
-                  <Input id="nombre-corto" placeholder="FCyT" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="campus_id"
-            render={({ field }) => {
-              const selectedCampus = campusOptions.find(
-                (option) => option.id === field.value
-              );
-
-              return (
+            <FormField
+              control={form.control}
+              name="nombre"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel htmlFor="campus-select">Seleccione un campus</FormLabel>
-                  <div className="relative">
-                    <Button
-                      ref={triggerRef}
-                      id="campus-select"
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-between"
-                      aria-haspopup="listbox"
-                      aria-expanded={campusDropdownOpen}
-                      onClick={() => {
-                        setCampusDropdownOpen((open) => !open);
-                        setCampusSearch("");
-                      }}
-                    >
-                      <span>
-                        {selectedCampus ? selectedCampus.nombre : "Seleccionar campus"}
-                      </span>
-                      <span aria-hidden className="text-xs text-muted-foreground">
-                        {campusDropdownOpen ? "Cerrar" : "Abrir"}
-                      </span>
-                    </Button>
-
-                    {campusDropdownOpen ? (
-                      <div
-                        ref={dropdownRef}
-                        className="absolute z-20 mt-2 w-full rounded-md border bg-popover shadow-md"
-                      >
-                        <div className="p-2">
-                          <Input
-                            placeholder="Buscar campus"
-                            value={campusSearch}
-                            onChange={(event) => setCampusSearch(event.target.value)}
-                          />
-                        </div>
-
-                        <ul
-                          role="listbox"
-                          aria-label="Listado de campus"
-                          className="max-h-56 overflow-y-auto px-1 pb-2"
-                        >
-                          {filteredCampusOptions.length ? (
-                            filteredCampusOptions.map((option) => (
-                              <li key={option.id} className="p-1">
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={field.value === option.id}
-                                  className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                                  onClick={() => {
-                                    field.onChange(option.id);
-                                    if (
-                                      typeof option.lat === "number" &&
-                                      typeof option.lng === "number"
-                                    ) {
-                                      form.setValue("lat", option.lat, {
-                                        shouldValidate: true,
-                                      });
-                                      form.setValue("lng", option.lng, {
-                                        shouldValidate: true,
-                                      });
-                                    }
-                                    setCampusDropdownOpen(false);
-                                  }}
-                                >
-                                  {option.nombre}
-                                </button>
-                              </li>
-                            ))
-                          ) : (
-                            <li className="px-3 py-2 text-sm text-muted-foreground">
-                              No se encontraron campus
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </div>
+                  <FormLabel htmlFor="nombre-facultad">Nombre de la facultad</FormLabel>
+                  <FormControl>
+                    <Input
+                      id="nombre-facultad"
+                      placeholder="Facultad de ciencias y tecnologia"
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-        </div>
-
-        <div className="rounded-md border bg-muted/20 p-3 space-y-2">
-          <p className="text-sm font-medium">
-            Ubicacion dentro del campus
-          </p>
-          <div className="h-56 overflow-hidden rounded-md border border-border/60">
-            <MapPicker
-              lat={Number(form.watch("lat")) || INITIAL_POSITION.lat}
-              lng={Number(form.watch("lng")) || INITIAL_POSITION.lng}
-              onChange={(position) => {
-                form.setValue("lat", position.lat, { shouldValidate: true });
-                form.setValue("lng", position.lng, { shouldValidate: true });
-              }}
+              )}
             />
-          </div>
+          </section>
+
+          <section
+            className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card p-4"
+            data-testid="faculty-campus-section"
+          >
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-foreground">Campus asignados</h2>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="campus_ids"
+              render={({ field }) => (
+                <FormItem className="mt-4 flex min-h-0 flex-1 flex-col">
+                  <FormControl>
+                    <MultiSelectChecklist
+                      id="campus-ids"
+                      label=""
+                      options={campusSelectOptions}
+                      selectedValues={(field.value ?? []).map((value) => String(value))}
+                      onChange={(nextValues) => {
+                        field.onChange(nextValues.map((value) => Number(value)));
+                      }}
+                      searchPlaceholder="Buscar campus por nombre o código"
+                      emptyLabel="No se encontraron campus con ese criterio."
+                      className="min-h-0 flex-1"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </section>
         </div>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Guardando" : submitLabel}
-          </Button>
+        <div className="sticky bottom-0 border-t bg-background px-6 py-4">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Guardando" : submitLabel}
+            </Button>
+          </div>
         </div>
       </form>
     </Form>
