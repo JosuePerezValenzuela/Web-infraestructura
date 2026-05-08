@@ -255,15 +255,15 @@ export default function CampusListPage() {
       >
         <DialogContent className="max-h-[90vh] max-w-full overflow-auto pb-2 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Eliminar campus</DialogTitle>
+            <DialogTitle>Desactivar campus</DialogTitle>
             <DialogDescription>
-              Esta accion eliminara el campus y todos sus infraestructuras
+              Esta accion desactivara el campus y todas sus dependencias
               asociadas. Esta accion no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>Por seguridad, confirma que deseas eliminar este registro.</p>
+            <p>Por seguridad, confirma que deseas desactivar este registro.</p>
             {campusToDelete ? (
               <p>
                 Campus seleccionado:{" "}
@@ -283,7 +283,7 @@ export default function CampusListPage() {
               onClick={confirmDelete}
               disabled={deleting}
             >
-              {deleting ? "Eliminando..." : "Eliminar"}
+              {deleting ? "Desactivando..." : "Desactivar"}
             </Button>
           </DialogFooter>
         </DialogContent>

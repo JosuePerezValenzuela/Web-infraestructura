@@ -92,7 +92,7 @@ type FilterState = {
   pisosMax: string; // Límite superior para el rango de pisos.
 };
 
-const TAKE = 8; // Cantidad de registros por página según la historia de usuario.
+const TAKE = 6; // Cantidad de registros por página según la historia de usuario.
 const INITIAL_FILTERS: FilterState = {
   facultadId: "",
   tipoBloqueId: "",
@@ -685,14 +685,14 @@ async function loadBlocks() {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-2">
 <header>
         <h1 className="text-lg font-semibold">Bloques</h1>
       </header>
 
       <form
         onSubmit={handleSearchSubmit}
-        className="space-y-3 rounded-lg border bg-card p-3 shadow-sm"
+        className="mb-2 space-y-2 rounded-lg border bg-card p-3 shadow-sm"
       >
         {/* Fila 1: Buscador + Facultad + Tipo */}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -853,30 +853,35 @@ async function loadBlocks() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl">
-          <div className="flex max-h-[85vh] flex-col ">
-            <DialogHeader className="space-y-2 border-b p-6">
-              <DialogTitle>Editar bloque</DialogTitle>  
-            </DialogHeader>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              {blockToEdit ? (
-                <BlockEditForm
-                  block={blockToEdit}
-                  faculties={facultiesActive}
-                  blockTypes={blockTypesActive}
-                  onCancel={() => {
-                    setEditOpen(false);
-                    setBlockToEdit(null);
-                  }}
-                  onSubmitSuccess={async () => {
-                    setEditOpen(false);
-                    setBlockToEdit(null);
-                    setReloadKey((previous) => previous + 1);
-                  }}
-                />
-              ) : null}
+        <DialogContent className="max-h-[90vh] max-w-full overflow-hidden p-0 sm:max-w-4xl" showCloseButton={false}>
+          <div className="flex max-h-[90vh] flex-col">
+            <div className="flex items-center justify-between border-b px-6 py-3">
+              <DialogHeader className="space-y-1 text-left">
+                <DialogTitle>Editar bloque</DialogTitle>
+              </DialogHeader>
+              <DialogClose className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                <span aria-hidden>&times;</span>
+                <span className="sr-only">Cerrar</span>
+              </DialogClose>
             </div>
+
+            {blockToEdit ? (
+              <BlockEditForm
+                block={blockToEdit}
+                faculties={facultiesActive}
+                campuses={campusesActive}
+                blockTypes={blockTypesActive}
+                onCancel={() => {
+                  setEditOpen(false);
+                  setBlockToEdit(null);
+                }}
+                onSubmitSuccess={async () => {
+                  setEditOpen(false);
+                  setBlockToEdit(null);
+                  setReloadKey((previous) => previous + 1);
+                }}
+              />
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
@@ -892,9 +897,9 @@ async function loadBlocks() {
       >
         <DialogContent className="max-w-lg space-y-4">
           <DialogHeader>
-            <DialogTitle>Eliminar bloque</DialogTitle>
+            <DialogTitle>Desactivar bloque</DialogTitle>
             <DialogDescription>
-              Esta accion eliminara el bloque seleccionado y los ambientes que dependan de el. No se puede deshacer.
+              Esta accion Desactivara el bloque seleccionado y los ambientes que dependan de el.
             </DialogDescription>
           </DialogHeader>
 
@@ -926,7 +931,7 @@ async function loadBlocks() {
               onClick={confirmDelete}
               disabled={deleting}
             >
-              {deleting ? "Eliminando..." : "Eliminar"}
+              {deleting ? "Desactivando..." : "Desactivar"}
             </Button>
           </DialogFooter>
         </DialogContent>

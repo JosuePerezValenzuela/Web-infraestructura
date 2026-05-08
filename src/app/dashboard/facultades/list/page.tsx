@@ -351,7 +351,7 @@ export default function FacultyListPage() {
               }}
               disabled={deleting}
             >
-              {deleting ? "Eliminando..." : "Eliminar"}
+              {deleting ? "Desactivando..." : "Desactivar"}
             </Button>
           </DialogFooter>
         </DialogContent>
