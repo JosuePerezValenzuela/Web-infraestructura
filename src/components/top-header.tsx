@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, HelpCircle, PanelLeft, PanelLeftClose, User } from "lucide-react";
+import { PanelLeft, PanelLeftClose, User } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { NAV_GROUPS, NAV_GROUPS_CLASIFICATORS } from "@/config/nav";
 import { cn } from "@/lib/utils";
@@ -107,21 +107,6 @@ export function TopHeader({ className }: { className?: string }) {
 
         <div className="flex items-center gap-2 md:gap-3">
           <div className="lg:hidden text-sm font-medium text-foreground">{currentSection}</div>
-
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-            aria-label="Notificaciones"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-            aria-label="Ayuda"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </button>
 
           <div className="ml-1 flex items-center gap-2 rounded-full border border-border bg-muted/40 px-2 py-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-muted-foreground">
