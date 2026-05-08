@@ -23,7 +23,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 
-const TAKE = 8;
+const TAKE = 7;
 
 type FacultyCampus = {
   id: number;
