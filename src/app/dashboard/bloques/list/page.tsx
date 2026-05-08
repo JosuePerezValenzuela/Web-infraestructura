@@ -102,6 +102,10 @@ const INITIAL_FILTERS: FilterState = {
 }; // Estado base que nos permite restaurar los filtros rápidamente.
 const ALL_VALUE = "all"; // Valor centinela requerido por Radix Select para representar la opcion de "todos".
 
+function isBooleanFilter(value: string): value is "true" | "false" {
+  return value === "true" || value === "false";
+}
+
 function toNumberOrUndefined(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -282,7 +286,9 @@ function BlockListPageContent() {
     if (normalizedSearch) params.set("search", normalizedSearch);
     if (currentFilters.facultadId) params.set("facultadId", currentFilters.facultadId);
     if (currentFilters.tipoBloqueId) params.set("tipoBloqueId", currentFilters.tipoBloqueId);
-    if (currentFilters.activo) params.set("activo", currentFilters.activo);
+    if (isBooleanFilter(currentFilters.activo)) {
+      params.set("activo", currentFilters.activo);
+    }
     if (currentFilters.pisosMin) params.set("pisosMin", currentFilters.pisosMin);
     if (currentFilters.pisosMax) params.set("pisosMax", currentFilters.pisosMax);
     const queryString = params.toString();
@@ -311,6 +317,7 @@ function BlockListPageContent() {
   }, [search, filters, syncFiltersToUrl]);
 
   const [facultiesFilter, setFacultiesFilter] = useState<CatalogOption[]>([]); // Opciones de facultad para filtros (todas).
+  const [campusesActive, setCampusesActive] = useState<CatalogOption[]>([]); // Opciones activas de campus para formularios.
   const [blockTypesFilter, setBlockTypesFilter] = useState<CatalogOption[]>([]); // Opciones de tipo de bloque para filtros (todas).
   const [facultiesActive, setFacultiesActive] = useState<CatalogOption[]>([]); // Opciones activas para formularios.
   const [blockTypesActive, setBlockTypesActive] = useState<CatalogOption[]>([]); // Opciones activas para formularios.
@@ -437,6 +444,7 @@ function BlockListPageContent() {
         const [
           facultiesAllData,
           facultiesActiveData,
+          campusesActiveData,
           blockTypesAllData,
           blockTypesActiveData,
         ] = await Promise.all([
@@ -444,6 +452,9 @@ function BlockListPageContent() {
             signal: controller.signal,
           }),
           apiFetch<CatalogResponse>("/facultades?page=1&limit=200&activo=true", {
+            signal: controller.signal,
+          }),
+          apiFetch<CatalogResponse>("/campus?page=1&limit=200&activo=true", {
             signal: controller.signal,
           }),
           apiFetch<CatalogResponse>("/tipo_bloques?page=1&limit=200", {
@@ -459,6 +470,9 @@ function BlockListPageContent() {
         setFacultiesActive(
           normalizeCatalogOptions(facultiesActiveData.items, "Facultad")
         ); // Facultades activas para crear/editar.
+        setCampusesActive(
+          normalizeCatalogOptions(campusesActiveData.items, "Campus")
+        ); // Campus activos para crear/editar.
         setBlockTypesFilter(
           normalizeCatalogOptions(blockTypesAllData.items, "Tipo de bloque")
         ); // Tipos de bloque para filtros (todos).
@@ -503,7 +517,7 @@ function BlockListPageContent() {
     if (appliedFilters.tipoBloqueId) {
       params.set("tipoBloqueId", appliedFilters.tipoBloqueId); // Traduce el filtro por tipo.
     }
-    if (appliedFilters.activo) {
+    if (isBooleanFilter(appliedFilters.activo)) {
       params.set("activo", appliedFilters.activo); // true/false seg?n la opci?n seleccionada.
     }
     if (appliedFilters.pisosMin.trim() !== "") {
@@ -806,9 +820,6 @@ async function loadBlocks() {
             <div className="flex items-center justify-between border-b px-6 py-3">
               <DialogHeader className="space-y-1 text-left">
                 <DialogTitle>Registrar bloque</DialogTitle>
-                <DialogDescription>
-                  Completa los datos para crear un nuevo bloque en la facultad seleccionada.
-                </DialogDescription>
               </DialogHeader>
               <DialogClose className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
                 <span aria-hidden>&times;</span>
@@ -819,6 +830,7 @@ async function loadBlocks() {
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <BlockCreateForm
                 faculties={facultiesActive}
+                campuses={campusesActive}
                 blockTypes={blockTypesActive}
                 onSuccess={async () => {
                   setPage(1);

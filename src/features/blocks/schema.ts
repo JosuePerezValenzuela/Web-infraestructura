@@ -72,6 +72,7 @@ const blockSharedFields = {
   lat: latField,
   lng: lngField,
   facultad_id: foreignKeyField,
+  campus_id: foreignKeyField,
   tipo_bloque_id: foreignKeyField,
 } as const;
 
@@ -92,6 +93,7 @@ function sanitizeBlockData<
     lat?: number;
     lng?: number;
     facultad_id?: number;
+    campus_id?: number;
     tipo_bloque_id?: number;
   }
 >(data: T) {
@@ -101,6 +103,7 @@ function sanitizeBlockData<
     lng: typeof data.lng === "number" ? data.lng : undefined,
     facultad_id:
       typeof data.facultad_id === "number" ? data.facultad_id : undefined,
+    campus_id: typeof data.campus_id === "number" ? data.campus_id : undefined,
     tipo_bloque_id:
       typeof data.tipo_bloque_id === "number" ? data.tipo_bloque_id : undefined,
   };
@@ -127,6 +130,14 @@ export const blockCreateSchema = blockCreateObjectSchema
       });
     }
 
+    if (data.campus_id === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Selecciona un campus",
+        path: ["campus_id"],
+      });
+    }
+
     if (data.tipo_bloque_id === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -138,6 +149,7 @@ export const blockCreateSchema = blockCreateObjectSchema
   .transform((data) => ({
     ...sanitizeBlockData(data),
     facultad_id: data.facultad_id as number,
+    campus_id: data.campus_id as number,
     tipo_bloque_id: data.tipo_bloque_id as number,
   }));
 

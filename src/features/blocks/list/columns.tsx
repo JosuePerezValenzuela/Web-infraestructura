@@ -13,6 +13,8 @@ type BaseBlockRow = {
   nombre: string; // Nombre completo.
   nombre_corto: string | null; // Nombre corto opcional.
   pisos: number; // Cantidad de pisos construidos.
+  campus_id?: number; // Identificador del campus asociado si el backend lo expone.
+  campus_nombre?: string; // Nombre visible del campus para el nuevo contrato.
   activo: boolean; // Estado lógico del bloque.
   facultad_id: number; // Identificador interno de la facultad.
   tipo_bloque_id: number; // Identificador interno del tipo de bloque.
@@ -77,6 +79,13 @@ const getFacultyLabel = (row: BlockRow) =>
     fallback: "-",
   });
 
+const getCampusLabel = (row: BlockRow) =>
+  resolveRelatedLabel(row, {
+    directKeys: ["campus", "campus_nombre", "campusName", "campus_label"],
+    relationKeys: ["campus_detalle", "campusInfo", "campus_relacion", "campusData"],
+    fallback: "-",
+  });
+
 // Obtiene el nombre visible del tipo de bloque para reutilizar en celdas y ordenamiento.
 const getBlockTypeLabel = (row: BlockRow) =>
   resolveRelatedLabel(row, {
@@ -127,6 +136,16 @@ export function blockColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Pisos" />
       ),
+    },
+    {
+      // Campus donde se encuentra el bloque según el nuevo contrato.
+      id: "campus",
+      accessorFn: (row) => getCampusLabel(row),
+      meta: { label: "Campus" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Campus" />
+      ),
+      cell: ({ getValue }) => getValue<string>(),
     },
     {
       // Facultad propietaria.
