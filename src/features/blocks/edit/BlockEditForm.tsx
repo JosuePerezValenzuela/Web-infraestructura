@@ -35,7 +35,8 @@ const MapPicker = dynamic(() => import("@/features/campus/MapPicker"), {
 
 type BlockEditFormProps = {
   block: BlockRow;
-  faculties: Array<CatalogOption & { lat?: number; lng?: number }>;
+  faculties: CatalogOption[];
+  campuses: CatalogOption[];
   blockTypes: CatalogOption[];
   onSubmitSuccess?: () => void | Promise<void>;
   onCancel?: () => void;
@@ -44,6 +45,7 @@ type BlockEditFormProps = {
 export default function BlockEditForm({
   block,
   faculties,
+  campuses,
   blockTypes,
   onSubmitSuccess,
   onCancel,
@@ -75,14 +77,12 @@ export default function BlockEditForm({
   const catalogOptions = useMemo(
     () => ({
       faculties,
+      campuses,
       blockTypes,
     }),
-    [faculties, blockTypes]
+    [faculties, campuses, blockTypes]
   ); // Memoriza los catálogos para evitar renders innecesarios en los selectores personalizados.
-  const facultyLookup = useMemo(
-    () => new Map(faculties.map((item) => [String(item.id), item])),
-    [faculties]
-  );
+  const compactNumberInputClass = "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   async function handleSubmit(values: BlockUpdateInput) {
     const parsed = blockUpdateSchema.parse(values); // Convertimos los datos del formulario al formato esperado por la API.
@@ -146,189 +146,203 @@ export default function BlockEditForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className="space-y-6"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
         noValidate
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="codigo"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel htmlFor="edit-codigo-input">Codigo</FormLabel>
-                <FormControl>
-                  <Input
-                    id="edit-codigo-input"
-                    maxLength={16}
-                    placeholder="Ej. BLO-100"
-                    {...field}
-                    value={field.value ?? ""}
-                    className="w-full"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 py-4">
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="codigo"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel htmlFor="edit-codigo-input">Codigo</FormLabel>
+                    <FormControl>
+                      <Input
+                        id="edit-codigo-input"
+                        maxLength={16}
+                        placeholder="Ej. BLO-100"
+                        {...field}
+                        value={field.value ?? ""}
+                        className="w-full"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <FormField
-            control={form.control}
-            name="nombre"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel htmlFor="edit-nombre-input">Nombre</FormLabel>
-                <FormControl>
-                  <Input
-                    id="edit-nombre-input"
-                    maxLength={128}
-                    placeholder="Nombre oficial del bloque"
-                    {...field}
-                    value={field.value ?? ""}
-                    className="w-full"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="nombre"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel htmlFor="edit-nombre-input">Nombre</FormLabel>
+                    <FormControl>
+                      <Input
+                        id="edit-nombre-input"
+                        maxLength={128}
+                        placeholder="Nombre oficial del bloque"
+                        {...field}
+                        value={field.value ?? ""}
+                        className="w-full"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <FormField
-            control={form.control}
-            name="nombre_corto"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel htmlFor="edit-nombre-corto-input">
-                  Nombre corto (opcional)
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    id="edit-nombre-corto-input"
-                    maxLength={16}
-                    placeholder="Ej. Bloque A"
-                    {...field}
-                    value={field.value ?? ""}
-                    className="w-full"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_104px_minmax(0,1fr)] md:items-start">
+              <FormField
+                control={form.control}
+                name="nombre_corto"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel htmlFor="edit-nombre-corto-input">
+                      Nombre corto (opcional)
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        id="edit-nombre-corto-input"
+                        maxLength={16}
+                        placeholder="Ej. Bloque A"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <FormField
-            control={form.control}
-            name="pisos"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel htmlFor="edit-pisos-input">Pisos</FormLabel>
-                <FormControl>
-                  <Input
-                    id="edit-pisos-input"
-                    type="number"
-                    min={1}
-                    max={99}
-                    placeholder="Cantidad de pisos"
-                    {...field}
-                    value={field.value ?? ""}
-                    className="w-full"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="pisos"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel htmlFor="edit-pisos-input">Pisos</FormLabel>
+                    <FormControl>
+                      <Input
+                        id="edit-pisos-input"
+                        type="number"
+                        min={1}
+                        max={99}
+                        placeholder="Ej. 4"
+                        {...field}
+                        value={
+                          typeof field.value === "string" || typeof field.value === "number"
+                            ? field.value
+                            : ""
+                        }
+                        className={compactNumberInputClass}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <FormField
-            control={form.control}
-            name="facultad_id"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel id="edit-facultad-label">Facultad</FormLabel>
-                <CatalogSearchSelect
-                  buttonId="edit-facultad-select"
-                  labelId="edit-facultad-label"
-                  placeholder="Selecciona una facultad"
-                  searchPlaceholder="Buscar facultad"
-                  options={catalogOptions.faculties}
-                  value={field.value ? String(field.value) : ""}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    const selected = facultyLookup.get(value);
-                    if (
-                      selected &&
-                      typeof selected.lat === "number" &&
-                      typeof selected.lng === "number"
-                    ) {
-                      form.setValue("lat", String(selected.lat), {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                      form.setValue("lng", String(selected.lng), {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                    }
-                  }}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="campus_id"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel id="edit-campus-label">Campus</FormLabel>
+                    <CatalogSearchSelect
+                      buttonId="edit-campus-select"
+                      labelId="edit-campus-label"
+                      placeholder="Selecciona un campus"
+                      searchPlaceholder="Buscar campus"
+                      options={catalogOptions.campuses}
+                      value={field.value ? String(field.value) : ""}
+                      onChange={(value) => field.onChange(value)}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <FormField
-            control={form.control}
-            name="tipo_bloque_id"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel id="edit-tipo-bloque-label">
-                  Tipo de bloque
-                </FormLabel>
-                <CatalogSearchSelect
-                  buttonId="edit-tipo-bloque-select"
-                  labelId="edit-tipo-bloque-label"
-                  placeholder="Selecciona un tipo de bloque"
-                  searchPlaceholder="Buscar tipo"
-                  options={catalogOptions.blockTypes}
-                  value={field.value ? String(field.value) : ""}
-                  onChange={(value) => field.onChange(value)}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px] md:items-start">
+              <FormField
+                control={form.control}
+                name="facultad_id"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel id="edit-facultad-label">Facultad</FormLabel>
+                    <CatalogSearchSelect
+                      buttonId="edit-facultad-select"
+                      labelId="edit-facultad-label"
+                      placeholder="Selecciona una facultad"
+                      searchPlaceholder="Buscar facultad"
+                      options={catalogOptions.faculties}
+                      value={field.value ? String(field.value) : ""}
+                      onChange={(value) => field.onChange(value)}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <FormField
-          control={form.control}
-          name="activo"
-          render={({ field }) => (
-            <FormItem className="space-y-1">
-              <FormLabel className="font-semibold">Estado del bloque</FormLabel>
-              <div className="flex items-center gap-2">
-                <FormControl>
-                  <Checkbox
-                    id="edit-block-active"
-                    checked={field.value}
-                    onCheckedChange={(checked) =>
-                      field.onChange(checked === true)
-                    }
-                  />
-                </FormControl>
-                <label htmlFor="edit-block-active" className="text-sm">
-                  Activo
-                </label>
-                <p className="text-sm text-muted-foreground">
-                  Si desactivas un bloque, todos sus ambientes dependientes
-                  quedaran inactivos.
-                </p>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              <FormField
+                control={form.control}
+                name="tipo_bloque_id"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel id="edit-tipo-bloque-label">
+                      Tipo de bloque
+                    </FormLabel>
+                    <CatalogSearchSelect
+                      buttonId="edit-tipo-bloque-select"
+                      labelId="edit-tipo-bloque-label"
+                      placeholder="Selecciona un tipo de bloque"
+                      searchPlaceholder="Buscar tipo"
+                      options={catalogOptions.blockTypes}
+                      value={field.value ? String(field.value) : ""}
+                      onChange={(value) => field.onChange(value)}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div className="rounded-md border bg-muted/20 p-1">
-          <div className="h-64 overflow-hidden rounded-md">
+              <FormField
+                control={form.control}
+                name="activo"
+                render={({ field }) => (
+                  <FormItem className="min-w-0 rounded-lg border bg-card p-3 shadow-sm">
+                    <FormLabel htmlFor="edit-block-active">Estado</FormLabel>
+                    <div className="flex items-start gap-3">
+                      <FormControl>
+                        <Checkbox
+                          id="edit-block-active"
+                          checked={field.value}
+                          onCheckedChange={(checked) =>
+                            field.onChange(checked === true)
+                          }
+                        />
+                      </FormControl>
+                      <div className="space-y-1 text-sm">
+                        <label htmlFor="edit-block-active" className="font-medium">
+                          Estado del bloque
+                        </label>
+                        <p className="text-muted-foreground">
+                          Desactiva el bloque si también debe impactar a sus ambientes dependientes.
+                        </p>
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-md border bg-muted/20 p-1">
+            <div className="h-64 overflow-hidden rounded-md">
             <MapPicker
               lat={mapLat}
               lng={mapLng}
@@ -343,56 +357,59 @@ export default function BlockEditForm({
                 });
               }}
             />
-          </div>
-          {form.formState.errors.lat?.message ||
-          form.formState.errors.lng?.message ? (
-            <p className="mt-1 text-sm text-destructive">
-              {form.formState.errors.lat?.message ??
-                form.formState.errors.lng?.message}
-            </p>
-          ) : null}
-          <div className="sr-only">
-            <FormField
-              control={form.control}
-              name="lat"
-              render={({ field }) => (
-                <input
-                  data-testid="lat-input"
-                  type="text"
-                  tabIndex={-1}
-                  value={field.value ?? ""}
-                  onChange={(event) => field.onChange(event.target.value)}
-                />
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="lng"
-              render={({ field }) => (
-                <input
-                  data-testid="lng-input"
-                  type="text"
-                  tabIndex={-1}
-                  value={field.value ?? ""}
-                  onChange={(event) => field.onChange(event.target.value)}
-                />
-              )}
-            />
+            </div>
+            {form.formState.errors.lat?.message ||
+            form.formState.errors.lng?.message ? (
+              <p className="mt-1 text-sm text-destructive">
+                {form.formState.errors.lat?.message ??
+                  form.formState.errors.lng?.message}
+              </p>
+            ) : null}
+            <div className="sr-only">
+              <FormField
+                control={form.control}
+                name="lat"
+                render={({ field }) => (
+                  <input
+                    data-testid="lat-input"
+                    type="text"
+                    tabIndex={-1}
+                    value={field.value ?? ""}
+                    onChange={(event) => field.onChange(event.target.value)}
+                  />
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lng"
+                render={({ field }) => (
+                  <input
+                    data-testid="lng-input"
+                    type="text"
+                    tabIndex={-1}
+                    value={field.value ?? ""}
+                    onChange={(event) => field.onChange(event.target.value)}
+                  />
+                )}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onCancel?.()}
-            disabled={submitting}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Guardando..." : "Guardar cambios"}
-          </Button>
+        <div className="sticky bottom-0 border-t bg-background px-6 py-4">
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onCancel?.()}
+              disabled={submitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
         </div>
       </form>
     </Form>
@@ -413,6 +430,9 @@ function buildInitialValues(block: BlockRow): BlockUpdateInput {
     lng: resolveCoordinate(block, "lng"),
     facultad_id: String(
       resolveNumericField(block, ["facultad_id", "facultadId"]) ?? ""
+    ),
+    campus_id: String(
+      resolveNumericField(block, ["campus_id", "campusId"]) ?? ""
     ),
     tipo_bloque_id: String(
       resolveNumericField(block, ["tipo_bloque_id", "tipoBloqueId"]) ?? ""
@@ -542,7 +562,8 @@ function diffPayload(
   const changes: Partial<BlockUpdateOutput> = {};
   (Object.keys(current) as Array<keyof BlockUpdateOutput>).forEach((key) => {
     if (!Object.is(current[key], baseline[key])) {
-      changes[key] = current[key];
+      (changes as Record<keyof BlockUpdateOutput, BlockUpdateOutput[keyof BlockUpdateOutput]>)[key] =
+        current[key];
     }
   });
   return changes;

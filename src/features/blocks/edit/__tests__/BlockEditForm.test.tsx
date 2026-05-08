@@ -30,12 +30,18 @@ const baseBlock: BlockRow = {
   nombre_corto: "Central",
   pisos: 4,
   activo: true,
+  campus_id: 3,
   facultad_id: 7,
   tipo_bloque_id: 2,
   lat: -17.39,
   lng: -66.15,
   creado_en: "2025-01-01T12:00:00.000Z",
 };
+
+const campusesCatalog = [
+  { id: 3, nombre: "Campus Central" },
+  { id: 9, nombre: "Campus Norte" },
+];
 
 const facultiesCatalog = [
   { id: 7, nombre: "Facultad de Tecnologia" },
@@ -61,6 +67,7 @@ describe("BlockEditForm", () => {
       <BlockEditForm
         block={baseBlock}
         faculties={facultiesCatalog}
+        campuses={campusesCatalog}
         blockTypes={blockTypesCatalog}
         onSubmitSuccess={onSubmitSuccess}
       />
@@ -76,7 +83,7 @@ describe("BlockEditForm", () => {
     await user.clear(pisosInput); // Eliminamos el valor previo.
     await user.type(pisosInput, "5"); // Indicamos que ahora el bloque tendrá cinco pisos.
 
-    const activeCheckbox = screen.getByRole("checkbox", { name: /activo/i }); // Localizamos el control que marca si el bloque sigue activo.
+    const activeCheckbox = screen.getByRole("checkbox", { name: /estado del bloque/i }); // Localizamos el control que marca si el bloque sigue activo.
     await user.click(activeCheckbox); // Lo desmarcamos para simular la desactivación.
 
     const facultyTrigger = screen.getByLabelText(/facultad/i); // Buscamos el selector de facultad.
@@ -84,6 +91,12 @@ describe("BlockEditForm", () => {
     await user.click(
       await screen.findByRole("option", { name: /facultad de ingenieria/i })
     ); // Elegimos la segunda opción para indicar el nuevo dueño del bloque.
+
+    const campusTrigger = screen.getByLabelText(/campus/i);
+    await user.click(campusTrigger);
+    await user.click(
+      await screen.findByRole("option", { name: /campus norte/i })
+    );
 
     const typeTrigger = screen.getByLabelText(/tipo de bloque/i); // Repetimos el proceso para el tipo de bloque.
     await user.click(typeTrigger); // Abrimos el selector.
@@ -106,6 +119,7 @@ describe("BlockEditForm", () => {
           pisos: 5,
           activo: false,
           facultad_id: 8,
+          campus_id: 9,
           tipo_bloque_id: 5,
           lat: -17.4,
           lng: -66.2,
@@ -127,6 +141,7 @@ describe("BlockEditForm", () => {
       <BlockEditForm
         block={baseBlock}
         faculties={facultiesCatalog}
+        campuses={campusesCatalog}
         blockTypes={blockTypesCatalog}
       />
     ); // Renderizamos el formulario con los datos por defecto.
