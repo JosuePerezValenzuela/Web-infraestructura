@@ -10,12 +10,20 @@ type BaseEnvironmentRow = {
   id: number;
   codigo: string;
   nombre: string;
+   nombre_corto?: string | null;
   piso: number;
   clases: boolean;
   activo: boolean;
+   campus_id?: number;
+   campus_nombre?: string;
+   facultad_id?: number;
+   facultad_nombre?: string;
   bloque_id: number;
+   bloque_nombre?: string;
   tipo_ambiente_id: number;
+   tipo_ambiente_nombre?: string;
   capacidad?: Record<string, unknown> | string | null;
+   dimension?: Record<string, unknown> | string | null;
 };
 
 export type EnvironmentRow = BaseEnvironmentRow & Record<string, unknown>;
@@ -126,6 +134,39 @@ function getCapacityValues(row: EnvironmentRow): CapacityValues | null {
   return { total, exam };
 }
 
+const getCampusLabel = (row: EnvironmentRow) =>
+  resolveRelatedLabel(row, {
+    directKeys: ["campus", "campus_nombre", "campusName", "campus_label"],
+    relationKeys: ["campus_detalle", "campusDetalle", "campusInfo"],
+    fallback: "-",
+  });
+
+const getFacultyLabel = (row: EnvironmentRow) =>
+  resolveRelatedLabel(row, {
+    directKeys: ["facultad", "facultad_nombre", "facultadName", "facultad_label"],
+    relationKeys: ["facultad_detalle", "facultadDetalle", "facultadInfo"],
+    fallback: "-",
+  });
+
+const getBlockLabel = (row: EnvironmentRow) =>
+  resolveRelatedLabel(row, {
+    directKeys: ["bloque", "bloque_nombre", "bloqueNombre", "bloque_label"],
+    relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
+    fallback: "-",
+  });
+
+const getEnvironmentTypeLabel = (row: EnvironmentRow) =>
+  resolveRelatedLabel(row, {
+    directKeys: [
+      "tipo_ambiente",
+      "tipoAmbiente",
+      "tipo_ambiente_nombre",
+      "tipoAmbienteNombre",
+    ],
+    relationKeys: ["tipo_ambiente_detalle", "tipoAmbienteDetalle", "tipoAmbiente"],
+    fallback: "-",
+  });
+
 export function environmentColumns(
   onEdit?: (row: EnvironmentRow) => void,
   onDelete?: (row: EnvironmentRow) => void,
@@ -156,69 +197,41 @@ export function environmentColumns(
       // Exponemos el tipo de ambiente segun el catalogo para entender su uso.
       id: "tipo_ambiente",
       meta: { label: "Tipo de ambiente" },
-      accessorFn: (row) =>
-        resolveRelatedLabel(row, {
-          directKeys: [
-            "tipo_ambiente",
-            "tipoAmbiente",
-            "tipo_ambiente_nombre",
-            "tipoAmbienteNombre",
-          ],
-          relationKeys: [
-            "tipo_ambiente_detalle",
-            "tipoAmbienteDetalle",
-            "tipoAmbiente",
-          ],
-          fallback: "-",
-        }),
+      accessorFn: (row) => getEnvironmentTypeLabel(row),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Tipo" />
       ),
-      cell: ({ row }) =>
-        resolveRelatedLabel(row.original, {
-          directKeys: [
-            "tipo_ambiente",
-            "tipoAmbiente",
-            "tipo_ambiente_nombre",
-            "tipoAmbienteNombre",
-          ],
-          relationKeys: [
-            "tipo_ambiente_detalle",
-            "tipoAmbienteDetalle",
-            "tipoAmbiente",
-          ],
-          fallback: "-",
-        }),
+      cell: ({ row }) => getEnvironmentTypeLabel(row.original),
+    },
+    {
+      // Indicamos el campus asociado para ubicar el ambiente dentro del predio.
+      id: "campus",
+      meta: { label: "Campus" },
+      accessorFn: (row) => getCampusLabel(row),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Campus" />
+      ),
+      cell: ({ row }) => getCampusLabel(row.original),
+    },
+    {
+      // Señalamos la facultad propietaria antes del bloque para dar contexto institucional.
+      id: "facultad",
+      meta: { label: "Facultad" },
+      accessorFn: (row) => getFacultyLabel(row),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Facultad" />
+      ),
+      cell: ({ row }) => getFacultyLabel(row.original),
     },
     {
       // Indicamos el bloque al que pertenece para mantener el contexto fisico.
       id: "bloque",
       meta: { label: "Bloque" },
-      accessorFn: (row) =>
-        resolveRelatedLabel(row, {
-          directKeys: [
-            "bloque",
-            "bloque_nombre",
-            "bloqueNombre",
-            "bloque_label",
-          ],
-          relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
-          fallback: "-",
-        }),
+      accessorFn: (row) => getBlockLabel(row),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Bloque" />
       ),
-      cell: ({ row }) =>
-        resolveRelatedLabel(row.original, {
-          directKeys: [
-            "bloque",
-            "bloque_nombre",
-            "bloqueNombre",
-            "bloque_label",
-          ],
-          relationKeys: ["bloque_detalle", "bloqueDetalle", "bloqueInfo"],
-          fallback: "-",
-        }),
+      cell: ({ row }) => getBlockLabel(row.original),
     },
     {
       // Reproducimos el numero de piso que ayuda a ubicarlo en el edificio.
