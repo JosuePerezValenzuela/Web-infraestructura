@@ -1,35 +1,18 @@
 import { useCallback, useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { CampusDashboardFilters } from "@/features/campus-dashboard/schema";
 
-function parseSearchParams(searchParams: URLSearchParams): CampusDashboardFilters {
-  const includeInactiveParam = searchParams.get("includeInactive");
-  const campusIdsParam = searchParams.get("campusIds");
-
-  const includeInactive =
-    includeInactiveParam === null
-      ? true
-      : includeInactiveParam === "true" || includeInactiveParam === "1";
-
-  const campusIds =
-    campusIdsParam && campusIdsParam.length
-      ? campusIdsParam
-          .split(",")
-          .map((value) => Number.parseInt(value, 10))
-          .filter((value) => Number.isInteger(value) && value > 0)
-      : [];
-
-  return { includeInactive, campusIds };
+function parseSearchParams(): CampusDashboardFilters {
+  // Siempre incluimos inactivos según requerimiento.
+  // Ignoramos campusIds ya que se quitó el select.
+  return { includeInactive: true, campusIds: [] };
 }
 
-function buildSearchString(filters: CampusDashboardFilters): string {
+function buildSearchString(): string {
   const params = new URLSearchParams();
 
-  if (filters.campusIds.length) {
-    params.set("campusIds", filters.campusIds.join(","));
-  }
-
-  params.set("includeInactive", String(filters.includeInactive));
+  // Forzamos includeInactive=true
+  params.set("includeInactive", "true");
 
   const query = params.toString();
   return query.length ? `?${query}` : "";
@@ -38,47 +21,47 @@ function buildSearchString(filters: CampusDashboardFilters): string {
 export function useCampusDashboardFilters() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const filters = useMemo(
-    () => parseSearchParams(searchParams),
-    [searchParams]
+    () => parseSearchParams(),
+    []
   );
 
   const pushWithFilters = useCallback(
-    (nextFilters: CampusDashboardFilters) => {
-      const query = buildSearchString(nextFilters);
+    () => {
+      const query = buildSearchString();
       router.push(`${pathname}${query}`);
     },
     [pathname, router]
   );
 
   const setIncludeInactive = useCallback(
-    (value: boolean) => {
-      pushWithFilters({ ...filters, includeInactive: value });
+    () => {
+      pushWithFilters();
     },
-    [filters, pushWithFilters]
+    [pushWithFilters]
   );
 
   const setCampusIds = useCallback(
-    (campusIds: number[]) => {
-      pushWithFilters({ ...filters, campusIds });
+    () => {
+      pushWithFilters();
     },
-    [filters, pushWithFilters]
+    [pushWithFilters]
   );
 
   const buildDetailHref = useCallback(
     (campusId: number) => {
-      const query = buildSearchString(filters);
+      // Al navegar al detalle, mantenemos el includeInactive=true
+      const query = "?includeInactive=true";
       return `/dashboard/campus/${campusId}${query}`;
     },
-    [filters]
+    []
   );
 
   const buildGlobalHref = useCallback(() => {
-    const query = buildSearchString(filters);
+    const query = "?includeInactive=true";
     return `/dashboard/campus${query}`;
-  }, [filters]);
+  }, []);
 
   return {
     filters,

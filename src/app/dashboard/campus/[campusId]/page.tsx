@@ -70,7 +70,7 @@ export default function CampusDashboardDetailPage({
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-6">
       <div className="space-y-3 border-b py-3">
         <Skeleton className="h-6 w-24" />
         <Skeleton className="h-10 w-48" />
@@ -131,21 +131,16 @@ function CampusDashboardDetailContent({
     };
   }, []);
 
+  const detailData = (data && data.layout.mode === "detail") ? (data as CampusDashboardDetailResponse).data : undefined;
+
   const campusLabel = useMemo(() => {
     const match = campusOptions.find((option) => option.id === campusId);
     if (match) return match.nombre;
-    const fromPayload = data && data.layout.mode === "detail"
-      ? data.data.campus?.nombre
-      : null;
-    return fromPayload ?? `Campus ${campusId}`;
-  }, [campusId, campusOptions, data]);
+    return detailData?.campus?.nombre ?? `Campus ${campusId}`;
+  }, [campusId, campusOptions, detailData]);
 
-  const charts =
-    data && data.layout.mode === "detail" ? data.data.charts : undefined;
-  const facultiesRows =
-    data && data.layout.mode === "detail"
-      ? data.data.tables.facultadesResumen
-      : [];
+  const charts = detailData?.charts;
+  const facultiesRows = detailData?.tables.facultadesResumen ?? [];
 
   const buildFacultadDashboardHref = useMemo(() => {
     return (facultadId: number) => {
@@ -158,8 +153,8 @@ function CampusDashboardDetailContent({
   }, [campusId, filters.includeInactive]);
 
   return (
-    <div className="space-y-6 pt-2">
-      <div className="sticky top-14 z-20 space-y-3 border-b bg-background/95 py-3 backdrop-blur">
+    <div className="space-y-6">
+      <div className="sticky top-[-1rem] z-20 space-y-3 border-b bg-background/95 py-3 backdrop-blur-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <p className="text-xs uppercase text-muted-foreground">Campus</p>
@@ -175,6 +170,7 @@ function CampusDashboardDetailContent({
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"
+            variant="outline"
             onClick={() => router.push(buildGlobalHref())}
           >
             Volver
@@ -186,10 +182,7 @@ function CampusDashboardDetailContent({
         </div>
       </div>
 
-      <DetailKpiGrid
-        kpis={data?.layout.mode === "detail" ? data.data.kpis : undefined}
-        loading={loading}
-      />
+      <DetailKpiGrid kpis={detailData?.kpis} loading={loading} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {loading ? (

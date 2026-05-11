@@ -18,21 +18,25 @@ export const campusDashboardFiltersSchema = z.object({
     .default(true),
 });
 
-// KPIs globales según contrato v1.
+// KPIs globales según nuevo contrato.
 const campusDashboardGlobalKpisSchema = z.object({
   campus: z.object({
+    total: z.number().nonnegative(),
     activos: z.number().nonnegative(),
     inactivos: z.number().nonnegative(),
   }),
   facultades: z.object({
+    total: z.number().nonnegative(),
     activos: z.number().nonnegative(),
     inactivos: z.number().nonnegative(),
   }),
   bloques: z.object({
+    total: z.number().nonnegative(),
     activos: z.number().nonnegative(),
     inactivos: z.number().nonnegative(),
   }),
   ambientes: z.object({
+    total: z.number().nonnegative(),
     activos: z.number().nonnegative(),
     inactivos: z.number().nonnegative(),
   }),
@@ -41,74 +45,74 @@ const campusDashboardGlobalKpisSchema = z.object({
     examen: z.number().nonnegative(),
   }),
   activos: z.object({
-    total: z.number().nonnegative(),
     asignados: z.number().nonnegative(),
-    noAsignadosGlobal: z.number().nonnegative(),
+    sinAsignar: z.number().nonnegative(),
   }),
 });
 
-// Charts globales según contrato v1.
-const campusDashboardGlobalChartsSchema = z.object({
-  rankingAmbientesPorCampus: z.array(
+// Rankings y Distribuciones según nuevo contrato.
+const campusDashboardGlobalRankingsSchema = z.object({
+  porCantidadAmbientes: z.array(
     z.object({
-      campusId: z.number().nullable(),
-      campusNombre: z.string(),
-      ambientes: z.number(),
-      pctGlobal: z.number(),
+      campusId: z.number(),
+      nombre: z.string(),
+      cantidad: z.number(),
     })
   ),
-  capacidadTotalPorCampus: z.array(
+  porCapacidadTotal: z.array(
     z.object({
-      campusId: z.number().nullable(),
-      campusNombre: z.string(),
-      capacidadTotal: z.number(),
-      pctGlobal: z.number().optional(),
-    })
-  ),
-  capacidadExamenPorCampus: z.array(
-    z.object({
-      campusId: z.number().nullable(),
-      campusNombre: z.string(),
-      capacidadExamen: z.number(),
-      pctGlobal: z.number().optional(),
-    })
-  ),
-  activosPorCampus: z.array(
-    z.object({
-      campusId: z.number().nullable(),
-      campusNombre: z.string(),
-      asignados: z.number(),
-      noAsignados: z.number(),
-      pctGlobal: z.number().optional(),
-    })
-  ),
-  ambientesActivosInactivosPorCampus: z.array(
-    z.object({
-      campusId: z.number().nullable(),
-      campusNombre: z.string(),
-      activos: z.number(),
-      inactivos: z.number(),
+      campusId: z.number(),
+      nombre: z.string(),
+      capacidad: z.number(),
     })
   ),
 });
 
-// Tabla global según contrato v1.
-const campusDashboardGlobalTableSchema = z.object({
-  campusResumen: z.array(
+const campusDashboardGlobalDistribucionesSchema = z.object({
+  tiposBloquePorCampus: z.array(
     z.object({
-      campusId: z.number(),
-      campusNombre: z.string(),
-      facultades: z.number(),
-      bloques: z.number(),
-      tiposBloque: z.number(),
-      ambientes: z.number(),
-      tiposAmbiente: z.number(),
-      capacidadTotal: z.number(),
-      capacidadExamen: z.number(),
-      activosAsignados: z.number(),
+      nombre: z.string(),
+      cantidadTotal: z.number(),
+      tipos: z.array(
+        z.object({
+          tipo: z.string().nullable(),
+          cantidad: z.number(),
+        })
+      ),
+    })
+  ),
+  tiposAmbientePorCampus: z.array(
+    z.object({
+      nombre: z.string(),
+      cantidadTotal: z.number(),
+      tipos: z.array(
+        z.object({
+          tipo: z.string().nullable(),
+          cantidad: z.number(),
+        })
+      ),
     })
   ),
 });
+
+// Tabla global según nuevo contrato.
+const campusDashboardGlobalPorCampusSchema = z.array(
+  z.object({
+    id: z.number(),
+    nombre: z.string(),
+    facultades: z.number(),
+    bloques: z.number(),
+    ambientes: z.number(),
+    capacidad: z.object({
+      total: z.number(),
+      examen: z.number(),
+    }),
+    activos: z.object({
+      asignados: z.number(),
+      sinAsignar: z.number(),
+    }),
+  })
+);
 
 // Estructura esperada del payload del dashboard global.
 export const campusDashboardGlobalResponseSchema = z.object({
@@ -117,8 +121,9 @@ export const campusDashboardGlobalResponseSchema = z.object({
   layout: z.object({ mode: z.literal("global") }),
   data: z.object({
     kpis: campusDashboardGlobalKpisSchema,
-    charts: campusDashboardGlobalChartsSchema,
-    table: campusDashboardGlobalTableSchema,
+    rankings: campusDashboardGlobalRankingsSchema,
+    distribuciones: campusDashboardGlobalDistribucionesSchema,
+    porCampus: campusDashboardGlobalPorCampusSchema,
   }),
 });
 
