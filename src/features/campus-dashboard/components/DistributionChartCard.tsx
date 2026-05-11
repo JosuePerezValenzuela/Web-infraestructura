@@ -62,6 +62,7 @@ export function DistributionChartCard({
       legend: {
         bottom: 0,
         type: "scroll",
+        textStyle: { color: "var(--muted-foreground)" }
       },
       grid: {
         left: "3%",
@@ -72,14 +73,24 @@ export function DistributionChartCard({
       },
       xAxis: {
         type: "value",
-        splitLine: { lineStyle: { type: "dashed", opacity: 0.3 } },
+        splitLine: { lineStyle: { type: "dashed", opacity: 0.2, color: "var(--border)" } },
+        axisLabel: { color: "var(--muted-foreground)" }
       },
       yAxis: {
         type: "category",
         data: campusNames,
         axisTick: { show: false },
+        axisLine: { lineStyle: { color: "var(--border)" } },
+        axisLabel: { color: "var(--foreground)", fontWeight: 500 }
       },
       series,
+      color: [
+        "var(--primary)",
+        "var(--chart-2)",
+        "var(--chart-3)",
+        "var(--chart-4)",
+        "var(--chart-5)",
+      ],
     };
   }, [data, loading]);
 

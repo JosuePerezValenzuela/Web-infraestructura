@@ -1,3 +1,5 @@
+"use client";
+
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,84 +22,94 @@ export function CapacityKpiCard({
   loading = false,
 }: CapacityKpiCardProps) {
   const option = useMemo(() => {
-    const complement = Math.max(total - examen, 0);
     return {
       tooltip: {
         trigger: "axis",
-        formatter: (params: any) => {
-          const items = params as Array<{ seriesName: string; value: number }>;
-          const totalValue =
-            (items?.[0]?.value ?? 0) + (items?.[1]?.value ?? 0);
-          return [
-            `<strong>${title}</strong>`,
-            ...items.map(
-              (item) => `${item.seriesName}: ${item.value.toLocaleString()}`
-            ),
-            `Total: ${totalValue.toLocaleString()}`,
-          ].join("<br />");
+        axisPointer: { type: "shadow" },
+        formatter: "{b}: {c}",
+      },
+      grid: {
+        top: 10,
+        bottom: 20,
+        left: 0,
+        right: 40,
+        containLabel: true,
+      },
+      xAxis: {
+        type: "value",
+        show: false,
+      },
+      yAxis: {
+        type: "category",
+        data: ["Examen", "Total"],
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          fontSize: 11,
+          color: "var(--muted-foreground)",
+          fontWeight: 500,
         },
       },
-      grid: { left: 12, right: 12, bottom: 16, top: 30, containLabel: true },
-      xAxis: {
-        type: "category",
-        data: [title],
-        axisTick: { show: false },
-        axisLabel: { show: false },
-      },
-      yAxis: { type: "value", splitLine: { show: false } },
       series: [
         {
-          name: "Examen",
+          name: "Capacidad",
           type: "bar",
-          stack: "capacidad",
-          itemStyle: { color: "#a855f7" },
-          barWidth: "45%",
+          data: [
+            {
+              value: examen,
+              itemStyle: { color: "var(--primary)" },
+            },
+            {
+              value: total,
+              itemStyle: { color: "var(--chart-2)" }, // Usar otra variable de chart si existe o una secundaria
+            },
+          ],
+          barWidth: 12,
+          itemStyle: {
+            borderRadius: [0, 10, 10, 0],
+          },
           label: {
             show: true,
-            position: "insideTop",
-            formatter: ({ value }: { value: number }) =>
-              `${value.toLocaleString()} (Examen)`,
+            position: "right",
+            formatter: (params: any) => params.value.toLocaleString(),
+            fontSize: 11,
+            fontWeight: "bold",
+            color: "var(--foreground)",
           },
-          data: [examen],
-        },
-        {
-          name: "Diferencia",
-          type: "bar",
-          stack: "capacidad",
-          itemStyle: { color: "#22c55e" },
-          barWidth: "45%",
-          label: {
-            show: true,
-            position: "inside",
-            formatter: ({ value }: { value: number }) =>
-              `${(value + examen).toLocaleString()} (Cap total)`,
-          },
-          data: [complement],
         },
       ],
     };
-  }, [examen, title, total]);
+  }, [total, examen]);
+
+  if (loading) {
+    return (
+      <div className="flex h-44 flex-col justify-between rounded-xl border bg-card p-4 shadow-sm">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-16" />
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="rounded-lg border bg-card p-4 shadow-sm"
-      data-testid="campus-kpi-card"
-    >
-      <p className="text-sm font-semibold">{title}</p>
-      {loading ? (
-        <div className="mt-3 space-y-2">
-          <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-28 w-full" />
-        </div>
-      ) : (
-        <div className="mt-2">
-          <ReactECharts
-            option={option}
-            style={{ height: 200 }}
-            opts={{ locale: "es" }}
-          />
-        </div>
-      )}
+    <div className="flex h-44 flex-col justify-between rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md">
+      <div>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          {title}
+        </p>
+        <p className="text-3xl font-bold text-foreground">
+          {total.toLocaleString()}
+        </p>
+      </div>
+
+      <div className="h-20 w-full">
+        <ReactECharts option={option} style={{ height: "100%", width: "100%" }} />
+      </div>
     </div>
   );
 }

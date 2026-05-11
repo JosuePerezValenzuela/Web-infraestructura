@@ -77,7 +77,7 @@ function CampusDashboardContent() {
           data={rankings?.porCantidadAmbientes ?? []}
           valueKey="cantidad"
           seriesName="Ambientes"
-          color="#3b82f6"
+          color="oklch(0.553 0.013 58.071)" // Primary UMSS
         />
         <RankingChartCard
           title="Ranking de Capacidad Total por Campus"
@@ -85,7 +85,7 @@ function CampusDashboardContent() {
           data={rankings?.porCapacidadTotal ?? []}
           valueKey="capacidad"
           seriesName="Capacidad"
-          color="#10b981"
+          color="oklch(0.446 0.03 256.802)" // Deep Blue consistent with theme
         />
       </div>
 

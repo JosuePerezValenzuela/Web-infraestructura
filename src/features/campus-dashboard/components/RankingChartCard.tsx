@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,7 +13,7 @@ type RankingChartCardProps = {
   data: Array<{ nombre: string; [key: string]: number | string }>;
   valueKey: string;
   seriesName: string;
-  color: string;
+  color?: string;
   loading?: boolean;
   height?: number;
 };
@@ -22,66 +23,114 @@ export function RankingChartCard({
   data,
   valueKey,
   seriesName,
-  color,
+  color = "var(--primary)", // Usar variable CSS por defecto
   loading = false,
   height = 350,
 }: RankingChartCardProps) {
-  const option = !loading && data.length > 0 ? {
-    tooltip: {
-      trigger: "axis",
-      axisPointer: { type: "shadow" },
-    },
-    grid: {
-      left: "3%",
-      right: "4%",
-      bottom: "3%",
-      top: "3%",
-      containLabel: true,
-    },
-    xAxis: {
-      type: "value",
-      splitLine: { lineStyle: { type: "dashed", opacity: 0.3 } },
-    },
-    yAxis: {
-      type: "category",
-      data: [...data]
-        .sort((a, b) => Number(a[valueKey as keyof typeof a]) - Number(b[valueKey as keyof typeof b]))
-        .map((d) => d.nombre),
-      axisTick: { show: false },
-    },
-    series: [
-      {
-        name: seriesName,
-        type: "bar",
-        data: [...data]
-          .sort((a, b) => Number(a[valueKey as keyof typeof a]) - Number(b[valueKey as keyof typeof b]))
-          .map((d) => d[valueKey as keyof typeof d]),
-        itemStyle: {
-          color,
-          borderRadius: [0, 4, 4, 0],
-        },
-        label: {
-          show: true,
-          position: "right",
-          formatter: "{c}",
+  const option = useMemo(() => {
+    if (loading || !data.length) return null;
+
+    // Ordenamos de mayor a menor (descendente)
+    const sortedData = [...data].sort(
+      (a, b) => Number(a[valueKey as keyof typeof a]) - Number(b[valueKey as keyof typeof b])
+    );
+
+    return {
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params: any) => {
+          const item = params[0];
+          return `<strong>${item.name}</strong><br/>${seriesName}: ${item.value.toLocaleString()}`;
         },
       },
-    ],
-  } : null;
+      grid: {
+        left: "3%",
+        right: "12%",
+        bottom: "3%",
+        top: "5%",
+        containLabel: true,
+      },
+      xAxis: {
+        type: "value",
+        splitLine: { 
+          lineStyle: { 
+            type: "dashed", 
+            opacity: 0.2,
+            color: "rgb(var(--border) / 0.5)" 
+          } 
+        },
+        axisLabel: {
+          color: "var(--muted-foreground)",
+          fontSize: 10,
+        }
+      },
+      yAxis: {
+        type: "category",
+        data: sortedData.map((d) => d.nombre),
+        axisTick: { show: false },
+        axisLine: { 
+          lineStyle: { color: "var(--border)" } 
+        },
+        axisLabel: {
+          color: "var(--foreground)",
+          fontSize: 11,
+          fontWeight: 500,
+          width: 100,
+          overflow: "truncate"
+        },
+      },
+      series: [
+        {
+          name: seriesName,
+          type: "bar",
+          data: sortedData.map((d) => d[valueKey as keyof typeof d]),
+          barWidth: "60%",
+          itemStyle: {
+            color, // Ahora recibirá "var(--primary)" o similar
+            borderRadius: [0, 4, 4, 0],
+          },
+          label: {
+            show: true,
+            position: "right",
+            formatter: (params: any) => params.value.toLocaleString(),
+            color: "var(--foreground)",
+            fontSize: 11,
+            fontWeight: "bold",
+            distance: 10
+          },
+          emphasis: {
+            itemStyle: {
+              opacity: 0.8
+            }
+          }
+        },
+      ],
+    };
+  }, [data, valueKey, seriesName, color, loading]);
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
-      <h3 className="mb-4 text-base font-semibold text-card-foreground">
+    <div className="rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md">
+      <h3 className="mb-6 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
         {title}
       </h3>
       {loading ? (
-        <Skeleton style={{ height }} className="w-full rounded-lg" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-6 flex-1 rounded-sm" />
+            </div>
+          ))}
+        </div>
       ) : option ? (
-        <ReactECharts
-          option={option}
-          style={{ height }}
-          opts={{ locale: "es" }}
-        />
+        <div className="mt-2">
+          <ReactECharts
+            option={option}
+            style={{ height }}
+            opts={{ locale: "es" }}
+          />
+        </div>
       ) : (
         <div
           style={{ height }}
