@@ -17,6 +17,11 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-chart-10: var(--chart-10);
+  --color-chart-9: var(--chart-9);
+  --color-chart-8: var(--chart-8);
+  --color-chart-7: var(--chart-7);
+  --color-chart-6: var(--chart-6);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -64,14 +69,30 @@
   --border: oklch(0.923 0.003 48.717);
   --input: oklch(0.923 0.003 48.717);
   --ring: oklch(0.709 0.01 56.259);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Chart palette: Blues -> Greens -> Golds -> Neutrals (coherente con tema UMSS) */
+  --chart-1: oklch(0.216 0.006 56.043);  /* Azul oscuro (primary) */
+  --chart-2: oklch(0.445 0.025 230);      /* Azul medio */
+  --chart-3: oklch(0.552 0.032 230);      /* Azul claro */
+  --chart-4: oklch(0.622 0.025 230);      /* Azul sky */
+  --chart-5: oklch(0.455 0.025 175);     /* Verde azulado */
+  --chart-6: oklch(0.480 0.025 155);     /* Verde */
+  --chart-7: oklch(0.520 0.025 155);     /* Verde claro */
+  --chart-8: oklch(0.580 0.025 155);     /* Verde suave */
+  --chart-9: oklch(0.680 0.045 85);      /* Oro/ocre */
+  --chart-10: oklch(0.620 0.045 85);     /* Ocre oscuro */
+  --chart-11: oklch(0.550 0.025 50);     /* Marrón claro */
+  --chart-12: oklch(0.450 0.025 50);     /* Marrón oscuro */
+  --chart-13: oklch(0.520 0.020 250);    /* Gris azulado */
+  --chart-14: oklch(0.580 0.015 250);    /* Gris medio */
+  --chart-15: oklch(0.650 0.012 250);    /* Gris claro */
+  --chart-16: oklch(0.720 0.010 250);    /* Gris muy claro */
+  --chart-17: oklch(0.480 0.015 240);    /* Gris slate */
+  --chart-18: oklch(0.400 0.015 240);    /* Gris slate oscuro */
+  --chart-19: oklch(0.500 0.025 290);    /* Púrpura medio */
+  --chart-20: oklch(0.550 0.025 290);    /* Púrpura claro */
   --sidebar: oklch(0.985 0.001 106.423);
-  --sidebar-foreground: #003049;
-  --sidebar-primary: #003049;
+  --sidebar-foreground: oklch(0.216 0.006 56.043);
+  --sidebar-primary: oklch(0.216 0.006 56.043);
   --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
   --sidebar-accent: oklch(0.97 0.001 106.424);
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
@@ -98,11 +119,27 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.553 0.013 58.071);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  /* Chart palette dark mode - colores más claros/brillantes */
+  --chart-1: oklch(0.488 0.243 264.376);  /* Azul oscuro */
+  --chart-2: oklch(0.522 0.025 230);      /* Azul medio */
+  --chart-3: oklch(0.622 0.032 230);      /* Azul claro */
+  --chart-4: oklch(0.702 0.025 230);      /* Azul sky */
+  --chart-5: oklch(0.525 0.025 175);     /* Verde azulado */
+  --chart-6: oklch(0.550 0.025 155);     /* Verde */
+  --chart-7: oklch(0.600 0.025 155);     /* Verde claro */
+  --chart-8: oklch(0.680 0.025 155);     /* Verde suave */
+  --chart-9: oklch(0.750 0.045 85);      /* Oro/ocre */
+  --chart-10: oklch(0.700 0.045 85);     /* Ocre oscuro */
+  --chart-11: oklch(0.620 0.025 50);     /* Marrón claro */
+  --chart-12: oklch(0.520 0.025 50);     /* Marrón oscuro */
+  --chart-13: oklch(0.600 0.020 250);    /* Gris azulado */
+  --chart-14: oklch(0.680 0.015 250);    /* Gris medio */
+  --chart-15: oklch(0.750 0.012 250);    /* Gris claro */
+  --chart-16: oklch(0.820 0.010 250);    /* Gris muy claro */
+  --chart-17: oklch(0.580 0.015 240);    /* Gris slate */
+  --chart-18: oklch(0.500 0.015 240);    /* Gris slate oscuro */
+  --chart-19: oklch(0.580 0.025 290);    /* Púrpura medio */
+  --chart-20: oklch(0.630 0.025 290);    /* Púrpura claro */
   --sidebar: oklch(0.216 0.006 56.043);
   --sidebar-foreground: oklch(0.985 0.001 106.423);
   --sidebar-primary: oklch(0.488 0.243 264.376);

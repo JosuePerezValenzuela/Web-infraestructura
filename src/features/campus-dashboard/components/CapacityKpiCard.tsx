@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CHART_PALETTES } from "@/config/dashboard-colors";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
@@ -21,6 +22,9 @@ export function CapacityKpiCard({
   examen,
   loading = false,
 }: CapacityKpiCardProps) {
+  // Extraer colores de la paleta de capacidad
+  const [examenColor, totalColor] = CHART_PALETTES.capacity;
+
   const option = useMemo(() => {
     return {
       tooltip: {
@@ -57,11 +61,13 @@ export function CapacityKpiCard({
           data: [
             {
               value: examen,
-              itemStyle: { color: "var(--primary)" },
+              itemStyle: { color: examenColor },
+              emphasis: { itemStyle: { color: examenColor } },
             },
             {
               value: total,
-              itemStyle: { color: "var(--chart-2)" }, // Usar otra variable de chart si existe o una secundaria
+              itemStyle: { color: totalColor },
+              emphasis: { itemStyle: { color: totalColor } },
             },
           ],
           barWidth: 12,
@@ -79,7 +85,7 @@ export function CapacityKpiCard({
         },
       ],
     };
-  }, [total, examen]);
+  }, [total, examen, examenColor, totalColor]);
 
   if (loading) {
     return (

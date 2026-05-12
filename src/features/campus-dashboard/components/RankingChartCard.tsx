@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getRankingColor } from "@/config/dashboard-colors";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
@@ -23,14 +24,19 @@ export function RankingChartCard({
   data,
   valueKey,
   seriesName,
-  color = "var(--primary)", // Usar variable CSS por defecto
+  color,
   loading = false,
   height = 350,
 }: RankingChartCardProps) {
+  // Color resuelto automáticamente si no se provee (usando paleta centralizada)
+  const resolvedColor = color ?? getRankingColor(valueKey);
+
   const option = useMemo(() => {
     if (loading || !data.length) return null;
 
     // Ordenamos de mayor a menor (descendente)
+    // ECharts renderiza el primer elemento ARRIBA en Y
+    // Por eso ordenamos: el mayor queda PRIMERO en el array = ARRIBA en la gráfica
     const sortedData = [...data].sort(
       (a, b) => Number(a[valueKey as keyof typeof a]) - Number(b[valueKey as keyof typeof b])
     );
@@ -53,12 +59,12 @@ export function RankingChartCard({
       },
       xAxis: {
         type: "value",
-        splitLine: { 
-          lineStyle: { 
-            type: "dashed", 
+        splitLine: {
+          lineStyle: {
+            type: "dashed",
             opacity: 0.2,
-            color: "rgb(var(--border) / 0.5)" 
-          } 
+            color: "var(--border)"
+          }
         },
         axisLabel: {
           color: "var(--muted-foreground)",
@@ -69,8 +75,8 @@ export function RankingChartCard({
         type: "category",
         data: sortedData.map((d) => d.nombre),
         axisTick: { show: false },
-        axisLine: { 
-          lineStyle: { color: "var(--border)" } 
+        axisLine: {
+          lineStyle: { color: "var(--border)" }
         },
         axisLabel: {
           color: "var(--foreground)",
@@ -87,7 +93,7 @@ export function RankingChartCard({
           data: sortedData.map((d) => d[valueKey as keyof typeof d]),
           barWidth: "60%",
           itemStyle: {
-            color, // Ahora recibirá "var(--primary)" o similar
+            color: resolvedColor,
             borderRadius: [0, 4, 4, 0],
           },
           label: {
@@ -107,7 +113,7 @@ export function RankingChartCard({
         },
       ],
     };
-  }, [data, valueKey, seriesName, color, loading]);
+  }, [data, valueKey, seriesName, resolvedColor, loading]);
 
   return (
     <div className="rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md">

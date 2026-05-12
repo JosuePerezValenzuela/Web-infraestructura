@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CHART_PALETTES } from "@/config/dashboard-colors";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
@@ -17,6 +18,8 @@ type DonutKpiCardProps = {
 };
 
 export function DonutKpiCard({ title, data, loading = false }: DonutKpiCardProps) {
+  const [activeColor, inactiveColor] = CHART_PALETTES.donut;
+
   const total = useMemo(() => data.reduce((acc, curr) => acc + (curr.value ?? 0), 0), [data]);
   
   const activos = data.find((d) => d.label === "Activos" || d.label === "Asignados" || d.label === "Activas")?.value ?? 0;
@@ -41,26 +44,34 @@ export function DonutKpiCard({ title, data, loading = false }: DonutKpiCardProps
           },
           label: {
             show: false,
-            position: "center",
           },
           emphasis: {
-            label: {
-              show: false,
-            },
+            scale: true,
+            scaleSize: 5,
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: "rgba(0, 0, 0, 0.2)"
+            }
           },
           labelLine: {
             show: false,
           },
-          data: data.map((item) => ({
-            name: item.label,
-            value: item.value ?? 0,
-            itemStyle: {
-              color: 
-                item.label === "Activos" || item.label === "Asignados" || item.label === "Activas"
-                  ? "var(--primary)"
-                  : "var(--muted-foreground)",
-            },
-          })),
+          data: data.map((item) => {
+            const isActive = item.label === "Activos" || item.label === "Asignados" || item.label === "Activas";
+            return {
+              name: item.label,
+              value: item.value ?? 0,
+              itemStyle: {
+                color: isActive ? activeColor : inactiveColor,
+              },
+              emphasis: {
+                itemStyle: {
+                  color: isActive ? activeColor : inactiveColor,
+                }
+              }
+            };
+          }),
         },
       ],
       graphic: {
@@ -76,7 +87,7 @@ export function DonutKpiCard({ title, data, loading = false }: DonutKpiCardProps
         },
       },
     };
-  }, [data, title, total]);
+  }, [data, title, total, activeColor, inactiveColor]);
 
   if (loading) {
     return (
@@ -109,14 +120,12 @@ export function DonutKpiCard({ title, data, loading = false }: DonutKpiCardProps
               <span className="font-bold text-foreground">{activos.toLocaleString()}</span> Disponibles
             </p>
           </div>
-          {inactivos >= 0 && (
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-              <p className="text-[11px] text-muted-foreground">
-                <span className="font-bold text-foreground">{inactivos.toLocaleString()}</span> Inactivos
-              </p>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-chart-3" />
+            <p className="text-[11px] text-muted-foreground">
+              <span className="font-bold text-foreground">{inactivos.toLocaleString()}</span> Inactivos
+            </p>
+          </div>
         </div>
       </div>
 
