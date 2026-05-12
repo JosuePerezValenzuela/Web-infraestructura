@@ -6,6 +6,7 @@ import {
   House,
   ToolCase,
   Shapes,
+  LayoutDashboard,
 } from "lucide-react";
 import { CLASSIFIERS } from "./classifiers";
 
@@ -13,19 +14,24 @@ export type NavGroup = { label: string; icon?: LucideIcon; href: string }
 
 export const NAV_GROUPS: NavGroup[] = [
     {
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        href: `/dashboard/campus`,
+    },
+    {
         label: "Campus",
         icon: Layers3,
-        href: `/dashboard/campus`,
+        href: `/dashboard/campus/list`,
     },
     {
         label: 'Facultades',
         icon: Layers2,
-        href: `/dashboard/facultades`
+        href: `/dashboard/facultades/list`
     },
     {
         label: 'Bloques',
         icon: Building2,
-        href: `/dashboard/bloques`
+        href: `/dashboard/bloques/list`
     },
     {
         label: 'Ambientes',

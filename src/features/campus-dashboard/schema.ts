@@ -151,40 +151,40 @@ const campusDashboardDetailKpisSchema = z.object({
   }),
 });
 
-// Charts detalle según contrato v1.
+// Charts detalle según nuevo contrato.
 const campusDashboardDetailChartsSchema = z.object({
   tiposBloque: z.array(
     z.object({
       tipoBloqueId: z.number(),
-      tipoBloqueNombre: z.string(),
+      tipoBloqueNombre: z.string().nullable(),
       cantidad: z.number(),
     })
   ),
   tiposAmbiente: z.array(
     z.object({
       tipoAmbienteId: z.number(),
-      tipoAmbienteNombre: z.string(),
+      tipoAmbienteNombre: z.string().nullable(),
       cantidad: z.number(),
     })
   ),
 });
 
-// Tablas detalle según contrato v1.
-const campusDashboardDetailTablesSchema = z.object({
-  facultadesResumen: z.array(
-    z.object({
-      facultadId: z.number(),
-      facultadNombre: z.string(),
-      bloques: z.number(),
-      tiposBloque: z.number(),
-      ambientes: z.number(),
-      tiposAmbiente: z.number(),
-      capacidadTotal: z.number(),
-      capacidadExamen: z.number(),
-      activosAsignados: z.number(),
-    })
-  ),
-});
+// Tablas detalle según nuevo contrato (porFacultad reemplaza tables.facultadesResumen)
+const campusDashboardDetailPorFacultadSchema = z.array(
+  z.object({
+    id: z.number(),
+    nombre: z.string(),
+    bloques: z.number(),
+    ambientes: z.number(),
+    capacidad: z.object({
+      total: z.number(),
+      examen: z.number(),
+    }),
+    activos: z.object({
+      asignados: z.number(),
+    }),
+  })
+);
 
 // Estructura esperada del payload del dashboard detalle.
 export const campusDashboardDetailResponseSchema = z.object({
@@ -207,7 +207,7 @@ export const campusDashboardDetailResponseSchema = z.object({
       .optional(),
     kpis: campusDashboardDetailKpisSchema,
     charts: campusDashboardDetailChartsSchema,
-    tables: campusDashboardDetailTablesSchema,
+    porFacultad: campusDashboardDetailPorFacultadSchema,
   }),
 });
 
