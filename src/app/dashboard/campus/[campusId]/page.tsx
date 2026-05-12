@@ -1,19 +1,18 @@
 "use client";
 
-import { Suspense, use, useEffect, useMemo, useState } from "react";
+import { Suspense, use, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiFetch } from "@/lib/api";
 import { useCampusDashboardFilters } from "@/features/campus-dashboard/hooks/useCampusDashboardFilters";
 import { useCampusDashboardData } from "@/features/campus-dashboard/hooks/useCampusDashboardData";
 import { DonutKpiCard } from "@/features/campus-dashboard/components/DonutKpiCard";
 import { CapacityKpiCard } from "@/features/campus-dashboard/components/CapacityKpiCard";
 import { CHART_PALETTES } from "@/config/dashboard-colors";
 import type { CampusDashboardDetailResponse } from "@/features/campus-dashboard/schema";
-import { ChevronLeft } from "lucide-react";
+import { Users, ChevronLeft } from "lucide-react";
 
 type CampusOption = { id: number; nombre: string };
 
@@ -92,16 +91,24 @@ function CampusDashboardDetailContent({
       {/* Header */}
       <div className="border-b py-3">
         {/* Breadcrumb + Campus info */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <button
-            onClick={() => router.push(buildGlobalHref())}
-            className="flex items-center gap-1 hover:text-primary transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Volver</span>
-          </button>
-          <span className="text-muted-foreground/50">/</span>
-          <span className="text-muted-foreground/70">Dashboard</span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <button
+              onClick={() => router.push(buildGlobalHref())}
+              className="flex items-center gap-1 hover:text-primary transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Volver</span>
+            </button>
+            <span className="text-muted-foreground/50">/</span>
+            <span className="text-muted-foreground/70">Dashboard</span>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/campus/list">
+              <Users className="mr-2 h-4 w-4" />
+              Administrar Campus
+            </Link>
+          </Button>
         </div>
 
         {/* Campus label */}

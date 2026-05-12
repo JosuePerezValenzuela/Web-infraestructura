@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCampusDashboardFilters } from "@/features/campus-dashboard/hooks/useCampusDashboardFilters";
@@ -62,7 +63,15 @@ function CampusDashboardContent() {
   return (
     <div className="space-y-6">
       <div className="border-b py-3">
-        <h1 className="text-xl font-semibold">Dashboard</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Dashboard</h1>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/campus/list">
+              <Users className="mr-2 h-4 w-4" />
+              Administrar Campus
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <KpiGrid kpis={kpis} loading={loading} />

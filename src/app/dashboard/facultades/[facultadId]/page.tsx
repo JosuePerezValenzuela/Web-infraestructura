@@ -2,7 +2,9 @@
 
 import { Suspense, use, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, GraduationCap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFacultadDashboardData } from "@/features/facultad-dashboard/hooks/useFacultadDashboardData";
@@ -11,7 +13,6 @@ import { CapacityKpiCard } from "@/features/campus-dashboard/components/Capacity
 import { RankingChartCard } from "@/features/campus-dashboard/components/RankingChartCard";
 import { DistributionChartCard } from "@/features/campus-dashboard/components/DistributionChartCard";
 import type { FacultadDashboardDetailResponse } from "@/features/facultad-dashboard/schema";
-import { apiFetch } from "@/lib/api";
 
 type CampusOption = { id: number; nombre: string };
 
@@ -107,16 +108,24 @@ function FacultadDashboardDetailContent({
       {/* Header */}
       <div className="border-b py-3">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1 transition-colors hover:text-primary"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Volver</span>
-          </button>
-          <span className="text-muted-foreground/50">/</span>
-          <span className="text-muted-foreground/70">Dashboard</span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1 transition-colors hover:text-primary"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Volver</span>
+            </button>
+            <span className="text-muted-foreground/50">/</span>
+            <span className="text-muted-foreground/70">Dashboard</span>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/facultades/list">
+              <GraduationCap className="mr-2 h-4 w-4" />
+              Administrar Facultades
+            </Link>
+          </Button>
         </div>
 
         {/* Faculty label */}
