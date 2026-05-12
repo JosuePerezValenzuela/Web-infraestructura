@@ -61,11 +61,8 @@ function CampusDashboardContent() {
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-[-1rem] z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 py-3 backdrop-blur-sm">
-        <h1 className="text-xl font-semibold">Dashboard Campus General</h1>
-        <Button asChild>
-          <Link href="/dashboard/campus/list">Administrar Campus</Link>
-        </Button>
+      <div className="border-b py-3">
+        <h1 className="text-xl font-semibold">Dashboard</h1>
       </div>
 
       <KpiGrid kpis={kpis} loading={loading} />

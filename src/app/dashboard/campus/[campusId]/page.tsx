@@ -3,7 +3,6 @@
 import { Suspense, use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,49 +11,11 @@ import { useCampusDashboardFilters } from "@/features/campus-dashboard/hooks/use
 import { useCampusDashboardData } from "@/features/campus-dashboard/hooks/useCampusDashboardData";
 import { DonutKpiCard } from "@/features/campus-dashboard/components/DonutKpiCard";
 import { CapacityKpiCard } from "@/features/campus-dashboard/components/CapacityKpiCard";
+import { CHART_PALETTES } from "@/config/dashboard-colors";
 import type { CampusDashboardDetailResponse } from "@/features/campus-dashboard/schema";
+import { ChevronLeft } from "lucide-react";
 
 type CampusOption = { id: number; nombre: string };
-
-const ReactECharts = dynamic(() => import("echarts-for-react"), {
-  ssr: false,
-});
-
-function SwitchInactive({
-  checked,
-  onCheckedChange,
-}: {
-  checked: boolean;
-  onCheckedChange: (value: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label="Mostrar inactivos"
-      onClick={() => onCheckedChange(!checked)}
-      className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition ${
-        checked
-          ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-          : "border-muted-foreground/40 bg-muted text-muted-foreground"
-      }`}
-    >
-      <span
-        className={`flex h-4 w-7 items-center rounded-full transition ${
-          checked ? "bg-emerald-500/80" : "bg-muted-foreground/30"
-        }`}
-      >
-        <span
-          className={`h-3.5 w-3.5 rounded-full bg-white shadow transition ${
-            checked ? "translate-x-3" : "translate-x-0.5"
-          }`}
-        />
-      </span>
-      Mostrar inactivos
-    </button>
-  );
-}
 
 export default function CampusDashboardDetailPage({
   params,
@@ -74,16 +35,17 @@ function DetailSkeleton() {
       <div className="space-y-3 border-b py-3">
         <Skeleton className="h-6 w-24" />
         <Skeleton className="h-10 w-48" />
-        <div className="flex gap-3">
-          <Skeleton className="h-9 w-20" />
-          <Skeleton className="h-9 w-32" />
-        </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 rounded-lg" />
+          <Skeleton key={i} className="h-44 rounded-xl" />
         ))}
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Skeleton className="h-72 w-full rounded-lg" />
+        <Skeleton className="h-72 w-full rounded-lg" />
+      </div>
+      <Skeleton className="h-96 w-full rounded-lg" />
     </div>
   );
 }
@@ -100,90 +62,71 @@ function CampusDashboardDetailContent({
       : (params as { campusId: string });
   const campusId = Number(resolvedParams.campusId);
 
-  const { filters, setIncludeInactive, buildGlobalHref } =
-    useCampusDashboardFilters();
+  const { buildGlobalHref } = useCampusDashboardFilters();
 
   const { data, loading } = useCampusDashboardData({
     mode: "detail",
     campusId,
-    filters,
+    filters: { includeInactive: true, campusIds: [] },
   });
 
-  const [campusOptions, setCampusOptions] = useState<CampusOption[]>([]);
+  const detailData = (data && data.layout.mode === "detail") 
+    ? (data as CampusDashboardDetailResponse).data 
+    : undefined;
 
-  useEffect(() => {
-    let active = true;
-    async function loadCampus() {
-      try {
-        const response = await apiFetch<{ items: CampusOption[] }>(
-          "/campus?page=1&limit=50"
-        );
-        if (active) {
-          setCampusOptions(response.items ?? []);
-        }
-      } catch {
-        // Si falla, se mostrará solo el label con el id.
-      }
-    }
-    void loadCampus();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const detailData = (data && data.layout.mode === "detail") ? (data as CampusDashboardDetailResponse).data : undefined;
-
-  const campusLabel = useMemo(() => {
-    const match = campusOptions.find((option) => option.id === campusId);
-    if (match) return match.nombre;
-    return detailData?.campus?.nombre ?? `Campus ${campusId}`;
-  }, [campusId, campusOptions, detailData]);
+  const campusLabel = detailData?.campus?.nombre 
+    ? detailData.campus.nombre 
+    : `Campus ${campusId}`;
 
   const charts = detailData?.charts;
-  const facultiesRows = detailData?.tables.facultadesResumen ?? [];
+  const porFacultad = detailData?.porFacultad ?? [];
 
   const buildFacultadDashboardHref = useMemo(() => {
     return (facultadId: number) => {
       const params = new URLSearchParams();
       params.set("campusIds", String(campusId));
       params.set("facultadIds", String(facultadId));
-      params.set("includeInactive", String(filters.includeInactive));
+      params.set("includeInactive", "true");
       return `/dashboard/facultades?${params.toString()}`;
     };
-  }, [campusId, filters.includeInactive]);
+  }, [campusId]);
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-[-1rem] z-20 space-y-3 border-b bg-background/95 py-3 backdrop-blur-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-xs uppercase text-muted-foreground">Campus</p>
-            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm font-semibold">
-              {campusLabel}
-            </div>
-          </div>
-          <Button asChild>
-            <Link href="/dashboard/campus/list">Administrar Campus</Link>
-          </Button>
+      {/* Header */}
+      <div className="border-b py-3">
+        {/* Breadcrumb + Campus info */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <button
+            onClick={() => router.push(buildGlobalHref())}
+            className="flex items-center gap-1 hover:text-primary transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Volver</span>
+          </button>
+          <span className="text-muted-foreground/50">/</span>
+          <span className="text-muted-foreground/70">Dashboard</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push(buildGlobalHref())}
-          >
-            Volver
-          </Button>
-          <SwitchInactive
-            checked={filters.includeInactive}
-            onCheckedChange={setIncludeInactive}
-          />
+        {/* Campus label */}
+        <div className="mt-2 flex items-center gap-3">
+          <h1 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Campus:
+          </h1>
+          {loading ? (
+            <Skeleton className="h-8 w-48" />
+          ) : (
+            <span className="text-2xl font-bold text-foreground">
+              {campusLabel}
+            </span>
+          )}
         </div>
       </div>
 
+      {/* KPIs Grid */}
       <DetailKpiGrid kpis={detailData?.kpis} loading={loading} />
 
+      {/* Charts: Tipos de Bloque y Ambiente */}
       <div className="grid gap-4 sm:grid-cols-2">
         {loading ? (
           Array.from({ length: 2 }).map((_, index) => (
@@ -191,36 +134,168 @@ function CampusDashboardDetailContent({
           ))
         ) : (
           <>
-            <ChartCard
-              title="Cantidad por tipo de bloque"
-              option={buildHorizontalBarOption(
-                charts?.tiposBloque ?? [],
-                "tipoBloqueNombre",
-                "cantidad"
-              )}
+            <HorizontalBarChart
+              title="Tipos de Bloque"
+              data={charts?.tiposBloque ?? []}
+              labelKey="tipoBloqueNombre"
+              valueKey="cantidad"
               height={320}
             />
-            <ChartCard
-              title="Cantidad por tipo de ambiente"
-              option={buildHorizontalBarOption(
-                charts?.tiposAmbiente ?? [],
-                "tipoAmbienteNombre",
-                "cantidad"
-              )}
+            <HorizontalBarChart
+              title="Tipos de Ambiente"
+              data={charts?.tiposAmbiente ?? []}
+              labelKey="tipoAmbienteNombre"
+              valueKey="cantidad"
               height={320}
             />
           </>
         )}
       </div>
 
+      {/* Tabla de Facultades */}
       <FacultiesTable
         loading={loading}
-        rows={facultiesRows}
+        rows={porFacultad}
         onRowClick={(facultadId) => router.push(buildFacultadDashboardHref(facultadId))}
       />
     </div>
   );
 }
+
+function HorizontalBarChart({
+  title,
+  data,
+  labelKey,
+  valueKey,
+  height = 300,
+}: {
+  title: string;
+  data: Array<{ [key: string]: unknown }>;
+  labelKey: string;
+  valueKey: string;
+  height?: number;
+}) {
+  const hasData = data.length > 0 && data.some((item) => (item[valueKey] as number) > 0);
+
+  const option = useMemo(() => {
+    // Filtrar solo items con cantidad > 0 y ordenar de mayor a menor
+    const filteredData = data
+      .filter((item) => (item[valueKey] as number) > 0)
+      .sort((a, b) => Number(b[valueKey] ?? 0) - Number(a[valueKey] ?? 0));
+
+    if (filteredData.length === 0) return null;
+
+    const labels = filteredData.map((item) => String(item[labelKey] ?? "Sin nombre"));
+    const values = filteredData.map((item) => Number(item[valueKey] ?? 0));
+
+    return {
+      tooltip: {
+        trigger: "axis" as const,
+        axisPointer: { type: "shadow" as const },
+        formatter: (params: { name: string; value: number }[]) => {
+          const item = params[0];
+          return `<strong>${item.name}</strong><br/>Cantidad: <strong>${item.value.toLocaleString()}</strong>`;
+        },
+      },
+      grid: {
+        left: "3%",
+        right: "8%",
+        bottom: "3%",
+        top: "5%",
+        containLabel: true,
+      },
+      xAxis: {
+        type: "value" as const,
+        splitLine: {
+          lineStyle: {
+            type: "dashed" as const,
+            opacity: 0.2,
+            color: "var(--border)",
+          },
+        },
+        axisLabel: { color: "var(--muted-foreground)" },
+      },
+      yAxis: {
+        type: "category" as const,
+        inverse: true,
+        data: labels,
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: "var(--border)" } },
+        axisLabel: {
+          color: "var(--foreground)",
+          fontWeight: 500,
+          fontSize: 11,
+        },
+      },
+      series: [
+        {
+          type: "bar" as const,
+          data: values,
+          barWidth: "50%",
+          itemStyle: {
+            color: CHART_PALETTES.capacity[0], // Azul claro para barras
+            borderRadius: [0, 4, 4, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              opacity: 0.8,
+            },
+          },
+          label: {
+            show: true,
+            position: "right" as const,
+            formatter: (params: { value: number }) => params.value.toLocaleString(),
+            color: "var(--foreground)",
+            fontSize: 11,
+            fontWeight: "bold",
+          },
+        },
+      ],
+    };
+  }, [data, labelKey, valueKey]);
+
+  return (
+    <div className="rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        {title}
+      </h3>
+      {hasData && option ? (
+        <div className="mt-3">
+          <HorizontalBarChartRenderer option={option} height={height} />
+        </div>
+      ) : (
+        <div className="mt-3 rounded-md border border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">
+          Sin datos para {title}.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente separado para renderizar ECharts (evita problemas de tipos)
+import dynamic from "next/dynamic";
+
+const HorizontalBarChartRenderer = dynamic(
+  () =>
+    Promise.all([
+      import("echarts-for-react"),
+      import("@/config/dashboard-colors"),
+    ]).then(([echarts]) => {
+      const ReactECharts = echarts.default;
+      return function ChartRenderer({
+        option,
+        height,
+      }: {
+        option: object;
+        height: number;
+      }) {
+        return (
+          <ReactECharts option={option} style={{ height }} opts={{ locale: "es" }} />
+        );
+      };
+    }),
+  { ssr: false }
+);
 
 function DetailKpiGrid({
   kpis,
@@ -297,147 +372,83 @@ function DetailKpiGrid({
   );
 }
 
-function ChartCard({
-  title,
-  option,
-  height = 300,
-}: {
-  title: string;
-  option: unknown;
-  height?: number;
-}) {
-  const hasData =
-    !!option &&
-    typeof option === "object" &&
-    "series" in option &&
-    Array.isArray((option as { series?: Array<{ data?: unknown[] }> }).series) &&
-    (option as { series: Array<{ data?: unknown[] }> }).series.some((s) =>
-      Array.isArray(s.data) ? s.data.length > 0 : false
-    );
-  return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <p className="text-sm font-semibold">{title}</p>
-      {hasData ? (
-        <div className="mt-3">
-          <ReactECharts option={option} style={{ height }} opts={{ locale: "es" }} />
-        </div>
-      ) : (
-        <div className="mt-3 rounded-md border border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">
-          Sin datos para {title}.
-        </div>
-      )}
-    </div>
-  );
-}
-
-function buildHorizontalBarOption(
-  rows: Array<Record<string, unknown>>,
-  labelKey: string,
-  valueKey: string
-) {
-  const sorted = [...rows].sort(
-    (a, b) => Number(b[valueKey] ?? 0) - Number(a[valueKey] ?? 0)
-  );
-  return {
-    tooltip: { trigger: "axis" },
-    xAxis: { type: "value" },
-    yAxis: {
-      type: "category",
-      inverse: true,
-      data: sorted.map((row) => String(row[labelKey] ?? "")),
-      axisLabel: { formatter: (value: string) => value || "Sin nombre" },
-    },
-    series: [
-      {
-        type: "bar",
-        data: sorted.map((row) => Number(row[valueKey] ?? 0)),
-        itemStyle: { color: "#0ea5e9" },
-        label: { show: true, position: "right" },
-      },
-    ],
-  };
-}
-
 function FacultiesTable({
   loading,
   rows,
   onRowClick,
 }: {
   loading: boolean;
-  rows: CampusDashboardDetailResponse["data"]["tables"]["facultadesResumen"];
+  rows: CampusDashboardDetailResponse["data"]["porFacultad"];
   onRowClick: (facultadId: number) => void;
 }) {
   const [search, setSearch] = useState("");
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term.length) return rows;
-    return rows.filter((row) =>
-      row.facultadNombre.toLowerCase().includes(term)
-    );
+    return rows.filter((row) => row.nombre.toLowerCase().includes(term));
   }, [rows, search]);
 
-  const columns = [
-    { label: "Facultad", key: "facultadNombre" },
-    { label: "Bloques", key: "bloques" },
-    { label: "Tipos bloque", key: "tiposBloque" },
-    { label: "Ambientes", key: "ambientes" },
-    { label: "Tipos ambiente", key: "tiposAmbiente" },
-    { label: "Capacidad total", key: "capacidadTotal" },
-    { label: "Capacidad examen", key: "capacidadExamen" },
-    { label: "Activos asignados", key: "activosAsignados" },
-  ] as const;
-
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Facultades del campus</h2>
         <Input
-          placeholder="Buscar facultad"
+          placeholder="Buscar facultad..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="w-full max-w-xs"
         />
       </div>
-      <div className="mt-3 overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-muted-foreground">
-              {columns.map((col) => (
-                <th key={col.key} className="px-3 py-2">
-                  {col.label}
-                </th>
-              ))}
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-muted/50 text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 font-medium">Facultad</th>
+              <th className="px-4 py-3 text-right font-medium">Bloques</th>
+              <th className="px-4 py-3 text-right font-medium">Ambientes</th>
+              <th className="px-4 py-3 text-right font-medium">Cap. Total</th>
+              <th className="px-4 py-3 text-right font-medium">Cap. Examen</th>
+              <th className="px-4 py-3 text-right font-medium">Asignados</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y">
             {loading ? (
-              <tr>
-                <td className="px-3 py-4" colSpan={columns.length}>
-                  <Skeleton className="h-5 w-48" />
-                </td>
-              </tr>
+              Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-4" colSpan={6}>
+                    <Skeleton className="h-5 w-full" />
+                  </td>
+                </tr>
+              ))
             ) : filtered.length ? (
               filtered.map((row) => (
                 <tr
-                  key={row.facultadId}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onRowClick(row.facultadId)}
+                  key={row.id}
+                  className="group cursor-pointer hover:bg-muted/40"
+                  onClick={() => onRowClick(row.id)}
                 >
-                  <td className="px-3 py-2">{row.facultadNombre}</td>
-                  <td className="px-3 py-2">{row.bloques}</td>
-                  <td className="px-3 py-2">{row.tiposBloque}</td>
-                  <td className="px-3 py-2">{row.ambientes}</td>
-                  <td className="px-3 py-2">{row.tiposAmbiente}</td>
-                  <td className="px-3 py-2">{row.capacidadTotal}</td>
-                  <td className="px-3 py-2">{row.capacidadExamen}</td>
-                  <td className="px-3 py-2">{row.activosAsignados}</td>
+                  <td className="px-4 py-3 font-medium group-hover:text-primary">
+                    {row.nombre}
+                  </td>
+                  <td className="px-4 py-3 text-right">{row.bloques.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right">{row.ambientes.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right">
+                    {row.capacidad.total.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {row.capacidad.examen.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right text-emerald-600">
+                    {row.activos.asignados.toLocaleString()}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
                 <td
-                  className="px-3 py-4 text-muted-foreground"
-                  colSpan={columns.length}
+                  className="px-4 py-6 text-center text-muted-foreground"
+                  colSpan={6}
                 >
                   No hay facultades registradas.
                 </td>
