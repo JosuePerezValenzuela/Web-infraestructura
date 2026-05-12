@@ -54,8 +54,8 @@ export default function AppSidebar({ className }: { className?: string }) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="flex-1 overflow-y-auto bg-sidebar px-2 py-4 text-sidebar-foreground">
-        <div className={cn("mt-3 flex flex-col space-y-1.5", collapsed ? "px-1" : "px-2")}>
+<SidebarContent className="flex-1 overflow-y-auto bg-sidebar px-2 py-4 text-sidebar-foreground">
+        <div className={cn("mt-3 flex flex-col", collapsed ? "px-1" : "px-2")}>
           {NAV_GROUPS.map((group) => {
             const Icon = group.icon;
             const isActive = pathname.startsWith(group.href);

@@ -83,13 +83,9 @@ function CampusDashboardDetailContent({
 
   const buildFacultadDashboardHref = useMemo(() => {
     return (facultadId: number) => {
-      const params = new URLSearchParams();
-      params.set("campusIds", String(campusId));
-      params.set("facultadIds", String(facultadId));
-      params.set("includeInactive", "true");
-      return `/dashboard/facultades?${params.toString()}`;
+      return `/dashboard/facultades/${facultadId}`;
     };
-  }, [campusId]);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -109,10 +105,10 @@ function CampusDashboardDetailContent({
         </div>
 
         {/* Campus label */}
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Campus:
-          </h1>
+          </span>
           {loading ? (
             <Skeleton className="h-8 w-48" />
           ) : (

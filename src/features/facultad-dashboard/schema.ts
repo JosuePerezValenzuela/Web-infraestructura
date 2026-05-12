@@ -35,12 +35,13 @@ export const facultadDashboardFiltersSchema = z.object({
 });
 
 const stateCountSchema = z.object({
+  total: z.number().nonnegative(),
   activos: z.number().nonnegative(),
   inactivos: z.number().nonnegative(),
 });
 
 const commonKpisSchema = z.object({
-  facultades: stateCountSchema,
+  facultades: stateCountSchema.optional(),
   bloques: stateCountSchema,
   ambientes: stateCountSchema,
   capacidad: z.object({
@@ -49,7 +50,7 @@ const commonKpisSchema = z.object({
   }),
   activos: z.object({
     asignados: z.number().nonnegative(),
-    noAsignadosGlobal: z.number().nonnegative(),
+    sinAsignarGlobal: z.number().nonnegative(),
   }),
 });
 
@@ -117,26 +118,71 @@ export const facultadDashboardGlobalResponseSchema = z.object({
   }),
 });
 
+// Schema para modo detail (nuevo contrato)
+const facultadDashboardDetailDataSchema = z.object({
+  facultad: z.object({
+    id: z.number().int().positive(),
+    nombre: z.string(),
+    nombreCorto: z.string().nullable().optional(),
+    activo: z.boolean().optional(),
+    campusId: z.number().int().positive(),
+    campusNombre: z.string(),
+  }),
+  kpis: commonKpisSchema,
+  rankings: z.object({
+    porCantidadAmbientes: z.array(
+      z.object({
+        bloqueId: z.number(),
+        nombre: z.string(),
+        cantidad: z.number(),
+      })
+    ),
+    porCapacidadTotal: z.array(
+      z.object({
+        bloqueId: z.number(),
+        nombre: z.string(),
+        capacidad: z.number(),
+      })
+    ),
+  }),
+  distribuciones: z.object({
+    tiposAmbientePorBloque: z.array(
+      z.object({
+        nombre: z.string(),
+        cantidadTotal: z.number(),
+        tipos: z.array(
+          z.object({
+            tipo: z.string().nullable(),
+            cantidad: z.number(),
+          })
+        ),
+      })
+    ),
+  }),
+  porBloque: z.array(
+    z.object({
+      id: z.number(),
+      nombre: z.string(),
+      ambientes: z.number(),
+      capacidad: z.object({
+        total: z.number(),
+        examen: z.number(),
+      }),
+      activos: z.object({
+        asignados: z.number(),
+      }),
+    })
+  ),
+});
+
 export const facultadDashboardDetailResponseSchema = z.object({
   schemaVersion: z.literal(2),
   filtersApplied: z.object({
     facultadId: z.coerce.number().int().positive(),
-    includeInactive: facultadDashboardFiltersSchema.shape.includeInactive,
+    includeInactive: z.boolean(),
   }),
   layout: z.object({ mode: z.literal("detail") }),
-  data: z.object({
-    facultad: z.object({
-      id: z.number().int().positive(),
-      nombre: z.string(),
-      nombreCorto: z.string().nullable().optional(),
-      activo: z.boolean(),
-      campusId: z.number().int().positive(),
-      campusNombre: z.string(),
-    }),
-    kpis: commonKpisSchema,
-    charts: commonChartsSchema,
-    tables: commonTablesSchema,
-  }),
+  data: facultadDashboardDetailDataSchema,
 });
 
 export type FacultadDashboardFilters = z.infer<
