@@ -188,13 +188,7 @@ function FacultadDashboardDetailContent({
         loading={loading}
         rows={porBloque}
         onRowClick={(bloqueId) => {
-          // Navegar al dashboard de bloque
-          const params = new URLSearchParams();
-          params.set("bloqueIds", String(bloqueId));
-          params.set("facultadIds", String(facultadId));
-          params.set("campusIds", String(facultad?.campusId ?? ""));
-          params.set("includeInactive", "true");
-          router.push(`/dashboard/bloques?${params.toString()}`);
+          router.push(`/dashboard/bloques/${bloqueId}`);
         }}
       />
     </div>

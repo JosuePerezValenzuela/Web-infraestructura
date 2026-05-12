@@ -114,7 +114,76 @@ export const bloqueDashboardGlobalResponseSchema = z.object({
   }),
 });
 
+// Bloque detail KPIs (nuevo contrato schemaVersion 2)
+const bloqueDetailKpisSchema = z.object({
+  ambientes: z.object({
+    total: z.number().nonnegative(),
+    activos: z.number().nonnegative(),
+    inactivos: z.number().nonnegative(),
+  }),
+  capacidad: z.object({
+    total: z.number().nonnegative(),
+    examen: z.number().nonnegative(),
+  }),
+  activos: z.object({
+    asignados: z.number().nonnegative(),
+    sinAsignarGlobal: z.number().nonnegative(),
+  }),
+});
+
+// Bloque detail response
+export const bloqueDashboardDetailResponseSchema = z.object({
+  schemaVersion: z.literal(2),
+  filtersApplied: z.object({
+    bloqueId: z.coerce.number().int().positive(),
+    includeInactive: z.boolean(),
+  }),
+  layout: z.object({ mode: z.literal("detail") }),
+  data: z.object({
+    bloque: z.object({
+      id: z.number(),
+      nombre: z.string(),
+      nombreCorto: z.string().nullable(),
+      activo: z.boolean(),
+      pisos: z.number(),
+      tipoBloqueId: z.number(),
+      tipoBloqueNombre: z.string(),
+      facultadId: z.number(),
+      facultadNombre: z.string(),
+      campusId: z.number(),
+      campusNombre: z.string(),
+    }),
+    kpis: bloqueDetailKpisSchema,
+    charts: z.object({
+      tiposAmbiente: z.array(
+        z.object({
+          tipo: z.string(),
+          cantidad: z.number().nonnegative(),
+        })
+      ),
+    }),
+    porAmbiente: z.array(
+      z.object({
+        id: z.number(),
+        nombre: z.string(),
+        piso: z.number(),
+        capacidad: z.object({
+          total: z.number(),
+          examen: z.number(),
+        }),
+        tipoAmbiente: z.string(),
+        activos: z.object({
+          asignados: z.number(),
+        }),
+      })
+    ),
+  }),
+});
+
 export type BloqueDashboardFilters = z.infer<typeof bloqueDashboardFiltersSchema>;
 export type BloqueDashboardGlobalResponse = z.infer<
   typeof bloqueDashboardGlobalResponseSchema
+>;
+export type BloqueDashboardDetailResponse = z.infer<
+  typeof bloqueDashboardDetailResponseSchema
 >;

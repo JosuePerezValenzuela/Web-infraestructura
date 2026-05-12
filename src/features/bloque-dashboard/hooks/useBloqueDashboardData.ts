@@ -4,16 +4,18 @@ import { notify } from "@/lib/notify";
 import {
   bloqueDashboardFiltersSchema,
   bloqueDashboardGlobalResponseSchema,
+  bloqueDashboardDetailResponseSchema,
   type BloqueDashboardFilters,
   type BloqueDashboardGlobalResponse,
+  type BloqueDashboardDetailResponse,
 } from "@/features/bloque-dashboard/schema";
 
-type UseBloqueDashboardDataParams = {
-  filters: BloqueDashboardFilters;
-};
+type UseBloqueDashboardDataParams =
+  | { mode: "global"; filters: BloqueDashboardFilters }
+  | { mode: "detail"; bloqueId: number; filters: BloqueDashboardFilters };
 
 type UseBloqueDashboardDataResult = {
-  data: BloqueDashboardGlobalResponse | null;
+  data: BloqueDashboardGlobalResponse | BloqueDashboardDetailResponse | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -35,7 +37,9 @@ function extractErrorMessage(error: unknown): string {
 export function useBloqueDashboardData(
   params: UseBloqueDashboardDataParams
 ): UseBloqueDashboardDataResult {
-  const [data, setData] = useState<BloqueDashboardGlobalResponse | null>(null);
+  const [data, setData] = useState<
+    BloqueDashboardGlobalResponse | BloqueDashboardDetailResponse | null
+  >(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,31 +47,41 @@ export function useBloqueDashboardData(
     const parsedFilters = bloqueDashboardFiltersSchema.parse(params.filters);
     const search = new URLSearchParams();
 
-    if (parsedFilters.campusIds.length) {
-      search.set("campusIds", parsedFilters.campusIds.join(","));
-    }
-    if (parsedFilters.facultadIds.length) {
-      search.set("facultadIds", parsedFilters.facultadIds.join(","));
-    }
-    if (parsedFilters.bloqueIds.length) {
-      search.set("bloqueIds", parsedFilters.bloqueIds.join(","));
-    }
-    if (parsedFilters.tipoBloqueIds.length) {
-      search.set("tipoBloqueIds", parsedFilters.tipoBloqueIds.join(","));
+    if (params.mode === "global") {
+      if (parsedFilters.campusIds.length) {
+        search.set("campusIds", parsedFilters.campusIds.join(","));
+      }
+      if (parsedFilters.facultadIds.length) {
+        search.set("facultadIds", parsedFilters.facultadIds.join(","));
+      }
+      if (parsedFilters.bloqueIds.length) {
+        search.set("bloqueIds", parsedFilters.bloqueIds.join(","));
+      }
+      if (parsedFilters.tipoBloqueIds.length) {
+        search.set("tipoBloqueIds", parsedFilters.tipoBloqueIds.join(","));
+      }
+      search.set("includeInactive", String(parsedFilters.includeInactive));
+      const query = search.toString();
+      return `/dashboards/bloques/global${query ? `?${query}` : ""}`;
     }
 
     search.set("includeInactive", String(parsedFilters.includeInactive));
-
     const query = search.toString();
-    return `/dashboards/bloques/global${query ? `?${query}` : ""}`;
-  }, [params.filters]);
+    return `/dashboards/bloques/${params.bloqueId}${query ? `?${query}` : ""}`;
+  }, [params]);
+
+  const schema = useMemo(() => {
+    return params.mode === "global"
+      ? bloqueDashboardGlobalResponseSchema
+      : bloqueDashboardDetailResponseSchema;
+  }, [params.mode]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await apiFetch(endpoint);
-      const parsed = bloqueDashboardGlobalResponseSchema.parse(response);
+      const parsed = schema.parse(response);
       setData(parsed);
     } catch (err) {
       const message = extractErrorMessage(err);
