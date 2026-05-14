@@ -35,11 +35,19 @@ import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -1034,13 +1042,22 @@ function EnvironmentListPageContent() {
 
       resetDeleteDialog();
     } catch (error) {
-      // Si ocurre un error mostramos una notificacion clara con el detalle devuelto por la API.
+      // Cerrar el diálogo de confirmación
+      resetDeleteDialog();
 
-      notify.error({
-        title: "No se pudo eliminar el ambiente",
+      const apiError = error as { status?: number; message?: string };
 
-        description: resolveDeleteErrorMessage(error),
-      });
+      if (apiError?.status === 404) {
+        notify.error({
+          title: "Ambiente no encontrado",
+          description: "El ambiente no existe o ya fue eliminado.",
+        });
+      } else {
+        notify.error({
+          title: "No se pudo eliminar el ambiente",
+          description: resolveDeleteErrorMessage(error),
+        });
+      }
     } finally {
       // Sin importar el resultado regresamos el estado deleting a false para reactivar los controles.
 
@@ -1358,30 +1375,27 @@ function EnvironmentListPageContent() {
         onSuccess={handleSchedulesSuccess}
       />
 
-      <Dialog
+      {/* Diálogo de confirmación para eliminar (AlertDialog) */}
+      <AlertDialog
         open={deleteOpen}
         onOpenChange={(value) => {
-          if (!value) {
-            handleDeleteDialogClose();
-          }
+          if (!value) handleDeleteDialogClose();
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-full space-y-4 sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Eliminar ambiente</DialogTitle>
-
-            <DialogDescription>
-              Esta acción eliminará el registro seleccionado. Los activos
-              asociados quedaran sin ambiente hasta que los reasignes.
-            </DialogDescription>
-          </DialogHeader>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar ambiente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el ambiente, sus horarios
+              de operación y desvinculará los activos que tenga asignados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
           {environmentToDelete ? (
             <div className="rounded-md border border-dashed bg-muted/40 p-3">
               <p className="text-sm font-semibold">
                 {environmentToDelete.nombre}
               </p>
-
               <p className="text-xs text-muted-foreground">
                 Código:{" "}
                 <span className="font-mono">{environmentToDelete.codigo}</span>
@@ -1390,32 +1404,25 @@ function EnvironmentListPageContent() {
           ) : null}
 
           <div className="text-sm text-muted-foreground">
-            Recuerda que esta operación no se puede deshacer y solo debe
-            realizarse cuando estés segura de que el ambiente ya no se
-            utilizará.
+            Recuerda que esta operación no se puede deshacer. Los activos
+            desvinculados quedarán sin ambiente asignado hasta que los
+            reubiques.
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDeleteDialogClose}
-              disabled={deleting}
-            >
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting} onClick={handleDeleteDialogClose}>
               Cancelar
-            </Button>
-
-            <Button
-              type="button"
-              variant="destructive"
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? "Eliminando..." : "Eliminar definitivamente"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
