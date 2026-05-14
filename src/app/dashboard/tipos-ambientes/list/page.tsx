@@ -5,15 +5,25 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { X, Building2 } from "lucide-react";
 import {
   environmentTypeColumns,
   type EnvironmentTypeRow,
@@ -52,6 +62,18 @@ export default function EnvironmentTypeListPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Indicamos cuando la peticion DELETE esta en progreso.
   const [deleting, setDeleting] = useState(false);
+
+  // Estado para el diálogo de conflicto (409: tipo de ambiente con ambientes dependientes)
+  const [conflictAmbientes, setConflictAmbientes] = useState<BlockedAmbiente[]>([]);
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const [conflictTitle, setConflictTitle] = useState("");
+
+  type BlockedAmbiente = {
+    id: number;
+    codigo: string;
+    nombre: string;
+    activo: boolean;
+  };
 
   // Normalizamos el termino de busqueda quitando espacios extra para evitar consultas innecesarias.
   const query = useMemo(() => search.trim(), [search]);
@@ -146,6 +168,44 @@ export default function EnvironmentTypeListPage() {
     handleCloseEditDialog();
   }
 
+  /** Extrae ambientes bloqueantes. Soporta entidades inline e anidadas */
+  function extractBlockedAmbientes(raw: unknown): BlockedAmbiente[] {
+    if (!raw || typeof raw !== "object") return [];
+    const details = (raw as Record<string, unknown>).details;
+    if (!Array.isArray(details)) return [];
+
+    return details
+      .map((d: unknown) => {
+        if (typeof d !== "object" || d === null) return null;
+        const obj = d as Record<string, unknown>;
+
+        const nested = Object.values(obj).find(
+          (v): v is Record<string, unknown> =>
+            typeof v === "object" && v !== null && "id" in v && "nombre" in v,
+        );
+        if (nested) {
+          return {
+            id: Number(nested.id) || 0,
+            codigo: String(nested.codigo ?? ""),
+            nombre: String(nested.nombre ?? ""),
+            activo: nested.activo === true,
+          } as BlockedAmbiente;
+        }
+
+        if ("id" in obj && "nombre" in obj) {
+          return {
+            id: Number(obj.id) || 0,
+            codigo: String(obj.codigo ?? ""),
+            nombre: String(obj.nombre ?? ""),
+            activo: obj.activo === true,
+          } as BlockedAmbiente;
+        }
+
+        return null;
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null);
+  }
+
   function handleDelete(environmentType: EnvironmentTypeRow) {
     setEnvironmentTypeToDelete(environmentType);
     setDeleteOpen(true);
@@ -158,9 +218,7 @@ export default function EnvironmentTypeListPage() {
   }
 
   async function confirmDelete() {
-    if (!environmentTypeToDelete) {
-      return;
-    }
+    if (!environmentTypeToDelete) return;
 
     try {
       setDeleting(true);
@@ -173,19 +231,35 @@ export default function EnvironmentTypeListPage() {
       });
       await fetchData();
       resetDeleteState();
-    } catch (error) {
-      const description =
-        typeof error === "object" &&
-        error !== null &&
-        "message" in error &&
-        typeof (error as { message?: unknown }).message === "string"
-          ? String((error as { message?: unknown }).message)
-          : "Error desconocido.";
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string; raw?: unknown };
 
-      notify.error({
-        title: "No se pudo eliminar el tipo de ambiente",
-        description,
-      });
+      resetDeleteState();
+
+      if (error?.status === 409) {
+        const ambientes = extractBlockedAmbientes(error.raw);
+
+        if (ambientes.length > 0) {
+          setConflictAmbientes(ambientes);
+          setConflictTitle(error?.message ?? "El tipo de ambiente tiene ambientes dependientes");
+          setConflictOpen(true);
+        } else {
+          notify.error({
+            title: "No se pudo eliminar el tipo de ambiente",
+            description: error?.message ?? "El tipo de ambiente tiene dependencias relacionadas.",
+          });
+        }
+      } else if (error?.status === 404) {
+        notify.error({
+          title: "Tipo de ambiente no encontrado",
+          description: "El tipo de ambiente no existe o ya fue eliminado.",
+        });
+      } else {
+        notify.error({
+          title: "No se pudo eliminar el tipo de ambiente",
+          description: error?.message ?? "Error desconocido al eliminar el tipo de ambiente.",
+        });
+      }
     } finally {
       setDeleting(false);
     }
@@ -306,44 +380,25 @@ export default function EnvironmentTypeListPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      {/* Diálogo de confirmación para eliminar (AlertDialog) */}
+      <AlertDialog
         open={deleteOpen}
         onOpenChange={(value) => {
           setDeleteOpen(value);
-          if (!value) {
-            setEnvironmentTypeToDelete(null);
-          }
+          if (!value) setEnvironmentTypeToDelete(null);
         }}
       >
-        <DialogContent showCloseButton={false}>
-          <DialogHeader className="space-y-2">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-2">
-                <DialogTitle>Eliminar tipo de ambiente</DialogTitle>
-                <DialogDescription>
-                  Esta accion eliminara el tipo de ambiente seleccionado y los
-                  ambientes de dicho tipo y dejara libres los activos asociados
-                  a esos ambientes. No se puede deshacer.
-                </DialogDescription>
-              </div>
-              <DialogClose asChild>
-                <button
-                  type="button"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  disabled={deleting}
-                >
-                  <X className="h-4 w-4" aria-hidden />
-                  <span className="sr-only">Cerrar</span>
-                </button>
-              </DialogClose>
-            </div>
-          </DialogHeader>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar tipo de ambiente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el tipo de ambiente.
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>
-              Confirma el nombre antes de continuar. Los ambientes dependientes
-              se eliminaran en cadena.
-            </p>
+            <p>Confirma que deseas eliminar este registro.</p>
             {environmentTypeToDelete ? (
               <p>
                 Tipo de ambiente:{" "}
@@ -354,23 +409,74 @@ export default function EnvironmentTypeListPage() {
             ) : null}
           </div>
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={deleting}>
-                Cancelar
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleting}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? "Eliminando..." : "Eliminar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de conflicto: muestra los ambientes bloqueantes */}
+      <AlertDialog open={conflictOpen} onOpenChange={setConflictOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-destructive" />
+              No se puede eliminar
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictTitle}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {conflictAmbientes.length > 0 && (
+            <div className="max-h-[180px] overflow-y-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Código</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Nombre</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {conflictAmbientes.map((amb) => (
+                    <tr key={amb.id} className="hover:bg-muted/50">
+                      <td className="px-3 py-2.5 font-mono text-xs">{amb.codigo}</td>
+                      <td className="px-3 py-2.5 text-sm">{amb.nombre}</td>
+                      <td className="px-3 py-2.5">
+                        <Badge variant={amb.activo ? "secondary" : "outline"} className="text-xs">
+                          {amb.activo ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {conflictAmbientes.length > 3 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Mostrando {conflictAmbientes.length} ambientes
+            </p>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setConflictOpen(false)}>
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

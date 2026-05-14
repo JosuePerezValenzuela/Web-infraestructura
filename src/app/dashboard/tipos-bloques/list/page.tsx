@@ -9,19 +9,29 @@ import {
   type BlockTypeRow,
 } from "@/features/block-types/list/columns";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogClose,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import BlockTypeForm from "@/features/block-types/BlockTypeForm";
 import BlockTypeEditForm from "@/features/block-types/edit/BlockTypeEditForm";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
-import { X } from "lucide-react";
+import { X, Building2 } from "lucide-react";
 import { env } from "@/lib/env";
 
 const API_BASE = env.API_BASE_URL;
@@ -52,6 +62,18 @@ export default function BlockTypeListPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Indicamos si la peticion DELETE esta en curso.
   const [deleting, setDeleting] = useState(false);
+
+  // Estado para el diálogo de conflicto (409: tipo de bloque con bloques dependientes)
+  const [conflictBlocks, setConflictBlocks] = useState<BlockedBlock[]>([]);
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const [conflictTitle, setConflictTitle] = useState("");
+
+  type BlockedBlock = {
+    id: number;
+    codigo: string;
+    nombre: string;
+    activo: boolean;
+  };
 
   // Limpiamos espacios innecesarios del termino de busqueda antes de enviarlo al servidor.
   const query = useMemo(() => search.trim(), [search]);
@@ -137,57 +159,102 @@ export default function BlockTypeListPage() {
     setEditOpen(true);
   }
 
+  /** Extrae bloques bloqueantes. Soporta tanto entidades anidadas (details[].objeto) como inline */
+  function extractBlockedBlocks(raw: unknown): BlockedBlock[] {
+    if (!raw || typeof raw !== "object") return [];
+    const details = (raw as Record<string, unknown>).details;
+    if (!Array.isArray(details)) return [];
+
+    return details
+      .map((d: unknown) => {
+        if (typeof d !== "object" || d === null) return null;
+        const obj = d as Record<string, unknown>;
+
+        // Intento 1: entidad anidada en una propiedad del detail
+        const nested = Object.values(obj).find(
+          (v): v is Record<string, unknown> =>
+            typeof v === "object" && v !== null && "id" in v && "nombre" in v,
+        );
+        if (nested) {
+          return {
+            id: Number(nested.id) || 0,
+            codigo: String(nested.codigo ?? ""),
+            nombre: String(nested.nombre ?? ""),
+            activo: nested.activo === true,
+          } as BlockedBlock;
+        }
+
+        // Intento 2: el detail mismo tiene id y nombre (inline)
+        if ("id" in obj && "nombre" in obj) {
+          return {
+            id: Number(obj.id) || 0,
+            codigo: String(obj.codigo ?? ""),
+            nombre: String(obj.nombre ?? ""),
+            activo: obj.activo === true,
+          } as BlockedBlock;
+        }
+
+        return null;
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null);
+  }
+
   function handleDelete(blockType: BlockTypeRow) {
-    // Guardamos el registro que se desea eliminar y mostramos el dialogo de confirmacion.
     setBlockTypeToDelete(blockType);
     setDeleteOpen(true);
   }
 
   async function confirmDelete() {
-    // Si no hay registro seleccionado no continuamos.
-    if (!blockTypeToDelete) {
-      return;
-    }
+    if (!blockTypeToDelete) return;
 
     try {
-      // Avisamos que la peticion comenzo para deshabilitar los controles.
       setDeleting(true);
 
-      // Enviamos la solicitud DELETE al backend para eliminar el registro.
       await apiFetch(`/tipo_bloques/${blockTypeToDelete.id}`, {
         method: "DELETE",
       });
 
-      // Notificamos que la eliminacion se realizo correctamente.
       notify.success({
         title: "Tipo de bloque eliminado",
         description: "El registro se elimino correctamente.",
       });
 
-      // Refrescamos la tabla para reflejar la eliminacion.
       await fetchData();
-
-      // Cerramos el dialogo y limpiamos el estado seleccionado.
       setDeleteOpen(false);
       setBlockTypeToDelete(null);
-    } catch (error) {
-      // Obtenemos un mensaje claro para mostrar en la notificacion.
-      const description =
-        typeof error === "object" &&
-        error !== null &&
-        "message" in error &&
-        typeof (error as { message?: unknown }).message === "string"
-          ? String((error as { message?: unknown }).message)
-          : "Error desconocido.";
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string; raw?: unknown };
 
-      // Indicamos que algo salio mal para que la persona usuaria pueda reintentar.
-      notify.error({
-        title: "No se pudo eliminar el tipo de bloque",
-        description,
-      });
+      // Cerrar el diálogo de confirmación
+      setDeleteOpen(false);
+
+      if (error?.status === 409) {
+        const blocks = extractBlockedBlocks(error.raw);
+
+        if (blocks.length > 0) {
+          setConflictBlocks(blocks);
+          setConflictTitle(error?.message ?? "El tipo de bloque tiene bloques dependientes");
+          setConflictOpen(true);
+        } else {
+          notify.error({
+            title: "No se pudo eliminar el tipo de bloque",
+            description: error?.message ?? "El tipo de bloque tiene dependencias relacionadas.",
+          });
+        }
+      } else if (error?.status === 404) {
+        notify.error({
+          title: "Tipo de bloque no encontrado",
+          description: "El tipo de bloque no existe o ya fue eliminado.",
+        });
+      } else {
+        notify.error({
+          title: "No se pudo eliminar el tipo de bloque",
+          description: error?.message ?? "Error desconocido al eliminar el tipo de bloque.",
+        });
+      }
     } finally {
-      // Restablecemos el estado de carga sin importar el resultado.
       setDeleting(false);
+      setBlockTypeToDelete(null);
     }
   }
 
@@ -294,41 +361,25 @@ export default function BlockTypeListPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      {/* Diálogo de confirmación para eliminar (AlertDialog) */}
+      <AlertDialog
         open={deleteOpen}
         onOpenChange={(value) => {
           setDeleteOpen(value);
-          if (!value) {
-            setBlockTypeToDelete(null);
-          }
+          if (!value) setBlockTypeToDelete(null);
         }}
       >
-        <DialogContent showCloseButton={false}>
-          <DialogHeader className="space-y-2">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-2">
-                <DialogTitle>Eliminar tipo de bloque</DialogTitle>
-                <DialogDescription>
-                  Esta accion eliminara el tipo de bloque, los bloques de ese
-                  tipo, ambientes dentro de esos bloques y los activos de esos
-                  ambientes quedaran libres. No se puede deshacer.
-                </DialogDescription>
-              </div>
-              <DialogClose asChild>
-                <button
-                  type="button"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  disabled={deleting}
-                >
-                  <X className="h-4 w-4" aria-hidden />
-                  <span className="sr-only">Cerrar</span>
-                </button>
-              </DialogClose>
-            </div>
-          </DialogHeader>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar tipo de bloque</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el tipo de bloque.
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>Confirma la eliminacion del registro seleccionado.</p>
+            <p>Confirma que deseas eliminar este registro.</p>
             {blockTypeToDelete ? (
               <p>
                 Tipo de bloque:{" "}
@@ -339,22 +390,74 @@ export default function BlockTypeListPage() {
             ) : null}
           </div>
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" disabled={deleting}>
-                Cancelar
-              </Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? "Eliminando..." : "Eliminar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de conflicto: muestra los bloques bloqueantes */}
+      <AlertDialog open={conflictOpen} onOpenChange={setConflictOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-destructive" />
+              No se puede eliminar
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictTitle}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {conflictBlocks.length > 0 && (
+            <div className="max-h-[180px] overflow-y-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Código</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Nombre</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {conflictBlocks.map((blk) => (
+                    <tr key={blk.id} className="hover:bg-muted/50">
+                      <td className="px-3 py-2.5 font-mono text-xs">{blk.codigo}</td>
+                      <td className="px-3 py-2.5 text-sm">{blk.nombre}</td>
+                      <td className="px-3 py-2.5">
+                        <Badge variant={blk.activo ? "secondary" : "outline"} className="text-xs">
+                          {blk.activo ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {conflictBlocks.length > 3 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Mostrando {conflictBlocks.length} bloques
+            </p>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setConflictOpen(false)}>
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
