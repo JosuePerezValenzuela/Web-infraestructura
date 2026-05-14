@@ -15,8 +15,6 @@ import {
   School,
   CheckCircle2,
   XCircle,
-FileText,
-  Printer,
   Hash,
   Maximize2,
   Layers,
@@ -136,14 +134,14 @@ function buildSlots(start: string, end: string, period: number): string[] {
 function InfoRow({ label, value, icon: Icon, colspan = 1 }: { label: string; value: React.ReactNode; icon?: React.ComponentType<{ className?: string }>; colspan?: number }) {
   return (
     <div className={`py-3 border-b border-slate-200 ${colspan > 1 ? `col-span-${colspan}` : ""}`}>
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2 min-w-0">
         {/* Espacio reservado para icono para mantener alineación consistente */}
         <div className="w-4 shrink-0">
           {Icon && <Icon className="w-4 h-4 text-slate-500 mt-0.5" />}
         </div>
-        <div className="flex-1">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</Label>
-          <div className="text-sm font-medium text-slate-800 mt-0.5">{value}</div>
+        <div className="flex-1 min-w-0">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide break-words">{label}</Label>
+          <div className="text-sm font-medium text-slate-800 mt-0.5 break-words">{value}</div>
         </div>
       </div>
     </div>
@@ -154,9 +152,9 @@ function InfoRow({ label, value, icon: Icon, colspan = 1 }: { label: string; val
  * Componente: InfoCard
  * Tarjeta de información con título y contenido
  */
-function InfoCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
+function InfoCard({ title, children, className = "", ...props }: { title: string; children: React.ReactNode; className?: string; [key: string]: unknown }) {
   return (
-    <div className={`border border-slate-300 rounded-lg overflow-hidden ${className}`}>
+    <div className={`border border-slate-300 rounded-lg overflow-hidden ${className}`} {...props}>
       <div className="bg-slate-100 px-4 py-2 border-b border-slate-300">
         <h3 className="font-semibold text-slate-800 text-sm">{title}</h3>
       </div>
@@ -228,7 +226,7 @@ function ScheduleTable({ horarios }: { horarios: Horario[] }) {
         </TableHeader>
         <TableBody>
           {slots.map((slot) => (
-            <TableRow key={slot}>
+            <TableRow key={slot} data-pdf-row="schedule">
               <TableCell className="text-center font-mono font-medium border border-slate-300 p-2 w-20">
                 {slot}
               </TableCell>
@@ -341,7 +339,7 @@ function AssetTableReport({ initialAssets }: { initialAssets: ActivoItem[] }) {
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-slate-50">
+                <TableRow key={row.id} className="hover:bg-slate-50" data-pdf-row="asset">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
@@ -404,10 +402,10 @@ function EnvironmentReport({ detail }: { detail: DetailResponse }) {
           />
         </div>
 
-        {/* Información Principal - Página 1 */}
+          {/* Información Principal - Página 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Datos de Identificación */}
-          <InfoCard title="1. DATOS DE IDENTIFICACIÓN">
+          <InfoCard title="1. DATOS DE IDENTIFICACIÓN" data-pdf-section="card">
             <div className="grid grid-cols-2 gap-x-4">
               <InfoRow label="Código" value={ambiente.codigo} icon={Hash} />
               <InfoRow label="Nombre" value={ambiente.nombre} />
@@ -447,7 +445,7 @@ function EnvironmentReport({ detail }: { detail: DetailResponse }) {
           </InfoCard>
 
           {/* Ubicación Física */}
-          <InfoCard title="2. UBICACIÓN FÍSICA">
+          <InfoCard title="2. UBICACIÓN FÍSICA" data-pdf-section="card">
             <div className="grid grid-cols-2 gap-x-4">
               <InfoRow label="Campus" value={ambiente.campus_nombre} icon={School} />
               <InfoRow label="Facultad" value={ambiente.facultad_nombre} icon={Building2} />
@@ -459,7 +457,7 @@ function EnvironmentReport({ detail }: { detail: DetailResponse }) {
         </div>
 
         {/* Propiedades Físicas - ocupa todo el ancho */}
-        <InfoCard title="3. PROPIEDADES FÍSICAS" className="mb-8">
+        <InfoCard title="3. PROPIEDADES FÍSICAS" className="mb-8" data-pdf-section="card">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
               <div className="flex items-center gap-2 mb-2">
@@ -504,7 +502,7 @@ function EnvironmentReport({ detail }: { detail: DetailResponse }) {
         </InfoCard>
 
         {/* Horario de Atención */}
-        <InfoCard title="4. HORARIO DE ATENCIÓN" className="mb-8">
+        <InfoCard title="4. HORARIO DE ATENCIÓN" className="mb-8" data-pdf-section="card-table">
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-slate-600">
               <span className="font-medium">Período de atención:</span> {horarios.length > 0 ? `${horarios[0].periodo} minutos` : "No definido"}
@@ -526,7 +524,7 @@ function EnvironmentReport({ detail }: { detail: DetailResponse }) {
         {/* Página 2: Activos - solo salto en print */}
         <div className="hidden lg:block break-before-page" />
         
-        <InfoCard title="5. ACTIVOS ASOCIADOS" className="mb-8">
+        <InfoCard title="5. ACTIVOS ASOCIADOS" className="mb-8" data-pdf-section="card-table">
           <div className="mb-4 text-sm text-slate-600">
             <span className="font-medium">Total de activos:</span> {activos.meta.total}
           </div>
