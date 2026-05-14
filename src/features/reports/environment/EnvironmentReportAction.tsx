@@ -1,145 +1,113 @@
 "use client";
 
-import { useState, type JSX } from "react";
-import { FileDown, FileSpreadsheet, FileText, Printer } from "lucide-react";
+import { useState } from "react";
+import { Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { notify } from "@/lib/notify";
-
-import {
-  downloadEnvironmentReport,
-  type EnvironmentReportFormat,
-} from "./download";
+import { generatePdf } from "@/lib/pdf";
 
 type Props = {
+  /** Código del ambiente */
   code: string;
+  /** Nombre del ambiente */
   name?: string;
-  showLabel?: boolean;
+  /**
+   * Elemento HTML que contiene el contenido del reporte
+   * (sin cabecera ni pie de página, que se agregan al generar el PDF)
+   */
+  contentRef?: React.RefObject<HTMLElement | null>;
 };
 
-export function EnvironmentReportAction({ code, name, showLabel = false }: Props) {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState<EnvironmentReportFormat | null>(null);
+/**
+ * Componente: EnvironmentReportAction
+ * Botón para generar PDF del ambiente.
+ *
+ * El flujo es:
+ * 1. Clona el contenido del reporte (que en la web se ve sin cabecera ni pie)
+ * 2. En el clon, MUESTRA la cabecera y el pie de página (ocultos en la web)
+ * 3. Agrega el clon al DOM (fuera de pantalla)
+ * 4. Captura el clon con html2canvas-pro (soporta oklch nativamente)
+ * 5. Genera el PDF con jsPDF
+ * 6. Limpia el clon del DOM
+ */
+export function EnvironmentReportAction({ 
+  code, 
+  name, 
+  contentRef,
+}: Props) {
+  const [loading, setLoading] = useState(false);
 
-  const handleDownload = async (format: EnvironmentReportFormat) => {
-    setLoading(format);
-    try {
-      const { filename } = await downloadEnvironmentReport({ code, format });
-      notify.success({
-        title: "Reporte descargado",
-        description: filename,
-      });
-      setOpen(false);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "No se pudo descargar el reporte.";
+  const handleGeneratePdf = async () => {
+    if (!contentRef?.current) {
       notify.error({
-        title: "Descarga fallida",
+        title: "Error",
+        description: "No se pudo capturar el contenido para generar el PDF.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    // --- 1. Clonar el elemento para no modificar el original ---
+    const clone = contentRef.current.cloneNode(true) as HTMLElement;
+
+    // --- 2. Mostrar cabecera y pie en el clon ---
+    // En la vista web están ocultos (clase "hidden"), 
+    // pero en el PDF queremos que aparezcan
+    const headerEl = clone.querySelector(".report-header");
+    const footerEl = clone.querySelector(".report-footer");
+    if (headerEl) (headerEl as HTMLElement).classList.remove("hidden");
+    if (footerEl) (footerEl as HTMLElement).classList.remove("hidden");
+
+    // --- 3. Posicionar el clon fuera de pantalla ---
+    // Necesario para que html2canvas-pro pueda leer estilos computados
+    clone.style.position = "absolute";
+    clone.style.left = "-9999px";
+    clone.style.top = "0";
+    clone.style.width = "210mm";
+    document.body.appendChild(clone);
+
+    try {
+      const filename = `Ambiente-${code}`;
+      await generatePdf({
+        element: clone,
+        filename,
+      });
+      notify.success({
+        title: "PDF generado",
+        description: `${filename}.pdf`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo generar el PDF.";
+      notify.error({
+        title: "Error",
         description: message,
       });
     } finally {
-      setLoading(null);
+      // --- 4. Limpiar: remover el clon del DOM ---
+      if (clone.parentNode) {
+        clone.parentNode.removeChild(clone);
+      }
+      setLoading(false);
     }
   };
 
-  const cards: Array<{
-    format: EnvironmentReportFormat;
-    title: string;
-    description: string;
-    icon: JSX.Element;
-  }> = [
-    {
-      format: "pdf",
-      title: "PDF",
-      description: "Para compartir o imprimir rápidamente.",
-      icon: <FileText className="h-5 w-5" aria-hidden />,
-    },
-    {
-      format: "excel",
-      title: "Excel",
-      description: "Para editar, filtrar y anexar a informes.",
-      icon: <FileSpreadsheet className="h-5 w-5" aria-hidden />,
-    },
-  ];
-
   return (
-    <>
-      {showLabel ? (
-        <Button
-          type="button"
-          onClick={() => setOpen(true)}
-          style={{ backgroundColor: "oklch(0.147 0.004 49.25)", color: "white" }}
-        >
+    <Button
+      type="button"
+      disabled={loading}
+      onClick={handleGeneratePdf}
+      style={{ backgroundColor: "#262626", color: "white" }}
+    >
+      {loading ? (
+        <span>Generando...</span>
+      ) : (
+        <>
           <Printer className="h-4 w-4 mr-2" />
           Imprimir
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          title="Descargar reporte del ambiente"
-          aria-label="Descargar reporte del ambiente"
-          onClick={() => setOpen(true)}
-        >
-          <FileDown className="h-4 w-4" aria-hidden />
-        </Button>
+        </>
       )}
-
-      <Dialog
-        open={open}
-        onOpenChange={(value) => {
-          if (!loading) {
-            setOpen(value);
-          }
-        }}
-      >
-        <DialogContent className="max-w-[540px] sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Reporte del ambiente</DialogTitle>
-            <DialogDescription>
-              Elige el formato para {name ?? code}.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {cards.map((card) => {
-              const isLoading = loading === card.format;
-              return (
-                <Button
-                  key={card.format}
-                  type="button"
-                  variant="outline"
-                  className="h-auto justify-start gap-3 p-3 text-left whitespace-normal"
-                  disabled={Boolean(loading)}
-                  onClick={() => void handleDownload(card.format)}
-                >
-                  <span className="rounded-full bg-secondary p-2 text-secondary-foreground">
-                    {card.icon}
-                  </span>
-                  <span className="flex flex-col items-start gap-1">
-                    <span className="font-semibold leading-none">
-                      {isLoading ? "Generando..." : card.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {card.description}
-                    </span>
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+    </Button>
   );
 }

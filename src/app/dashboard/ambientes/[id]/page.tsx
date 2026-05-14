@@ -1,14 +1,33 @@
 "use client";
 
-import { Suspense, use, useEffect, useMemo, useState } from "react";
+import { Suspense, use, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  MapPin,
+  Ruler,
+  Users,
+  Clock,
+  Package,
+  GraduationCap,
+  Home,
+  School,
+  CheckCircle2,
+  XCircle,
+FileText,
+  Printer,
+  Hash,
+  Maximize2,
+  Layers,
+} from "lucide-react";
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type ColumnDef, type SortingState } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -18,9 +37,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableColumnHeader } from "@/components/data-table-column-header";
+import { ReportHeader, ReportFooter } from "@/components/ui/report-layout";
 import { apiFetch } from "@/lib/api";
 import { notify } from "@/lib/notify";
-
 import { EnvironmentReportAction } from "@/features/reports/environment/EnvironmentReportAction";
 
 type Props = {
@@ -109,7 +128,50 @@ function buildSlots(start: string, end: string, period: number): string[] {
   return slots;
 }
 
-function ScheduleGrid({ horarios }: { horarios: Horario[] }) {
+/**
+ * Componente: InfoRow
+ * Fila de información clave-valor con borde inferior
+ * Siempre tiene el mismo alineado independientemente de si tiene icono o no
+ */
+function InfoRow({ label, value, icon: Icon, colspan = 1 }: { label: string; value: React.ReactNode; icon?: React.ComponentType<{ className?: string }>; colspan?: number }) {
+  return (
+    <div className={`py-3 border-b border-slate-200 ${colspan > 1 ? `col-span-${colspan}` : ""}`}>
+      <div className="flex items-start gap-2">
+        {/* Espacio reservado para icono para mantener alineación consistente */}
+        <div className="w-4 shrink-0">
+          {Icon && <Icon className="w-4 h-4 text-slate-500 mt-0.5" />}
+        </div>
+        <div className="flex-1">
+          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</Label>
+          <div className="text-sm font-medium text-slate-800 mt-0.5">{value}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Componente: InfoCard
+ * Tarjeta de información con título y contenido
+ */
+function InfoCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`border border-slate-300 rounded-lg overflow-hidden ${className}`}>
+      <div className="bg-slate-100 px-4 py-2 border-b border-slate-300">
+        <h3 className="font-semibold text-slate-800 text-sm">{title}</h3>
+      </div>
+      <div className="p-4">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Componente: ScheduleTable
+ * Tabla de horarios formateada para informe
+ */
+function ScheduleTable({ horarios }: { horarios: Horario[] }) {
   const aperturaMasBaja = useMemo(() => {
     if (horarios.length === 0) return "07:00";
     return horarios.reduce((min, h) => toMinutes(h.apertura) < toMinutes(min) ? h.apertura : min, horarios[0].apertura);
@@ -137,27 +199,45 @@ function ScheduleGrid({ horarios }: { horarios: Horario[] }) {
     });
   };
 
+  if (horarios.length === 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-4 text-slate-500">
+        <Clock className="w-5 h-5" />
+        <span>No hay horarios asignados</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-md border overflow-hidden">
-      <Table className="w-full">
+    <div className="overflow-x-auto">
+      <Table className="w-full text-sm min-w-[700px]">
         <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="w-20 h-10 text-center">Hora</TableHead>
-            {DAY_NAMES.map((day) => (
-              <TableHead key={day} className="h-10 text-center p-0">{day}</TableHead>
-            ))}
+          <TableRow className="bg-slate-100">
+            <TableHead className="text-center font-semibold text-slate-700 border border-slate-300 w-20">Hora</TableHead>
+            {DAY_NAMES.map((day) => {
+              return (
+                <TableHead
+                  key={day}
+                  className="text-center font-semibold text-slate-700 border border-slate-300 min-w-[80px]"
+                >
+                  {day}
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
           {slots.map((slot) => (
-            <TableRow key={slot} className="hover:bg-muted/30">
-              <TableCell className="p-1 text-center font-mono text-xs w-20">{slot}</TableCell>
+            <TableRow key={slot}>
+              <TableCell className="text-center font-mono font-medium border border-slate-300 p-2 w-20">
+                {slot}
+              </TableCell>
               {DAY_NAMES.map((_, diaIndex) => {
                 const active = isCellActive(diaIndex, slot);
                 return (
-                  <TableCell key={diaIndex} className="p-1 text-center">
+                  <TableCell key={diaIndex} className="text-center border border-slate-300 p-1 min-w-[80px]">
                     <div
-                      className={`h-6 rounded-md transition-colors ${active ? "bg-emerald-400 dark:bg-emerald-600" : "bg-muted/30"}`}
+                      className={`h-6 rounded mx-auto w-full ${active ? "bg-emerald-500" : "bg-slate-100"}`}
                     />
                   </TableCell>
                 );
@@ -170,7 +250,11 @@ function ScheduleGrid({ horarios }: { horarios: Horario[] }) {
   );
 }
 
-function AssetTable({ initialAssets }: { initialAssets: ActivoItem[] }) {
+/**
+ * Componente: AssetTableReport
+ * Tabla de activos formateada para informe
+ */
+function AssetTableReport({ initialAssets }: { initialAssets: ActivoItem[] }) {
   const [data] = useState<ActivoItem[]>(
     initialAssets.map(item => ({ ...item, nia: Number(item.nia) }))
   );
@@ -211,51 +295,57 @@ function AssetTable({ initialAssets }: { initialAssets: ActivoItem[] }) {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="flex-1 max-w-sm">
-          <Label htmlFor="asset-search" className="sr-only">Buscar activo</Label>
-          <Input
-            id="asset-search"
-            placeholder="Buscar por NIA o nombre..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+  if (initialAssets.length === 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
+        <Package className="w-5 h-5" />
+        <span>No hay activos asociados a este ambiente</span>
       </div>
-      <div className="rounded-md border overflow-hidden">
-        <Table className="w-full">
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-4">
+        <Input
+          placeholder="Buscar por NIA o nombre..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-xs"
+        />
+      </div>
+      <div className="border border-slate-300 rounded-lg overflow-hidden">
+        <Table className="w-full text-sm">
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className={header.column.id === "nia" ? "w-20" : ""}>
+            <TableRow className="bg-slate-100">
+              {table.getHeaderGroups().map((headerGroup) =>
+                headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={`font-semibold text-slate-700 border border-slate-300 ${header.column.id === "nia" ? "w-24 text-right" : ""}`}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
-                ))}
-              </TableRow>
-            ))}
+                ))
+              )}
+            </TableRow>
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
                   No se encontraron activos
                 </TableCell>
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className="hover:bg-slate-50">
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell 
-                      key={cell.id} 
-                      className={`
-                        ${cell.column.id === "nia" ? "text-right w-24" : "text-left"}
-                        align-top whitespace-normal
-                      `}
+                    <TableCell
+                      key={cell.id}
+                      className={`border border-slate-300 ${cell.column.id === "nia" ? "text-right font-mono" : ""}`}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
@@ -270,6 +360,246 @@ function AssetTable({ initialAssets }: { initialAssets: ActivoItem[] }) {
   );
 }
 
+/**
+ * Componente: EnvironmentReport
+ * Vista completa del informe del ambiente
+ */
+function EnvironmentReport({ detail }: { detail: DetailResponse }) {
+  const router = useRouter();
+  const reportRef = useRef<HTMLDivElement>(null);
+  const { ambiente, horarios, activos } = detail;
+  const superficie = ambiente.dimension.largo * ambiente.dimension.ancho;
+
+  return (
+    <div className="space-y-8">
+      {/* Botón de acción - solo visible en pantalla */}
+      <div className="flex items-center justify-between print:hidden">
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard/ambientes/list")}
+          className="gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver al listado
+        </Button>
+        <EnvironmentReportAction
+          code={ambiente.codigo}
+          name={ambiente.nombre}
+          contentRef={reportRef}
+        />
+      </div>
+
+      {/* Contenido del informe - se imprime */}
+      <div 
+        ref={reportRef}
+        className="bg-white p-8 rounded-lg border border-slate-200 print:border-0 print:p-0 print:rounded-0"
+      >
+        {/* Encabezado del informe - solo visible en PDF */}
+        <div className="hidden report-header">
+          <ReportHeader
+            logoSrc="/logo_UMSS.png"
+            institutionName="Universidad Mayor de San Simón"
+            systemName="Gestión de Infraestructura"
+            generatedAt={new Date()}
+          />
+        </div>
+
+        {/* Información Principal - Página 1 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Datos de Identificación */}
+          <InfoCard title="1. DATOS DE IDENTIFICACIÓN">
+            <div className="grid grid-cols-2 gap-x-4">
+              <InfoRow label="Código" value={ambiente.codigo} icon={Hash} />
+              <InfoRow label="Nombre" value={ambiente.nombre} />
+              {ambiente.nombre_corto && (
+                <InfoRow label="Nombre corto" value={ambiente.nombre_corto} />
+              )}
+              <InfoRow label="Tipo de ambiente" value={ambiente.tipo_ambiente_nombre} icon={Building2} />
+              <InfoRow label="Admite clases" value={
+                ambiente.clases ? (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-emerald-700">Sí</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-500">No</span>
+                  </div>
+                )
+              } icon={GraduationCap} />
+              <InfoRow label="Estado" value={
+                <div className="flex items-center gap-2">
+                  {ambiente.activo ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span className="text-emerald-700 font-semibold">Activo</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-4 h-4 text-red-600" />
+                      <span className="text-red-700 font-semibold">Inactivo</span>
+                    </>
+                  )}
+                </div>
+              } />
+            </div>
+          </InfoCard>
+
+          {/* Ubicación Física */}
+          <InfoCard title="2. UBICACIÓN FÍSICA">
+            <div className="grid grid-cols-2 gap-x-4">
+              <InfoRow label="Campus" value={ambiente.campus_nombre} icon={School} />
+              <InfoRow label="Facultad" value={ambiente.facultad_nombre} icon={Building2} />
+              <InfoRow label="Bloque" value={ambiente.bloque_nombre} icon={Home} />
+              <InfoRow label="Tipo de bloque" value={ambiente.tipo_bloque_nombre} />
+              <InfoRow label="Piso" value={ambiente.piso} icon={Layers} />
+            </div>
+          </InfoCard>
+        </div>
+
+        {/* Propiedades Físicas - ocupa todo el ancho */}
+        <InfoCard title="3. PROPIEDADES FÍSICAS" className="mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-5 h-5 text-slate-600" />
+                <Label className="text-xs font-semibold text-slate-500 uppercase">Capacidad total</Label>
+              </div>
+              <p className="text-3xl font-bold text-slate-800">{ambiente.capacidad.total}</p>
+              <p className="text-xs text-slate-500">personas</p>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <div className="flex items-center gap-2 mb-2">
+                <GraduationCap className="w-5 h-5 text-slate-600" />
+                <Label className="text-xs font-semibold text-slate-500 uppercase">Para examen</Label>
+              </div>
+              <p className="text-3xl font-bold text-slate-800">{ambiente.capacidad.examen}</p>
+              <p className="text-xs text-slate-500">personas</p>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Maximize2 className="w-5 h-5 text-slate-600" />
+                <Label className="text-xs font-semibold text-slate-500 uppercase">Superficie</Label>
+              </div>
+              <p className="text-3xl font-bold text-slate-800">{superficie}</p>
+              <p className="text-xs text-slate-500">m²</p>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Ruler className="w-5 h-5 text-slate-600" />
+                <Label className="text-xs font-semibold text-slate-500 uppercase">Dimensiones</Label>
+              </div>
+              <p className="text-lg font-bold text-slate-800">
+                {ambiente.dimension.largo} × {ambiente.dimension.ancho} × {ambiente.dimension.alto}
+              </p>
+              <p className="text-xs text-slate-500">
+                {ambiente.dimension.unid_med}
+              </p>
+            </div>
+          </div>
+        </InfoCard>
+
+        {/* Horario de Atención */}
+        <InfoCard title="4. HORARIO DE ATENCIÓN" className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-slate-600">
+              <span className="font-medium">Período de atención:</span> {horarios.length > 0 ? `${horarios[0].periodo} minutos` : "No definido"}
+            </div>
+            <div className="flex gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-emerald-500 rounded"></div>
+                <span className="text-slate-600">Disponible</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-slate-100 border border-slate-300 rounded"></div>
+                <span className="text-slate-600">Cerrado</span>
+              </div>
+            </div>
+          </div>
+          <ScheduleTable horarios={horarios} />
+        </InfoCard>
+
+        {/* Página 2: Activos - solo salto en print */}
+        <div className="hidden lg:block break-before-page" />
+        
+        <InfoCard title="5. ACTIVOS ASOCIADOS" className="mb-8">
+          <div className="mb-4 text-sm text-slate-600">
+            <span className="font-medium">Total de activos:</span> {activos.meta.total}
+          </div>
+          <AssetTableReport initialAssets={activos.items} />
+        </InfoCard>
+
+        {/* Pie de página del informe - solo visible en PDF */}
+        <div className="hidden report-footer">
+          <ReportFooter
+            systemName="Gestión de Infraestructura"
+            currentPage={1}
+            totalPages={1}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Componente: LoadingState
+ * Estado de carga con esqueletos
+ */
+function LoadingState() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-10 rounded-md" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-80 w-full rounded-xl" />
+        <Skeleton className="h-80 w-full rounded-xl" />
+      </div>
+      <Skeleton className="h-64 w-full rounded-xl" />
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  );
+}
+
+/**
+ * Componente: NotFoundState
+ * Estado cuando no se encuentra el ambiente
+ */
+function NotFoundState() {
+  const router = useRouter();
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="rounded-full bg-slate-100 p-4">
+          <Building2 className="h-8 w-8 text-slate-400" />
+        </div>
+        <div>
+          <p className="text-lg font-medium text-slate-700">Ambiente no encontrado</p>
+          <p className="text-sm text-slate-500">El ambiente que buscas no existe o fue eliminado</p>
+        </div>
+        <Button variant="outline" onClick={() => router.push("/dashboard/ambientes/list")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Volver al listado
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Componente: EnvironmentDetailContent
+ * Componente principal que carga los datos
+ */
 function EnvironmentDetailContent({ id }: { id: string }) {
   const router = useRouter();
   const [detail, setDetail] = useState<DetailResponse | null>(null);
@@ -311,177 +641,20 @@ function EnvironmentDetailContent({ id }: { id: string }) {
   }, [id]);
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (!detail) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground">Ambiente no encontrado</p>
-        <Button variant="link" onClick={() => router.push("/dashboard/ambientes/list")}>
-          Volver al listado
-        </Button>
-      </div>
-    );
+    return <NotFoundState />;
   }
 
-  const { ambiente, horarios, activos } = detail;
-  const periodo = horarios.length > 0 ? horarios[0].periodo : 45;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/dashboard/ambientes/list")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-semibold">{ambiente.nombre}</h1>
-            <p className="text-muted-foreground">Código: {ambiente.codigo}</p>
-          </div>
-        </div>
-        <EnvironmentReportAction code={ambiente.codigo} name={ambiente.nombre} showLabel />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Ubicación</h2>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-3">
-            <div className="col-span-2">
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Campus</dt>
-              <dd className="text-base font-medium">{ambiente.campus_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Facultad</dt>
-              <dd className="text-sm">{ambiente.facultad_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bloque</dt>
-              <dd className="text-sm">{ambiente.bloque_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo de Bloque</dt>
-              <dd className="text-sm">{ambiente.tipo_bloque_nombre}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Piso</dt>
-              <dd className="text-sm">{ambiente.piso}</dd>
-            </div>
-            <div className="col-span-2 border-t pt-3 mt-1">
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Identificación</dt>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Código</dt>
-              <dd className="text-sm font-mono">{ambiente.codigo}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre</dt>
-              <dd className="text-sm">{ambiente.nombre}</dd>
-            </div>
-            {ambiente.nombre_corto && (
-              <div>
-                <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre Corto</dt>
-                <dd className="text-sm">{ambiente.nombre_corto}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo de Ambiente</dt>
-              <dd className="text-sm">{ambiente.tipo_ambiente_nombre}</dd>
-            </div>
-            <div className="col-span-2 border-t pt-3 mt-1">
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</dt>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</dt>
-              <dd className={`text-sm font-semibold ${ambiente.activo ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                {ambiente.activo ? "✓ Activo" : "✗ Inactivo"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">¿Admite Clases?</dt>
-              <dd className={`text-sm font-semibold ${ambiente.clases ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
-                {ambiente.clases ? "✓ Sí" : "✗ No"}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Propiedades</h2>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-3">
-            <div className="col-span-2">
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capacidad</dt>
-            </div>
-            <div className="bg-muted/30 rounded-lg p-3">
-              <dd className="text-2xl font-bold">{ambiente.capacidad.total}</dd>
-              <dt className="text-xs text-muted-foreground">Total personas</dt>
-            </div>
-            <div className="bg-muted/30 rounded-lg p-3">
-              <dd className="text-2xl font-bold">{ambiente.capacidad.examen}</dd>
-              <dt className="text-xs text-muted-foreground">Para examen</dt>
-            </div>
-            <div className="col-span-2 border-t pt-3 mt-1">
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dimensiones</dt>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Largo</dt>
-              <dd className="text-lg font-medium">{ambiente.dimension.largo} <span className="text-sm font-normal text-muted-foreground">{ambiente.dimension.unid_med}</span></dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ancho</dt>
-              <dd className="text-lg font-medium">{ambiente.dimension.ancho} <span className="text-sm font-normal text-muted-foreground">{ambiente.dimension.unid_med}</span></dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Alto</dt>
-              <dd className="text-lg font-medium">{ambiente.dimension.alto} <span className="text-sm font-normal text-muted-foreground">{ambiente.dimension.unid_med}</span></dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Superficie</dt>
-              <dd className="text-lg font-medium">{ambiente.dimension.largo * ambiente.dimension.ancho} <span className="text-sm font-normal text-muted-foreground">m²</span></dd>
-            </div>
-            <div className="col-span-2 border-t pt-3 mt-1">
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Activos</dt>
-            </div>
-            <div className="col-span-2 bg-muted/30 rounded-lg p-3">
-              <dd className="text-2xl font-bold">{activos.meta.total}</dd>
-              <dt className="text-xs text-muted-foreground">Activos asignados</dt>
-            </div>
-          </dl>
-        </div>
-      </div>
-
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Horario de Atención</h2>
-          {horarios.length > 0 && (
-            <span className="text-sm text-muted-foreground">Período: {periodo} min</span>
-          )}
-        </div>
-        {horarios.length > 0 ? (
-          <ScheduleGrid horarios={horarios} />
-        ) : (
-          <p className="text-muted-foreground">No hay horarios asignados</p>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">Activos Asociados ({activos.meta.total})</h2>
-        {activos.items.length > 0 ? (
-          <AssetTable initialAssets={activos.items} />
-        ) : (
-          <p className="text-muted-foreground">No hay activos asociados</p>
-        )}
-      </div>
-    </div>
-  );
+  return <EnvironmentReport detail={detail} />;
 }
 
+/**
+ * Componente: EnvironmentDetailPage
+ * Página exportable por defecto
+ */
 export default function EnvironmentDetailPage({ params }: Props) {
   const resolvedParams = use(params);
 

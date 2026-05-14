@@ -158,3 +158,63 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Estilos para impresión/PDF */
+@media print {
+  /* Ocultar elementos de navegación */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Mostrar solo el contenido imprimible */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Configuración de página */
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  /* Eliminar sombras y bordes innecesarios para impresión */
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:border-0 {
+    border: none !important;
+  }
+
+  /* Asegurar que el fondo se imprima */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Saltos de página */
+  .break-before-page {
+    page-break-before: always;
+  }
+
+  .break-after-page {
+    page-break-after: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Ocultar sidebar y elementos de navegación */
+  nav,
+  header,
+  footer:not(.print-footer) {
+    display: none !important;
+  }
+
+  /* Texto en negro para ahorro de tinta */
+  body {
+    color: #1a1a1a !important;
+    background: white !important;
+  }
+}
