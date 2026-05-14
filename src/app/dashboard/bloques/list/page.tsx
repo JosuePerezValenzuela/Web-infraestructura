@@ -20,13 +20,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -40,6 +49,7 @@ import BlockEditForm from "@/features/blocks/edit/BlockEditForm";
 import { BlockCreateForm } from "@/features/blocks/BlockCreateForm";
 import { apiFetch } from "@/lib/api"; // Cliente centralizado para hablar con el backend.
 import { notify } from "@/lib/notify"; // Notificaciones amigables para informar el estado de las operaciones.
+import { Building2 } from "lucide-react";
 import type { Table as ReactTableInstance } from "@tanstack/react-table";
 
 // Describimos el shape de la respuesta paginada del backend para el listado de bloques.
@@ -329,6 +339,19 @@ function BlockListPageContent() {
   const [deleteOpen, setDeleteOpen] = useState(false); // Controla la apertura del diálogo de eliminación.
   const [blockToDelete, setBlockToDelete] = useState<BlockRow | null>(null); // Guarda el registro seleccionado para eliminar.
   const [deleting, setDeleting] = useState(false); // Marca si la petición DELETE está en curso.
+
+  // Estado para el diálogo de conflicto (409: bloque con ambientes dependientes)
+  const [conflictAmbientes, setConflictAmbientes] = useState<BlockedAmbiente[]>([]);
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const [conflictTitle, setConflictTitle] = useState("");
+
+  type BlockedAmbiente = {
+    id: number;
+    codigo: string;
+    nombre: string;
+    activo: boolean;
+    tipo_ambiente_nombre?: string;
+  };
   const [editOpen, setEditOpen] = useState(false); // Controla la apertura del diálogo de edición.
   const [blockToEdit, setBlockToEdit] = useState<BlockRow | null>(null); // Mantiene el bloque que se está editando.
   const [reloadKey, setReloadKey] = useState(0); // Permite forzar la recarga del listado tras eliminar.
@@ -637,50 +660,91 @@ async function loadBlocks() {
   }
 
 
+  /** Extrae ambientes bloqueantes del detalle de un error 409 */
+  function extractBlockedAmbientes(raw: unknown): BlockedAmbiente[] {
+    if (!raw || typeof raw !== "object") return [];
+    const details = (raw as Record<string, unknown>).details;
+    if (!Array.isArray(details)) return [];
+
+    return details
+      .map((d: unknown) => {
+        if (typeof d !== "object" || d === null) return null;
+        const obj = d as Record<string, unknown>;
+        const entity = Object.values(obj).find(
+          (v): v is Record<string, unknown> =>
+            typeof v === "object" &&
+            v !== null &&
+            "id" in v &&
+            "nombre" in v,
+        );
+        if (!entity) return null;
+        return {
+          id: Number(entity.id) || 0,
+          codigo: String(entity.codigo ?? ""),
+          nombre: String(entity.nombre ?? ""),
+          activo: entity.activo === true,
+          tipo_ambiente_nombre: String(entity.tipo_ambiente_nombre ?? ""),
+        } as BlockedAmbiente;
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null);
+  }
+
   function handleDelete(block: BlockRow) {
     setBlockToDelete(block); // Guardamos el bloque que se desea eliminar.
     setDeleteOpen(true); // Mostramos el diálogo de confirmación.
   }
 
   async function confirmDelete() {
-    if (!blockToDelete) {
-      return; // Si por alguna razón no hay registro seleccionado, no continuamos.
-    }
+    if (!blockToDelete) return;
 
     try {
-      setDeleting(true); // Deshabilitamos los controles mientras invocamos la API.
+      setDeleting(true);
       await apiFetch(`/bloques/${blockToDelete.id}`, {
         method: "DELETE",
-      }); // Invocamos el endpoint definido en HU 16.
+      });
 
       notify.success({
         title: "Bloque eliminado",
         description: "El bloque se eliminó correctamente.",
-      }); // Avisamos a la persona usuaria que la operación concluyó.
+      });
 
-      setDeleteOpen(false); // Cerramos el diálogo de confirmación.
-      setBlockToDelete(null); // Limpiamos la referencia.
-      setReloadKey((previous) => previous + 1); // Forzamos la recarga del listado para reflejar el cambio.
-    } catch (error) {
-      const errorDetails =
-        typeof error === "object" && error && "details" in error
-          ? (error as { details?: unknown }).details
-          : undefined;
-      const errorMessage =
-        typeof error === "object" && error && "message" in error
-          ? String((error as { message?: string }).message ?? "")
-          : "";
+      setDeleteOpen(false);
+      setBlockToDelete(null);
+      setReloadKey((previous) => previous + 1);
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string; raw?: unknown };
 
-      const description = Array.isArray(errorDetails) && errorDetails.length
-        ? errorDetails.join("\n")
-        : errorMessage || "Revisa los datos e inténtalo nuevamente.";
+      // Cerrar el diálogo de confirmación
+      setDeleteOpen(false);
 
-      notify.error({
-        title: "No se pudo eliminar el bloque",
-        description,
-      }); // Mostramos el detalle del fallo.
+      if (error?.status === 409) {
+        // Conflicto: el bloque tiene ambientes dependientes
+        const ambientes = extractBlockedAmbientes(error.raw);
+
+        if (ambientes.length > 0) {
+          setConflictAmbientes(ambientes);
+          setConflictTitle(error?.message ?? "El bloque tiene ambientes dependientes");
+          setConflictOpen(true);
+        } else {
+          notify.error({
+            title: "No se pudo eliminar el bloque",
+            description: error?.message ?? "El bloque tiene ambientes dependientes.",
+          });
+        }
+      } else if (error?.status === 404) {
+        notify.error({
+          title: "Bloque no encontrado",
+          description: "El bloque no existe o ya fue eliminado.",
+        });
+      } else {
+        notify.error({
+          title: "No se pudo eliminar el bloque",
+          description: error?.message ?? "Error desconocido al eliminar el bloque.",
+        });
+      }
     } finally {
-      setDeleting(false); // Restablecemos los controles sin importar el resultado.
+      setDeleting(false);
+      setBlockToDelete(null);
     }
   }
 
@@ -886,29 +950,29 @@ async function loadBlocks() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      {/* Diálogo de confirmación para eliminar (AlertDialog) */}
+      <AlertDialog
         open={deleteOpen}
         onOpenChange={(value) => {
           setDeleteOpen(value);
-          if (!value) {
-            setBlockToDelete(null);
-          }
+          if (!value) setBlockToDelete(null);
         }}
       >
-        <DialogContent className="max-w-lg space-y-4">
-          <DialogHeader>
-            <DialogTitle>Desactivar bloque</DialogTitle>
-            <DialogDescription>
-              Esta accion Desactivara el bloque seleccionado y los ambientes que dependan de el.
-            </DialogDescription>
-          </DialogHeader>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar bloque</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el bloque. Esta acción no se
+              puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>Confirma el codigo y nombre antes de continuar.</p>
+            <p>Confirma que deseas eliminar este registro.</p>
             {blockToDelete ? (
               <>
                 <p>
-                  Codigo:{" "}
+                  Código:{" "}
                   <span className="font-semibold">{blockToDelete.codigo}</span>
                 </p>
                 <p>
@@ -919,23 +983,76 @@ async function loadBlocks() {
             ) : null}
           </div>
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={deleting}>
-                Cancelar
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              variant="destructive"
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Desactivando..." : "Desactivar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de conflicto: muestra los ambientes bloqueantes */}
+      <AlertDialog open={conflictOpen} onOpenChange={setConflictOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-destructive" />
+              No se puede eliminar
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictTitle}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {conflictAmbientes.length > 0 && (
+            <div className="max-h-[180px] overflow-y-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Código</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Nombre</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Tipo</th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {conflictAmbientes.map((amb) => (
+                    <tr key={amb.id} className="hover:bg-muted/50">
+                      <td className="px-3 py-2.5 font-mono text-xs">{amb.codigo}</td>
+                      <td className="px-3 py-2.5 text-sm">{amb.nombre}</td>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">{amb.tipo_ambiente_nombre}</td>
+                      <td className="px-3 py-2.5">
+                        <Badge variant={amb.activo ? "secondary" : "outline"} className="text-xs">
+                          {amb.activo ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {conflictAmbientes.length > 2 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Mostrando {conflictAmbientes.length} ambientes
+            </p>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setConflictOpen(false)}>
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
