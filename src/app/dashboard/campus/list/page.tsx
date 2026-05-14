@@ -3,18 +3,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/data-table";
 import { campusColumns, type CampusRow } from "@/features/campus/list/columns";
-import { Plus } from "lucide-react";
+import { Plus, Building2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogClose,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import CampusForm from "@/features/campus/CampusForm";
 import CampusEditForm from "@/features/campus/edit/CampusEditForm";
 import { X } from "lucide-react";
@@ -25,6 +34,23 @@ import { env } from "@/lib/env";
 const API_BASE = env.API_BASE_URL;
 
 const TAKE = 8;
+
+/** Error tipado devuelto por apiFetch */
+type ApiError = {
+  status: number;
+  message: string;
+  details?: string[];
+  raw?: { message?: string; details?: Array<{ field: string; message: string; faculty: BlockingFaculty }> };
+};
+
+/** Forma de una facultad bloqueante devuelta por el backend en errores 409 */
+type BlockingFaculty = {
+  id: number;
+  codigo: string;
+  nombre: string;
+  nombre_corto: string | null;
+  activo: boolean;
+};
 
 export default function CampusListPage() {
   const [items, setItems] = useState<CampusRow[]>([]);
@@ -37,6 +63,10 @@ export default function CampusListPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [campusToDelete, setCampusToDelete] = useState<CampusRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Estado para el diálogo de conflicto (409: campus con facultades relacionadas)
+  const [conflictFaculties, setConflictFaculties] = useState<BlockingFaculty[]>([]);
+  const [conflictOpen, setConflictOpen] = useState(false);
 
   const query = useMemo(() => search.trim(), [search]);
 
@@ -107,15 +137,13 @@ export default function CampusListPage() {
     setEditOpen(true);
   }
 
-  async function handleDelete(row: CampusRow) {
+  function handleDelete(row: CampusRow) {
     setCampusToDelete(row);
     setDeleteOpen(true);
   }
 
   async function confirmDelete() {
-    if (!campusToDelete) {
-      return;
-    }
+    if (!campusToDelete) return;
 
     try {
       setDeleting(true);
@@ -124,28 +152,59 @@ export default function CampusListPage() {
         method: "DELETE",
       });
 
+      // Éxito: 204 No Content
       notify.success({
         title: "Campus eliminado",
         description: "El registro se eliminó correctamente.",
       });
 
-      // Refresca la tabla de la vista inicial
       await fetchData();
-
+      setDeleteOpen(false);
+      setCampusToDelete(null);
+    } catch (err: unknown) {
+      // Cerrar el diálogo de confirmación
       setDeleteOpen(false);
 
-      setCampusToDelete(null);
-    } catch (error: any) {
-      const description = Array.isArray(error?.details)
-        ? error.details.join("\n")
-        : error?.message ?? "Error desconocido.";
+      const error = err as ApiError;
+      const status = error?.status;
 
-      notify.error({
-        title: "No se pudo eliminar el campus",
-        description,
-      });
+      if (status === 409) {
+        // Conflicto: el campus tiene facultades relacionadas
+        const faculties: BlockingFaculty[] =
+          error?.raw?.details
+            ?.filter((d): d is { field: string; message: string; faculty: BlockingFaculty } => "faculty" in d)
+            .map((d) => d.faculty) ?? [];
+
+        if (faculties.length > 0) {
+          setConflictFaculties(faculties);
+          setConflictOpen(true);
+        } else {
+          notify.error({
+            title: "No se pudo eliminar el campus",
+            description:
+              error?.message ??
+              "El campus tiene dependencias relacionadas.",
+          });
+        }
+      } else if (status === 404) {
+        // No encontrado
+        notify.error({
+          title: "Campus no encontrado",
+          description: "El campus no existe o ya fue eliminado.",
+        });
+      } else {
+        // Otro error
+        const description =
+          error?.message ?? "Error desconocido al eliminar el campus.";
+
+        notify.error({
+          title: "No se pudo eliminar el campus",
+          description,
+        });
+      }
     } finally {
       setDeleting(false);
+      setCampusToDelete(null);
     }
   }
 
@@ -180,7 +239,7 @@ export default function CampusListPage() {
         onPageChange={setPage}
       />
 
-      {/* Modal para crear un campus*/}
+      {/* Modal para crear un campus */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] max-w-full overflow-auto pb-2">
           <DialogHeader>
@@ -206,14 +265,11 @@ export default function CampusListPage() {
       </Dialog>
 
       {/* Modal para editar un campus */}
-
       <Dialog
         open={editOpen}
         onOpenChange={(value) => {
           setEditOpen(value);
-          if (!value) {
-            setCampusToEdit(null);
-          }
+          if (!value) setCampusToEdit(null);
         }}
       >
         <DialogContent className="sm:max-w-3xl max-h-[90vh] max-w-full overflow-auto pb-2">
@@ -242,28 +298,19 @@ export default function CampusListPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialogo para eliminar un campus */}
-
-      <Dialog
-        open={deleteOpen}
-        onOpenChange={(value) => {
-          setDeleteOpen(value);
-          if (!value) {
-            setCampusToDelete(null);
-          }
-        }}
-      >
-        <DialogContent className="max-h-[90vh] max-w-full overflow-auto pb-2 sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Desactivar campus</DialogTitle>
-            <DialogDescription>
-              Esta accion desactivara el campus y todas sus dependencias
-              asociadas. Esta accion no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
+      {/* Diálogo de confirmación para eliminar (AlertDialog) */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar campus</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta accion eliminara permanentemente el campus. Esta accion no se
+              puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>Por seguridad, confirma que deseas desactivar este registro.</p>
+            <p>Confirma que deseas eliminar este registro.</p>
             {campusToDelete ? (
               <p>
                 Campus seleccionado:{" "}
@@ -272,22 +319,85 @@ export default function CampusListPage() {
             ) : null}
           </div>
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" disabled={deleting}>
-                Cancelar
-              </Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Desactivando..." : "Desactivar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de conflicto: muestra las facultades bloqueantes en tabla */}
+      <AlertDialog open={conflictOpen} onOpenChange={setConflictOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-destructive" />
+              No se puede eliminar
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Este campus tiene las siguientes facultades relacionadas.
+              Eliminalas antes de eliminar el campus.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {/* Tabla de facultades bloqueantes */}
+          <div className="max-h-[180px] overflow-y-auto rounded-md border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">
+                    Código
+                  </th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">
+                    Nombre
+                  </th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">
+                    Estado
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {conflictFaculties.map((fac) => (
+                  <tr key={fac.id} className="hover:bg-muted/50">
+                    <td className="px-3 py-2.5 font-mono text-xs">
+                      {fac.codigo}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm">{fac.nombre}</td>
+                    <td className="px-3 py-2.5">
+                      <Badge
+                        variant={fac.activo ? "secondary" : "outline"}
+                        className="text-xs"
+                      >
+                        {fac.activo ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {conflictFaculties.length > 3 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Mostrando {conflictFaculties.length} facultades
+            </p>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setConflictOpen(false)}>
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
