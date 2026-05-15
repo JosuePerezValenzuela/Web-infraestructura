@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/api";
+import { generateInventoryPdf } from "./generateInventoryPdf";
 
 export type InventoryScope = "campus" | "facultad" | "bloque";
 export type InventoryFormat = "pdf" | "xlsx";
@@ -74,23 +75,24 @@ export async function downloadInventoryReport({
     throw new Error("Formato inválido para el reporte de inventario.");
   }
 
-  const url = buildInventoryReportUrl({ scope, scopeId, format });
-  const acceptHeader =
-    format === "pdf"
-      ? "application/pdf"
-      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (format === "pdf") {
+    // PDF: se genera del lado del cliente con html2canvas-pro + jsPDF
+    const filename = await generateInventoryPdf(scope, scopeId);
+    return { filename };
+  }
 
+  // Excel: se descarga el blob del backend
+  const url = buildInventoryReportUrl({ scope, scopeId, format });
   const response = await fetch(url, {
     method: "GET",
     headers: {
-      Accept: acceptHeader,
+      Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     },
     signal,
   });
 
   if (!response.ok) {
     let message = response.statusText || "No se pudo generar el reporte.";
-
     try {
       const errorBody = await response.json();
       if (errorBody?.message) {
@@ -99,16 +101,14 @@ export async function downloadInventoryReport({
     } catch {
       // Si no hay JSON nos quedamos con el mensaje base.
     }
-
     throw new Error(message);
   }
 
   const blob = await response.blob();
-  const extension = format === "pdf" ? "pdf" : "xlsx";
   const filename = extractInventoryFilename({
     headerValue: response.headers.get("content-disposition"),
     fallbackScope: scope,
-    fallbackExtension: extension,
+    fallbackExtension: "xlsx",
   });
 
   const objectUrl = URL.createObjectURL(blob);

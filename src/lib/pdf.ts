@@ -23,26 +23,6 @@ const FORMATS: Record<string, { width: number; height: number }> = {
 };
 
 /**
- * Espacio en mm reservado para la cabecera del reporte (logo + datos)
- */
-const HEADER_MM = 38;
-
-/**
- * Espacio en mm reservado para el pie de página
- */
-const FOOTER_MM = 20;
-
-/**
- * Altura total imprimible de una página A4 en mm (A4 - márgenes * 2)
- */
-const PAGE_HEIGHT_MM = 297 - 20; // 20 = 10mm margin top + 10mm margin bottom
-
-/**
- * Altura disponible para contenido por página (sin header ni footer)
- */
-const CONTENT_HEIGHT_MM = PAGE_HEIGHT_MM - HEADER_MM - FOOTER_MM;
-
-/**
  * Crea un elemento footer con el número de página correcto
  */
 function createFooter(pageNum: number, totalPages: number): HTMLElement {
@@ -141,6 +121,8 @@ function createPageElement(
   // Fix #1 + Fix #3: Contenido con espaciado entre secciones
   for (let i = 0; i < contentElements.length; i++) {
     const clone = contentElements[i].cloneNode(true) as HTMLElement;
+    // No se encoge: el contenido debe mantener su altura natural
+    clone.style.flexShrink = "0";
     // Fix #1: espaciado entre cards (pierden el gap del grid original)
     if (i < contentElements.length - 1) {
       clone.style.marginBottom = "16px";
@@ -218,60 +200,242 @@ function cleanupLayout(clone: HTMLElement): void {
 }
 
 /**
- * Agrupa las secciones en páginas, respetando que:
- * - Las cards atómicas (data-pdf-section="card") NO se parten
- * - Las cards con tabla (data-pdf-section="card-table") se pueden
- *   partir a nivel de filas data-pdf-row
- * - Cada página tiene espacio reservado para header y footer
+ * Crea un elemento de página de prueba (header + spacer + footer)
+ * para usar con overflow detection. Misma estructura que createPageElement
+ * pero simplificado para testing.
+ */
+function createTestPageShell(): HTMLDivElement {
+  const d = document.createElement("div");
+  d.style.cssText = [
+    "width: 210mm",
+    "height: 277mm",
+    "padding: 10mm",
+    "background: #fff",
+    "display: flex",
+    "flex-direction: column",
+    "box-sizing: border-box",
+    "overflow: hidden",
+    "position: absolute",
+    "left: -9999px",
+    "top: 0",
+  ].join(";");
+
+  // Header placeholder (no se usa, pero ocupa espacio)
+  const h = document.createElement("div");
+  h.style.height = "38mm";
+  h.style.flexShrink = "0";
+  d.appendChild(h);
+
+  // Spacer
+  const s = document.createElement("div");
+  s.style.flex = "1";
+  s.style.minHeight = "0";
+  d.appendChild(s);
+
+  // Footer placeholder
+  const f = document.createElement("div");
+  f.style.height = "20mm";
+  f.style.flexShrink = "0";
+  d.appendChild(f);
+
+  return d;
+}
+
+/**
+ * Agrupa las secciones en páginas usando overflow DETECTION.
  *
- * Devuelve un array de páginas, cada una con su lista de elementos.
+ * En lugar de medir alturas (impreciso), construye páginas de prueba,
+ * agrega contenido de a uno, y verifica scrollHeight > clientHeight.
+ *
+ * - Las cards atómicas (data-pdf-section="card") NO se parten
+ * - Las cards con tabla (data-pdf-section="card-table") se parten
+ *   a nivel de filas (data-pdf-row) repitiendo title + thead
+ * - Cada página tiene espacio reservado para header y footer
  */
 function paginateSections(sections: HTMLElement[]): HTMLElement[][] {
-  const pages: HTMLElement[][] = [];
-  let currentPage: HTMLElement[] = [];
-  let currentHeight = 0;
+  const result: HTMLElement[][] = [];
+  let currentGroup: HTMLElement[] = [];
+  let testPage = createTestPageShell();
 
-  for (const section of sections) {
-    const sectionHeight = section.offsetHeight;
+  // Encuentra el spacer dentro del test page
+  const testSpacer = (): HTMLElement | null =>
+    testPage.querySelector("div[style*='flex: 1']") ||
+    testPage.querySelector("div[style*='flex:1']");
+
+  function pushPage(): void {
+    if (currentGroup.length > 0) {
+      result.push(currentGroup);
+      currentGroup = [];
+    }
+    testPage.remove();
+    testPage = createTestPageShell();
+    document.body.appendChild(testPage);
+  }
+
+  // Agregar testPage al DOM (necesario para scrollHeight)
+  document.body.appendChild(testPage);
+
+  let i = 0;
+  while (i < sections.length) {
+    const section = sections[i];
     const sectionType = section.getAttribute("data-pdf-section") ?? "";
 
-    // Convertir px a mm basado en el ancho del contenedor
-    // (210mm - 20mm padding = 190mm internos)
-    const pxPerMm = section.offsetParent
-      ? (section.offsetParent as HTMLElement).offsetWidth / 190
-      : 1;
-    const sectionMm = sectionHeight / pxPerMm;
-
-    if (currentHeight + sectionMm <= CONTENT_HEIGHT_MM) {
-      // La sección cabe completa
-      currentPage.push(section);
-      currentHeight += sectionMm;
-    } else if (sectionType === "card-table" && currentPage.length > 0) {
-      // Card con tabla: podemos partir. Pero para simplificar,
-      // la movemos a la página siguiente completa
-      pages.push(currentPage);
-      currentPage = [section];
-      currentHeight = sectionMm;
-    } else if (sectionType === "card-table" && currentPage.length === 0) {
-      // Card-table sola en página vacía: forzamos (es más alta que la página)
-      currentPage.push(section);
-      currentHeight += sectionMm;
-    } else {
-      // Card atómica: nueva página
-      if (currentPage.length > 0) {
-        pages.push(currentPage);
-      }
-      currentPage = [section];
-      currentHeight = sectionMm;
+    // Forzar salto de página si la sección lo pide y ya hay contenido
+    if (section.hasAttribute("data-pdf-break-before") && currentGroup.length > 0) {
+      pushPage();
+      // El testPage se re-creó limpio, continuamos
     }
+
+    // Clonar la sección en la página de prueba
+    const clone = section.cloneNode(true) as HTMLElement;
+    clone.style.flexShrink = "0";
+
+    const spacer = testSpacer();
+    if (spacer) {
+      testPage.insertBefore(clone, spacer);
+    } else {
+      testPage.appendChild(clone);
+    }
+
+    const overflows = testPage.scrollHeight > testPage.clientHeight;
+
+    if (!overflows) {
+      // Cabe → agregar a la página actual
+      currentGroup.push(section);
+      i++;
+      continue;
+    }
+
+    // --- Overflow: la sección no cabe ---
+    // Quitar el clon
+    clone.remove();
+
+    if (sectionType !== "card-table") {
+      // Card atómica: cerrar página actual, empezar nueva con esta sección
+      pushPage();
+      currentGroup.push(section);
+      // Re-agregar el clon para verificar que cabe (debería en página vacía)
+      const newSpacer = testSpacer();
+      const newClone = section.cloneNode(true) as HTMLElement;
+      newClone.style.flexShrink = "0";
+      if (newSpacer) testPage.insertBefore(newClone, newSpacer);
+      i++;
+      continue;
+    }
+
+    // ============================================================
+    // card-table: split por filas
+    // ============================================================
+    const rows = Array.from(section.querySelectorAll<HTMLElement>("[data-pdf-row]"));
+
+    if (rows.length === 0) {
+      pushPage();
+      currentGroup.push(section);
+      const ns = testSpacer();
+      const nc = section.cloneNode(true) as HTMLElement;
+      nc.style.flexShrink = "0";
+      if (ns) testPage.insertBefore(nc, ns);
+      i++;
+      continue;
+    }
+
+    // Encontrar cuántas filas entran agregando de a una
+    const testCardClone = section.cloneNode(true) as HTMLElement;
+    testCardClone.style.flexShrink = "0";
+
+    // Quitamos todas las filas del clon de prueba
+    const testRows = Array.from(testCardClone.querySelectorAll<HTMLElement>("[data-pdf-row]"));
+    for (const r of testRows) r.remove();
+
+    let fittingCount = 0;
+    const remainingRows = Array.from(section.querySelectorAll<HTMLElement>("[data-pdf-row]"));
+
+    // Agregar filas de a una hasta que desborde
+    for (let ri = 0; ri < remainingRows.length; ri++) {
+      // Clonar la fila y agregarla al clon de prueba
+      const rowClone = remainingRows[ri].cloneNode(true) as HTMLElement;
+      const tableBody = testCardClone.querySelector("tbody");
+      if (tableBody) {
+        tableBody.appendChild(rowClone);
+      } else {
+        testCardClone.appendChild(rowClone);
+      }
+
+      // Probar si cabe
+      const testSp = testSpacer();
+      if (testSp) testPage.insertBefore(testCardClone, testSp);
+
+      const rowOverflows = testPage.scrollHeight > testPage.clientHeight;
+
+      // Quitar el clon de prueba para la siguiente iteración
+      testCardClone.remove();
+
+      if (rowOverflows) {
+        // Esta fila no entra → la sacamos del clon
+        if (tableBody) {
+          tableBody.removeChild(rowClone);
+        }
+        break;
+      }
+
+      fittingCount++;
+    }
+
+    if (fittingCount === 0) {
+      // Ni una fila entra en esta página → forzar 1
+      fittingCount = 1;
+    }
+
+    if (fittingCount >= remainingRows.length) {
+      // Todas las filas entran
+      const ns = testSpacer();
+      const nc = section.cloneNode(true) as HTMLElement;
+      nc.style.flexShrink = "0";
+      if (ns) testPage.insertBefore(nc, ns);
+      currentGroup.push(section);
+      i++;
+      continue;
+    }
+
+    // ============================================================
+    // Split: crear clon parcial y modificar el original
+    // ============================================================
+
+    // Clon parcial: solo las filas que entran
+    const partialClone = section.cloneNode(true) as HTMLElement;
+    const partialRows = Array.from(partialClone.querySelectorAll<HTMLElement>("[data-pdf-row]"));
+    for (let r = fittingCount; r < partialRows.length; r++) {
+      partialRows[r].remove();
+    }
+
+    // Original: eliminar las filas que ya se fueron
+    for (let r = 0; r < fittingCount; r++) {
+      rows[r].remove();
+    }
+
+    // Agregar clon parcial a la página actual
+    const ps = testSpacer();
+    partialClone.style.flexShrink = "0";
+    if (ps) testPage.insertBefore(partialClone, ps);
+    currentGroup.push(partialClone);
+
+    // Cerrar página
+    pushPage();
+
+    // El original (con filas restantes) se reprocesa (no incrementamos i)
   }
 
   // Última página
-  if (currentPage.length > 0) {
-    pages.push(currentPage);
+  if (currentGroup.length > 0) {
+    result.push(currentGroup);
   }
 
-  return pages;
+  // Limpiar testPage
+  if (testPage.parentNode) {
+    testPage.parentNode.removeChild(testPage);
+  }
+
+  return result;
 }
 
 /**
@@ -296,9 +460,6 @@ export async function generatePdf(options: GeneratePdfOptions): Promise<void> {
     scale = 2,
   } = options;
 
-  const html2canvas = (await import("html2canvas-pro")).default;
-  const { default: jsPDF } = await import("jspdf");
-
   const pageFormat = FORMATS[format] ?? FORMATS.a4;
   const usableWidth = pageFormat.width - margin * 2;
 
@@ -318,22 +479,15 @@ export async function generatePdf(options: GeneratePdfOptions): Promise<void> {
     }
 
     // ================================================================
-    // 3. Construir y capturar cada página
+    // 3. Construir y capturar cada página usando createPdfCapture
     // ================================================================
-    const doc = new jsPDF({ orientation, unit: "mm", format });
+    const pdf = await createPdfCapture({ orientation, format, margin, scale });
 
-    // Altura del elemento a capturar para que, escalado al ancho
-    // imprimible (usableWidth), la imagen llene exactamente la
-    // altura imprimible de la página (pageHeight - 2*margin).
-    // Fórmula: targetH = printableH * elementW / printableW
-    //   = (297 - 20) * 210 / (210 - 20) = 277 * 210 / 190 ≈ 306mm
+    // Altura del elemento para que la captura llene la página exactamente
     const printableHeight = pageFormat.height - margin * 2;
     const elementHeight = (printableHeight * pageFormat.width) / usableWidth;
 
     for (let pageIdx = 0; pageIdx < pageGroups.length; pageIdx++) {
-      if (pageIdx > 0) doc.addPage();
-
-      // Construir el elemento de la página con la altura exacta calculada
       const pageEl = createPageElement(
         headerEl,
         pageGroups[pageIdx],
@@ -343,14 +497,74 @@ export async function generatePdf(options: GeneratePdfOptions): Promise<void> {
         elementHeight,
       );
 
-      // Agregar al DOM (necesario para html2canvas-pro)
+      await pdf.addPage(pageEl);
+    }
+
+    // ================================================================
+    // 4. Descargar PDF
+    // ================================================================
+    pdf.save(filename);
+
+  } finally {
+    cleanupLayout(measureClone);
+  }
+}
+
+// ================================================================
+// Utilidad compartida: capturar elemento HTML con html2canvas-pro
+// y agregarlo como página a un documento jsPDF.
+// ================================================================
+
+export type PdfCapture = {
+  /** Agrega una página capturando el elemento con html2canvas-pro */
+  addPage: (pageEl: HTMLElement) => Promise<void>;
+  /** Guarda el PDF con el nombre indicado */
+  save: (filename: string) => void;
+};
+
+/**
+ * Crea una instancia de captura PDF compartida entre distintos generadores
+ * (reporte detallado, inventario, etc.).
+ *
+ * Ejemplo:
+ *   const pdf = await createPdfCapture({ format: "a4", margin: 10, scale: 2 });
+ *   for (const pageEl of pageElements) {
+ *     await pdf.addPage(pageEl);
+ *   }
+ *   pdf.save("reporte.pdf");
+ */
+export async function createPdfCapture(options: {
+  orientation?: "portrait" | "landscape";
+  format?: "a4" | "letter" | "legal";
+  margin?: number;
+  scale?: number;
+}): Promise<PdfCapture> {
+  const {
+    orientation = "portrait",
+    format = "a4",
+    margin = 10,
+    scale = 2,
+  } = options;
+
+  const html2canvas = (await import("html2canvas-pro")).default;
+  const { default: jsPDF } = await import("jspdf");
+  const pageFormat = FORMATS[format] ?? FORMATS.a4;
+  const usableWidth = pageFormat.width - margin * 2;
+  const usableHeight = pageFormat.height - margin * 2;
+
+  const doc = new jsPDF({ orientation, unit: "mm", format });
+  let pageIndex = 0;
+
+  return {
+    addPage: async (pageEl: HTMLElement) => {
+      if (pageIndex > 0) doc.addPage();
+
       pageEl.style.position = "absolute";
       pageEl.style.left = "-9999px";
       pageEl.style.top = "0";
       document.body.appendChild(pageEl);
 
       try {
-        // Capturar con html2canvas-pro (soporta oklch nativamente)
         const canvas = await html2canvas(pageEl, {
           scale,
           useCORS: true,
@@ -358,29 +572,25 @@ export async function generatePdf(options: GeneratePdfOptions): Promise<void> {
           backgroundColor: "#ffffff",
         });
 
-        // La imagen se coloca ocupando EXACTAMENTE el área imprimible
         doc.addImage(
           canvas.toDataURL("image/jpeg", 0.95),
           "JPEG",
           margin,
           margin,
           usableWidth,
-          printableHeight,
+          usableHeight,
         );
+
+        pageIndex++;
       } finally {
-        // Limpiar página del DOM
         if (pageEl.parentNode) {
           pageEl.parentNode.removeChild(pageEl);
         }
       }
-    }
+    },
 
-    // ================================================================
-    // 4. Descargar PDF
-    // ================================================================
-    doc.save(`${filename}.pdf`);
-
-  } finally {
-    cleanupLayout(measureClone);
-  }
+    save: (filename: string) => {
+      doc.save(`${filename}.pdf`);
+    },
+  };
 }

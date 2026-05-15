@@ -502,7 +502,7 @@ function EnvironmentReport({ detail }: { detail: DetailResponse }) {
         </InfoCard>
 
         {/* Horario de Atención */}
-        <InfoCard title="4. HORARIO DE ATENCIÓN" className="mb-8" data-pdf-section="card-table">
+        <InfoCard title="4. HORARIO DE ATENCIÓN" className="mb-8" data-pdf-section="card-table" data-pdf-break-before="true">
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-slate-600">
               <span className="font-medium">Período de atención:</span> {horarios.length > 0 ? `${horarios[0].periodo} minutos` : "No definido"}
@@ -524,7 +524,7 @@ function EnvironmentReport({ detail }: { detail: DetailResponse }) {
         {/* Página 2: Activos - solo salto en print */}
         <div className="hidden lg:block break-before-page" />
         
-        <InfoCard title="5. ACTIVOS ASOCIADOS" className="mb-8" data-pdf-section="card-table">
+        <InfoCard title="5. ACTIVOS ASOCIADOS" className="mb-8" data-pdf-section="card-table" data-pdf-break-before="true">
           <div className="mb-4 text-sm text-slate-600">
             <span className="font-medium">Total de activos:</span> {activos.meta.total}
           </div>

@@ -78,8 +78,7 @@ export function EnvironmentReportAction({
         <span>Generando...</span>
       ) : (
         <>
-          <Printer className="h-4 w-4 mr-2" />
-          Imprimir
+          Reporte PDF
         </>
       )}
     </Button>
